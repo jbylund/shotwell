@@ -41,7 +41,7 @@ regularly for updates.
 
 Shotwell project page:      https://wiki.gnome.org/Apps/Shotwell
 Shotwell documentation:     http://shotwell-project.org/doc/html/
-Gnome Gitlab Project:       https://gitlab.gnome.org/GNOME/shotwell
+GNOME Gitlab Project:       https://gitlab.gnome.org/GNOME/shotwell
 
 We also encourage you to join the Shotwell mailing list. See
 https://mail.gnome.org/mailman/listinfo/shotwell-list for how to subscribe
