@@ -71,13 +71,16 @@ private class WorkSniffer : BackgroundImportJob {
         base (owner, callback, cancellable, cancellation);
         this.jobs = jobs;
         this.skipset = skipset;
+        stderr.printf("Birth of a new worksniffer\n");
     }
 
     public override void execute() {
+        stderr.printf("WorkSniffer.execute starting...\n");
         // walk the list of jobs accumulating work for the background jobs; if submitted job
         // is a directory, recurse into the directory picking up files to import (also creating
         // work for the background jobs)
         foreach (BatchImportJob job in jobs) {
+            stderr.printf("WorkSniffer.execute starting a job...\n");
             ImportResult result = abort_check();
             if (result != ImportResult.SUCCESS) {
                 report_failure(job, null, job.get_source_identifier(), job.get_dest_identifier(), result);
@@ -92,7 +95,7 @@ private class WorkSniffer : BackgroundImportJob {
                 break;
         }
 
-
+        stderr.printf("WorkSniffer.execute sorting...\n");
         // Time to handle RAW+JPEG pairs!
         // Now we build a new list of all the files (but not folders) we're
         // importing and sort it by filename.
@@ -109,7 +112,7 @@ private class WorkSniffer : BackgroundImportJob {
             return utf8_cs_compare(sa, sb);
         });
 
-
+        stderr.printf("WorkSniffer.execute pairing...\n");
         // For each file, check if the current file is RAW.  If so, check the previous
         // and next files to see if they're a "plus jpeg."
         for (int i = 0; i < sorted.size; ++i) {
@@ -132,6 +135,7 @@ private class WorkSniffer : BackgroundImportJob {
                 }
             }
         }
+        stderr.printf("WorkSniffer.execute done...\n");
     }
 
     // Check if a file is paired.  The raw file must be a raw photo.  A file
@@ -149,6 +153,7 @@ private class WorkSniffer : BackgroundImportJob {
     }
 
     private void sniff_job(BatchImportJob job) throws Error {
+        stderr.printf("enter sniff_job...\n");
         uint64 size;
         File file_or_dir;
         bool determined_size = job.determine_file_size(out size, out file_or_dir);
@@ -160,16 +165,14 @@ private class WorkSniffer : BackgroundImportJob {
             File dir;
             bool copy_to_library;
             if (!job.prepare(out dir, out copy_to_library)) {
-                report_failure(job, null, job.get_source_identifier(), job.get_dest_identifier(),
-                     ImportResult.FILE_ERROR);
+                report_failure(job, null, job.get_source_identifier(), job.get_dest_identifier(), ImportResult.FILE_ERROR);
                 return;
             }
             assert(query_is_directory(dir));
             try {
                 search_dir(job, dir, copy_to_library, job.recurse());
             } catch (Error err) {
-                report_error(job, dir, job.get_source_identifier(), dir.get_path(), err,
-                    ImportResult.FILE_ERROR);
+                report_error(job, dir, job.get_source_identifier(), dir.get_path(), err, ImportResult.FILE_ERROR);
             }
         } else {
             // if did not get the file size, do so now
@@ -181,11 +184,11 @@ private class WorkSniffer : BackgroundImportJob {
                             skipped */
             files_to_prepare.add(new FileToPrepare(job));
         }
+        stderr.printf("exit sniff_job...\n");
     }
 
     public void search_dir(BatchImportJob job, File dir, bool copy_to_library, bool recurse) throws Error {
-        FileEnumerator enumerator = dir.enumerate_children("standard::*",
-            FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+        FileEnumerator enumerator = dir.enumerate_children("standard::*", FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
         FileInfo info = null;
         while ((info = enumerator.next_file(get_cancellable())) != null) {
             // next_file() doesn't always respect the cancellable
@@ -255,12 +258,12 @@ private class PrepareFilesJob : BackgroundImportJob {
 
     public override void execute() {
         Timer timer = new Timer();
+        stderr.printf("PrepareFileJob.execute starting...\n");
         Gee.ArrayList<PreparedFile> list = new Gee.ArrayList<PreparedFile>();
         foreach (FileToPrepare file_to_prepare in files_to_prepare) {
             ImportResult result = abort_check();
             if (result != ImportResult.SUCCESS) {
-                report_failure(file_to_prepare.job, null, file_to_prepare.job.get_dest_identifier(),
-                    file_to_prepare.job.get_source_identifier(), result);
+                report_failure(file_to_prepare.job, null, file_to_prepare.job.get_dest_identifier(), file_to_prepare.job.get_source_identifier(), result);
                 continue;
             }
             BatchImportJob job = file_to_prepare.job;
@@ -281,14 +284,15 @@ private class PrepareFilesJob : BackgroundImportJob {
                 prepared_files++;
                 list.add(prepared_file);
             } else {
-                report_failure(job, file, job.get_source_identifier(), file.get_path(),
-                    result);
+                report_failure(job, file, job.get_source_identifier(), file.get_path(), result);
             }
-            if (list.size >= BatchImport.REPORT_EVERY_N_PREPARED_FILES
-                || ((timer.elapsed() * 1000.0) > BatchImport.REPORT_PREPARED_FILES_EVERY_N_MSEC && list.size > 0)) {
-#if TRACE_IMPORT
-                debug("Notifying that %d prepared files are ready", list.size);
-#endif
+            if (
+                list.size >= BatchImport.REPORT_EVERY_N_PREPARED_FILES ||
+                (
+                    (timer.elapsed() * 1000.0) > BatchImport.REPORT_PREPARED_FILES_EVERY_N_MSEC &&
+                    list.size > 0
+                )
+            ) {
                 PreparedFileCluster cluster = new PreparedFileCluster(list);
                 list = new Gee.ArrayList<PreparedFile>();
                 notify(notification, cluster);
@@ -308,6 +312,7 @@ private class PrepareFilesJob : BackgroundImportJob {
                 }
             }
         }
+        stderr.printf("PrepareFileJob.execute finished after %f...\n", timer.elapsed());
     }
 
     // If there's no file, call this function to get it from the batch import job.
@@ -355,9 +360,6 @@ private class PrepareFilesJob : BackgroundImportJob {
         string full_md5 = null;
         try {
             full_md5 = md5_file(file);
-#if TRACE_MD5
-            debug("import MD5 for file %s = %s", file.get_path(), full_md5);
-#endif
         } catch (Error err) {
             warning("Unable to perform MD5 checksum on file %s: %s", file.get_path(), err.message);
             return ImportResult.convert_error(err, ImportResult.FILE_ERROR);

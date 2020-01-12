@@ -30,13 +30,13 @@ public class BatchImport : Object {
     private int file_imports_completed = 0;
     private int file_imports_to_perform = -1;
     private static Workers feeder_workers = new Workers(1, false);
-    private static Workers import_workers = new Workers(Workers.thread_per_cpu_minus_one(), false);
+    private static Workers import_workers = new Workers(1, false);
     private string name;
     private uint64 completed_bytes = 0;
     private uint64 total_bytes = 0;
     private uint max_outstanding_import_jobs = Workers.thread_per_cpu_minus_one();
     private uint throbber_id = 0;
-    private ulong last_preparing_ms = 0;
+    private ulong last_status_update = 0;
     private unowned ImportReporter reporter;
     public const int REPORT_EVERY_N_PREPARED_FILES = 100;
     public const int REPORT_PREPARED_FILES_EVERY_N_MSEC = 3000;
@@ -169,18 +169,16 @@ public class BatchImport : Object {
         completed_bytes += increment_of_progress;
         // only report "progress" if progress has been made (and enough time has progressed),
         // otherwise still preparing
+        ulong now = now_ms();
+        if (250 < now - last_status_update) {
+            return;
+        }
         if (completed_bytes == 0) {
-            ulong now = now_ms();
-            if (now - last_preparing_ms > 250) {
-                last_preparing_ms = now;
-                preparing();
-            }
+            last_status_update = now;
+            preparing();
         } else if (increment_of_progress > 0) {
-            ulong now = now_ms();
-            if (now - last_preparing_ms > 250) {
-                last_preparing_ms = now;
-                progress(completed_bytes, total_bytes);
-            }
+            last_status_update = now;
+            progress(completed_bytes, total_bytes);
         }
     }
 
@@ -200,6 +198,9 @@ public class BatchImport : Object {
             error("Attempted to complete already-completed import: %s", where);
         completed = true;
         flush_ready_sources();
+
+        stderr.printf("Import complete after %f\n", manifest.timer.elapsed());
+
         // report completed to the reporter (called prior to the "import_complete" signal)
         if (reporter != null)
             reporter(manifest, import_roll);
@@ -227,7 +228,7 @@ public class BatchImport : Object {
     public void schedule() {
         assert(scheduled == false);
         scheduled = true;
-        starting();
+        starting(); // connected to ImportQueuePage.on_starting...
         // fire off a background job to generate all FileToPrepare work
         feeder_workers.enqueue(
             new WorkSniffer(
@@ -264,8 +265,14 @@ public class BatchImport : Object {
         // to a camera without fat locking, and it's just not worth it.  Serializing the imports
         // also means the user sees the photos coming in in (roughly) the order they selected them
         // on the screen
-        PrepareFilesJob prepare_files_job = new PrepareFilesJob(this, sniffer.files_to_prepare,
-            on_file_prepared, on_files_prepared, cancellable, on_file_prepare_cancelled);
+        PrepareFilesJob prepare_files_job = new PrepareFilesJob(
+            this,
+            sniffer.files_to_prepare,
+            on_file_prepared,
+            on_files_prepared,
+            cancellable,
+            on_file_prepare_cancelled
+        );
         feeder_workers.enqueue(prepare_files_job);
         if (throbber_id > 0) {
             Source.remove(throbber_id);

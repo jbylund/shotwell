@@ -30,16 +30,20 @@ public File? generate_unique_file(string basename, MediaMetadata? metadata, time
     throws Error {
     // use exposure timestamp over the supplied one (which probably comes from the file's
     // modified time, or is simply time()), unless it's zero, in which case use current time
-    
+
     time_t timestamp = ts;
-    if (metadata != null) {
-        MetadataDateTime? date_time = metadata.get_creation_date_time();
-        if (date_time != null)
-            timestamp = date_time.get_timestamp();
-        else if (timestamp == 0)
-            timestamp = time_t();
+    if(false) {
+        if (metadata != null) {
+            MetadataDateTime? date_time = metadata.get_creation_date_time();
+            if (date_time != null)
+                timestamp = date_time.get_timestamp();
+            else if (timestamp == 0)
+                timestamp = time_t();
+        }
+    } else {
+        timestamp = time_t();
     }
-    
+
     // build a directory tree inside the library
     File dir = AppDirs.get_baked_import_dir(timestamp);
     try {
@@ -47,13 +51,12 @@ public File? generate_unique_file(string basename, MediaMetadata? metadata, time
     } catch (Error err) {
         if (!(err is IOError.EXISTS))
             throw err;
-        
         // silently ignore not creating a directory that already exists
     }
-    
+
     // Optionally convert to lower-case.
     string newbasename = convert_basename(basename);
-    
+
     return global::generate_unique_file(dir, newbasename, out collision);
 }
 
@@ -71,44 +74,34 @@ public string convert_basename(string basename) {
 
 // This function is thread-safe.
 private File duplicate(File src, FileProgressCallback? progress_callback, bool blacklist) throws Error {
+    Timer timer = new Timer();
     time_t timestamp = 0;
     try {
         timestamp = query_file_modified(src);
     } catch (Error err) {
         critical("Unable to access file modification for %s: %s", src.get_path(), err.message);
     }
-       
+
     MediaMetadata? metadata = null;
-    if (VideoReader.is_supported_video_file(src)) {
-        VideoReader reader = new VideoReader(src);
-        try {
-            metadata = reader.read_metadata();
-        } catch (Error err) {
-            // ignored, leave metadata as null
-        }
-    } else {
-        PhotoFileReader reader = PhotoFileFormat.get_by_file_extension(src).create_reader(
-            src.get_path());
-        try {
-            metadata = reader.read_metadata();
-        } catch (Error err) {
-            // ignored, leave metadata as null
-        }
-    }
-    
+
     bool collision;
     File? dest = generate_unique_file(src.get_basename(), metadata, timestamp, out collision);
     if (dest == null)
         throw new FileError.FAILED("Unable to generate unique pathname for destination");
-    
+
     if (blacklist)
         LibraryMonitor.blacklist_file(dest, "LibraryFiles.duplicate");
-    
+
+
+    stderr.printf("LibraryFiles.duplicate pre-copy %f\n", timer.elapsed());
+
     try {
         if (use_fallback_copy_func) {
             fallback_copy(src, dest, progress_callback);
+            stderr.printf("LibraryFiles.duplicate fallback copy %f\n", timer.elapsed());
         } else {
-            src.copy(dest, FileCopyFlags.ALL_METADATA | FileCopyFlags.OVERWRITE, null, progress_callback);
+            src.copy(dest, FileCopyFlags.ALL_METADATA | FileCopyFlags.OVERWRITE, null, null); //
+            stderr.printf("LibraryFiles.duplicate src.copy %f\n", timer.elapsed());
         }
         if (blacklist)
             LibraryMonitor.unblacklist_file(dest);
@@ -117,7 +110,7 @@ private File duplicate(File src, FileProgressCallback? progress_callback, bool b
         if (blacklist && (md5_file(src) != md5_file(dest)))
             LibraryMonitor.unblacklist_file(dest);
     }
-    
+
     // Make file writable by getting current Unix mode and or it with 600 (user read/write)
     try {
         FileInfo info = dest.query_info(FileAttribute.UNIX_MODE, FileQueryInfoFlags.NONE);
@@ -128,7 +121,8 @@ private File duplicate(File src, FileProgressCallback? progress_callback, bool b
     } catch (Error err) {
         warning("Could not make file writable: %s", err.message);
     }
-    
+
+    stderr.printf("LibraryFiles.duplicate completed %f\n", timer.elapsed());
     return dest;
 }
 
