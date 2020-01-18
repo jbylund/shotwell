@@ -20,15 +20,15 @@ public enum CompassPoint {
 public enum Direction {
     FORWARD,
     BACKWARD;
-    
+
     public Spit.Transitions.Direction to_transition_direction() {
         switch (this) {
             case FORWARD:
                 return Spit.Transitions.Direction.FORWARD;
-            
+
             case BACKWARD:
                 return Spit.Transitions.Direction.BACKWARD;
-            
+
             default:
                 error("Unknown Direction %s", this.to_string());
         }
@@ -55,11 +55,11 @@ public Gdk.Rectangle get_adjustment_page(Gtk.Adjustment hadj, Gtk.Adjustment vad
     rect.y = (int) vadj.get_value();
     rect.width = (int) hadj.get_page_size();
     rect.height = (int) vadj.get_page_size();
-    
+
     return rect;
 }
 
-// Verifies that only the mask bits are set in the modifier field, disregarding mouse and 
+// Verifies that only the mask bits are set in the modifier field, disregarding mouse and
 // key modifiers that are not normally of concern (i.e. Num Lock, Caps Lock, etc.).  Mask can be
 // one or more bits set, but should only consist of these values:
 // * Gdk.ModifierType.SHIFT_MASK
@@ -74,8 +74,8 @@ public Gdk.Rectangle get_adjustment_page(Gtk.Adjustment hadj, Gtk.Adjustment vad
 //
 // (Note: MOD2 seems to be Num Lock in GDK.)
 public bool has_only_key_modifier(Gdk.ModifierType field, Gdk.ModifierType mask) {
-    return (field 
-        & (Gdk.ModifierType.SHIFT_MASK 
+    return (field
+        & (Gdk.ModifierType.SHIFT_MASK
         | Gdk.ModifierType.CONTROL_MASK
         | Gdk.ModifierType.MOD1_MASK
         | Gdk.ModifierType.MOD3_MASK
@@ -91,13 +91,13 @@ bool is_pointer_over(Gdk.Window window) {
     var seat = window.get_display().get_default_seat();
     if (seat == null) {
         debug("No seat for display");
-        
+
         return false;
     }
-    
+
     int x, y;
     seat.get_pointer().get_position(null, out x, out y);
-    
+
     return x >= 0 && y >= 0 && x < window.get_width() && y < window.get_height();
 }
 #endif

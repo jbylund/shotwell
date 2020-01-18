@@ -4,7 +4,6 @@
  * See the COPYING file in this distribution.
  */
 
-
 const string G3_VERSION = "0.1";
 
 const string G3_LICENSE = """
@@ -106,7 +105,6 @@ public class Gallery3Service : Object, Spit.Pluggable,
             Spit.Publishing.Publisher.MediaType.VIDEO);
     }
 }
-
 
 namespace Publishing.Gallery3 {
 private const string SERVICE_NAME = "Gallery3";
@@ -795,7 +793,6 @@ private class GalleryUploadTransaction :
     }
 
 }
-
 
 public class GalleryPublisher : Spit.Publishing.Publisher, GLib.Object {
     private const string BAD_FILE_MSG = _("\n\nThe file “%s” may not be supported by or may be too large for this instance of Gallery3.");
@@ -1774,7 +1771,7 @@ internal class CredentialsPane : Spit.Publishing.DialogPane, GLib.Object {
                         .printf(SERVICE_NAME)
                     )
                 );
-            
+
             return;
         }
 

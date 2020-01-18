@@ -22,7 +22,6 @@ public class Facade : ConfigurationFacade {
     public const int SIDEBAR_MAX_POSITION = 1000;
     public const int NO_VIDEO_INTERPRETER_STATE = -1;
 
-
     private static Facade instance = null;
 
     public signal void colors_changed();
@@ -33,14 +32,14 @@ public class Facade : ConfigurationFacade {
         transparent_background_type_changed.connect(on_color_name_changed);
         transparent_background_color_changed.connect(on_color_name_changed);
     }
-    
+
     public static Facade get_instance() {
         if (instance == null)
             instance = new Facade();
-        
+
         return instance;
     }
-    
+
     private void on_color_name_changed() {
         colors_changed();
     }

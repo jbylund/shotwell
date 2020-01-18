@@ -18,7 +18,7 @@ public void init() throws Error {
     core_ids += "org.yorba.shotwell.transitions.stripes";
     core_ids += "org.yorba.shotwell.transitions.squares";
     core_ids += "org.yorba.shotwell.transitions.chess";
-    
+
     Plugins.register_extension_point(typeof(Spit.Transitions.Descriptor), _("Slideshow Transitions"),
         Resources.ICON_SLIDESHOW_EXTENSION_POINT, core_ids);
     TransitionEffectsManager.init();

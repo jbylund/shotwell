@@ -8,7 +8,7 @@ public class FlickrService : Object, Spit.Pluggable, Spit.Publishing.Service {
     private const string ICON_FILENAME = "flickr.png";
 
     private static Gdk.Pixbuf[] icon_pixbuf_set = null;
-    
+
     public FlickrService(GLib.File resource_directory) {
         if (icon_pixbuf_set == null)
             icon_pixbuf_set = Resources.load_from_resource
@@ -19,15 +19,15 @@ public class FlickrService : Object, Spit.Pluggable, Spit.Publishing.Service {
         return Spit.negotiate_interfaces(min_host_interface, max_host_interface,
             Spit.Publishing.CURRENT_INTERFACE);
     }
-    
+
     public unowned string get_id() {
         return "org.yorba.shotwell.publishing.flickr";
     }
-    
+
     public unowned string get_pluggable_name() {
         return "Flickr";
     }
-    
+
     public void get_info(ref Spit.PluggableInfo info) {
         info.authors = "Lucas Beeler";
         info.copyright = _("Copyright 2016 Software Freedom Conservancy Inc.");
@@ -46,7 +46,7 @@ public class FlickrService : Object, Spit.Pluggable, Spit.Publishing.Service {
     public Spit.Publishing.Publisher create_publisher(Spit.Publishing.PluginHost host) {
         return new Publishing.Flickr.FlickrPublisher(this, host);
     }
-    
+
     public Spit.Publishing.Publisher.MediaType get_supported_media() {
         return (Spit.Publishing.Publisher.MediaType.PHOTO |
             Spit.Publishing.Publisher.MediaType.VIDEO);
@@ -98,7 +98,7 @@ public class FlickrPublisher : Spit.Publishing.Publisher, GLib.Object {
     private Publishing.RESTSupport.OAuth1.Session session = null;
     private PublishingOptionsPane publishing_options_pane = null;
     private Spit.Publishing.Authenticator authenticator = null;
-   
+
     private PublishingParameters parameters = null;
 
     public FlickrPublisher(Spit.Publishing.Service service,
@@ -112,7 +112,7 @@ public class FlickrPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         this.authenticator.authenticated.connect(on_session_authenticated);
     }
-    
+
     ~FlickrPublisher() {
         this.authenticator.authenticated.disconnect(on_session_authenticated);
     }
@@ -191,7 +191,7 @@ public class FlickrPublisher : Spit.Publishing.Publisher, GLib.Object {
     private void on_publishing_options_pane_publish(bool strip_metadata) {
         publishing_options_pane.publish.disconnect(on_publishing_options_pane_publish);
         publishing_options_pane.logout.disconnect(on_publishing_options_pane_logout);
-        
+
         if (!is_running())
             return;
 
@@ -287,7 +287,7 @@ public class FlickrPublisher : Spit.Publishing.Publisher, GLib.Object {
             else
                 throw new Spit.Publishing.PublishingError.MALFORMED_RESPONSE(
                     "Unable to determine if user has free or pro account");
-            
+
             var quota_bytes_left = int64.parse(remaining_kb_str) * 1024;
 
             parameters.quota_free_bytes = quota_bytes_left;
@@ -305,10 +305,10 @@ public class FlickrPublisher : Spit.Publishing.Publisher, GLib.Object {
             host.post_error(err);
             return;
         }
-        
+
         on_account_info_available();
     }
-    
+
     private void do_logout() {
         debug("ACTION: logging user out, deauthenticating session, and erasing stored credentials");
 
@@ -347,8 +347,8 @@ public class FlickrPublisher : Spit.Publishing.Publisher, GLib.Object {
         publishing_options_pane.logout.connect(on_publishing_options_pane_logout);
         host.install_dialog_pane(publishing_options_pane);
     }
-    
-    public static int flickr_date_time_compare_func(Spit.Publishing.Publishable a, 
+
+    public static int flickr_date_time_compare_func(Spit.Publishing.Publishable a,
         Spit.Publishing.Publishable b) {
         return a.get_exposure_date_time().compare(b.get_exposure_date_time());
     }
@@ -375,7 +375,7 @@ public class FlickrPublisher : Spit.Publishing.Publisher, GLib.Object {
             sorted_list.add(p);
         }
         sorted_list.sort(flickr_date_time_compare_func);
-        
+
         Uploader uploader = new Uploader(session, sorted_list.to_array(), parameters, strip_metadata);
         uploader.upload_complete.connect(on_upload_complete);
         uploader.upload_error.connect(on_upload_error);
@@ -392,15 +392,15 @@ public class FlickrPublisher : Spit.Publishing.Publisher, GLib.Object {
     internal int get_persistent_visibility() {
         return host.get_config_int("visibility", 0);
     }
-    
+
     internal void set_persistent_visibility(int vis) {
         host.set_config_int("visibility", vis);
     }
-    
+
     internal int get_persistent_default_size() {
         return host.get_config_int("default_size", 1);
     }
-    
+
     internal void set_persistent_default_size(int size) {
         host.set_config_int("default_size", size);
     }
@@ -412,28 +412,28 @@ public class FlickrPublisher : Spit.Publishing.Publisher, GLib.Object {
     public bool is_running() {
         return running;
     }
-    
+
     // this helper doesn't check state, merely validates and authenticates the session and installs
     // the proper panes
     private void attempt_start() {
         running = true;
         was_started = true;
-        
+
         authenticator.authenticate();
     }
-    
+
     public void start() {
         if (is_running())
             return;
-        
+
         if (was_started)
             error("FlickrPublisher: start( ): can't start; this publisher is not restartable.");
-        
+
         debug("FlickrPublisher: starting interaction.");
-        
+
         attempt_start();
     }
-    
+
     public void stop() {
         debug("FlickrPublisher: stop( ) invoked.");
 
@@ -448,21 +448,21 @@ namespace Transaction {
     public static string? validate_xml(Publishing.RESTSupport.XmlDocument doc) {
         Xml.Node* root = doc.get_root_node();
         string? status = root->get_prop("stat");
-        
+
         // treat malformed root as an error condition
         if (status == null)
             return "No status property in root node";
-        
+
         if (status == "ok")
             return null;
-        
+
         Xml.Node* errcode;
         try {
             errcode = doc.get_named_child(root, "err");
         } catch (Spit.Publishing.PublishingError err) {
             return "No error code specified";
         }
-        
+
         // this error format is mandatory, because the parse_flickr_response( ) expects error
         // messages to be in this format. If you want to change the error reporting format, you
         // need to modify parse_flickr_response( ) to parse the new format too.
@@ -489,7 +489,7 @@ namespace Transaction {
                 throw e;
             }
         }
-        
+
         return result;
     }
 }
@@ -581,7 +581,7 @@ internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object {
         this.builder = builder;
         assert(builder != null);
         assert(builder.get_objects().length() > 0);
-        
+
         // pull in the necessary widgets from the glade file
         pane_widget = (Gtk.Box) this.builder.get_object("flickr_pane");
         visibility_label = (Gtk.Label) this.builder.get_object("visibility_label");
@@ -620,7 +620,7 @@ internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object {
                                    Spit.Publishing.Publisher.MediaType.VIDEO))) {
             visibility_label_text = _("Photos and videos _visible to");
         }
-        
+
         visibility_label.set_label(visibility_label_text);
 
         populate_visibility_combo();
@@ -634,7 +634,7 @@ internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object {
             size_combo.set_sensitive(false);
             size_label.set_sensitive(false);
         }
-        
+
         strip_metadata_check.set_active(strip_metadata);
 
         logout_button.clicked.connect(on_logout_clicked);
@@ -706,11 +706,11 @@ internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object {
     private void on_visibility_changed() {
         publisher.set_persistent_visibility(visibility_combo.get_active());
     }
-    
+
     protected void notify_publish() {
         publish(strip_metadata_check.get_active());
     }
-    
+
     protected void notify_logout() {
         logout();
     }
@@ -718,16 +718,16 @@ internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object {
     public Gtk.Widget get_widget() {
         return pane_widget;
     }
-    
+
     public Spit.Publishing.DialogPane.GeometryOptions get_preferred_geometry() {
         return Spit.Publishing.DialogPane.GeometryOptions.NONE;
     }
-    
-    public void on_pane_installed() {        
+
+    public void on_pane_installed() {
         publish.connect(notify_publish);
         logout.connect(notify_logout);
     }
-    
+
     public void on_pane_uninstalled() {
         publish.disconnect(notify_publish);
         logout.disconnect(notify_logout);
@@ -741,11 +741,11 @@ internal class Uploader : Publishing.RESTSupport.BatchUploader {
     public Uploader(Publishing.RESTSupport.OAuth1.Session session, Spit.Publishing.Publishable[] publishables,
         PublishingParameters parameters, bool strip_metadata) {
         base(session, publishables);
-        
+
         this.parameters = parameters;
         this.strip_metadata = strip_metadata;
     }
-    
+
     private void preprocess_publishable(Spit.Publishing.Publishable publishable) {
         if (publishable.get_media_type() != Spit.Publishing.Publisher.MediaType.PHOTO)
             return;
@@ -757,7 +757,7 @@ internal class Uploader : Publishing.RESTSupport.BatchUploader {
             warning("couldn't read metadata from file '%s' for upload preprocessing.",
                 publishable.get_serialized_file().get_path());
         }
-        
+
         // Flickr internationalization issues only affect IPTC tags; XMP, being an XML
         // grammar and using standard XML internationalization mechanisms, doesn't need any i18n
         // massaging before upload, so if the publishable doesn't have any IPTC metadata, then
@@ -800,7 +800,7 @@ internal class Uploader : Publishing.RESTSupport.BatchUploader {
             // which describes the user-visible behavior seen in the Flickr Connector as a result
             // of the former bug.
             no_keywords[0] = null;
-            
+
             publishable_metadata.set_tag_multiple("Xmp.dc.subject", all_keywords);
             publishable_metadata.set_tag_multiple("Iptc.Application2.Keywords", no_keywords);
 
@@ -812,7 +812,7 @@ internal class Uploader : Publishing.RESTSupport.BatchUploader {
             }
         }
     }
-    
+
     protected override Publishing.RESTSupport.Transaction create_transaction(
         Spit.Publishing.Publishable publishable) {
         preprocess_publishable(get_current_publishable());

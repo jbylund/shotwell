@@ -11,12 +11,12 @@ public class MediaSourcePublishableWrapper : Spit.Publishing.Publishable, GLib.O
     private MediaSource wrapped;
     private GLib.File? serialized_file = null;
     private Gee.Map<string, string> param_string = new Gee.HashMap<string, string>();
-    
+
     public MediaSourcePublishableWrapper(MediaSource to_wrap) {
         wrapped = to_wrap;
         setup_parameters();
     }
-    
+
     public void clean_up() {
         if (serialized_file == null)
             return;
@@ -31,12 +31,12 @@ public class MediaSourcePublishableWrapper : Spit.Publishing.Publishable, GLib.O
 
         serialized_file = null;
     }
-    
+
     private void setup_parameters() {
         param_string.set(PARAM_STRING_BASENAME, wrapped.get_basename());
         param_string.set(PARAM_STRING_TITLE, wrapped.get_title());
         param_string.set(PARAM_STRING_COMMENT, wrapped.get_comment());
-        
+
         if (wrapped.get_event() != null)
             param_string.set(PARAM_STRING_EVENTCOMMENT, wrapped.get_event().get_comment());
         else
@@ -101,14 +101,14 @@ public class MediaSourcePublishableWrapper : Spit.Publishing.Publishable, GLib.O
 
     public string[] get_publishing_keywords() {
         string[] result = new string[0];
-        
+
         Gee.Collection<Tag>? tagset = Tag.global.fetch_sorted_for_source(wrapped);
         if (tagset != null) {
             foreach (Tag tag in tagset) {
                 result += tag.get_name();
             }
         }
-        
+
         return (result.length > 0) ? result : null;
     }
 
@@ -120,11 +120,11 @@ public class MediaSourcePublishableWrapper : Spit.Publishing.Publishable, GLib.O
         else
             return Spit.Publishing.Publisher.MediaType.NONE;
     }
-    
+
     public GLib.File? get_serialized_file() {
         return serialized_file;
     }
-    
+
     public GLib.DateTime get_exposure_date_time() {
         return new GLib.DateTime.from_unix_local(wrapped.get_exposure_time());
     }

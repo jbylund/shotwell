@@ -9,7 +9,7 @@ public class MediaSourceItem : CheckerboardItem {
 
     // preserve the same constructor arguments and semantics as CheckerboardItem so that we're
     // a drop-in replacement
-    public MediaSourceItem(ThumbnailSource source, Dimensions initial_pixbuf_dim, string title, 
+    public MediaSourceItem(ThumbnailSource source, Dimensions initial_pixbuf_dim, string title,
         string? comment, bool marked_up = false, Pango.Alignment alignment = Pango.Alignment.LEFT) {
         base(source, initial_pixbuf_dim, title, comment, marked_up, alignment);
     }
@@ -19,7 +19,7 @@ public class MediaSourceItem : CheckerboardItem {
         base.set_title(text, marked_up, alignment);
         this.natural_collation_key = null;
     }
-    
+
     public string get_natural_collation_key() {
         if (this.natural_collation_key == null) {
             this.natural_collation_key = NaturalCollate.collate_key(this.get_title());
@@ -48,7 +48,7 @@ public abstract class MediaPage : CheckerboardPage {
     protected class ZoomSliderAssembly : Gtk.ToolItem {
         private Gtk.Scale slider;
         private Gtk.Adjustment adjustment;
-        
+
         public signal void zoom_changed();
 
         public ZoomSliderAssembly() {
@@ -60,7 +60,7 @@ public abstract class MediaPage : CheckerboardPage {
             zoom_out_box.set_visible_window(false);
             zoom_out_box.add(zoom_out);
             zoom_out_box.button_press_event.connect(on_zoom_out_pressed);
-            
+
             zoom_group.pack_start(zoom_out_box, false, false, 0);
 
             // virgin ZoomSliderAssemblies are created such that they have whatever value is
@@ -88,11 +88,11 @@ public abstract class MediaPage : CheckerboardPage {
 
             add(zoom_group);
         }
-        
+
         public static double scale_to_slider(int value) {
             assert(value >= Thumbnail.MIN_SCALE);
             assert(value <= Thumbnail.MAX_SCALE);
-            
+
             return (double) ((value - Thumbnail.MIN_SCALE) / SLIDER_STEPPING);
         }
 
@@ -101,7 +101,7 @@ public abstract class MediaPage : CheckerboardPage {
 
             assert(res >= Thumbnail.MIN_SCALE);
             assert(res <= Thumbnail.MAX_SCALE);
-            
+
             return res;
         }
 
@@ -109,16 +109,16 @@ public abstract class MediaPage : CheckerboardPage {
             snap_to_min();
             return true;
         }
-        
+
         private bool on_zoom_in_pressed(Gdk.EventButton event) {
             snap_to_max();
             return true;
         }
-        
+
         private void on_slider_changed() {
             zoom_changed();
         }
-        
+
         public void snap_to_min() {
             slider.set_value(scale_to_slider(Thumbnail.MIN_SCALE));
         }
@@ -126,7 +126,7 @@ public abstract class MediaPage : CheckerboardPage {
         public void snap_to_max() {
             slider.set_value(scale_to_slider(Thumbnail.MAX_SCALE));
         }
-        
+
         public void increase_step() {
             int new_scale = compute_zoom_scale_increase(get_scale());
 
@@ -135,20 +135,20 @@ public abstract class MediaPage : CheckerboardPage {
 
             slider.set_value(scale_to_slider(new_scale));
         }
-        
+
         public void decrease_step() {
             int new_scale = compute_zoom_scale_decrease(get_scale());
 
             if (get_scale() == new_scale)
                 return;
-            
+
             slider.set_value(scale_to_slider(new_scale));
         }
-        
+
         public int get_scale() {
             return slider_to_scale(slider.get_value());
         }
-        
+
         public void set_scale(int scale) {
             if (get_scale() == scale)
                 return;
@@ -156,24 +156,24 @@ public abstract class MediaPage : CheckerboardPage {
             slider.set_value(scale_to_slider(scale));
         }
     }
-    
+
     private ZoomSliderAssembly? connected_slider = null;
     private DragAndDropHandler dnd_handler = null;
     private MediaViewTracker tracker;
-    
+
     protected MediaPage(string page_name) {
         base (page_name);
-        
+
         tracker = new MediaViewTracker(get_view());
-        
+
         get_view().items_altered.connect(on_media_altered);
 
         get_view().freeze_notifications();
-        get_view().set_property(CheckerboardItem.PROP_SHOW_TITLES, 
+        get_view().set_property(CheckerboardItem.PROP_SHOW_TITLES,
             Config.Facade.get_instance().get_display_photo_titles());
-        get_view().set_property(CheckerboardItem.PROP_SHOW_COMMENTS, 
+        get_view().set_property(CheckerboardItem.PROP_SHOW_COMMENTS,
             Config.Facade.get_instance().get_display_photo_comments());
-        get_view().set_property(Thumbnail.PROP_SHOW_TAGS, 
+        get_view().set_property(Thumbnail.PROP_SHOW_TAGS,
             Config.Facade.get_instance().get_display_photo_tags());
         get_view().set_property(Thumbnail.PROP_SIZE, get_thumb_size());
         get_view().set_property(Thumbnail.PROP_SHOW_RATINGS,
@@ -183,20 +183,20 @@ public abstract class MediaPage : CheckerboardPage {
         // enable drag-and-drop export of media
         dnd_handler = new DragAndDropHandler(this);
     }
-   
+
     private static int compute_zoom_scale_increase(int current_scale) {
         int new_scale = current_scale + MANUAL_STEPPING;
         return new_scale.clamp(Thumbnail.MIN_SCALE, Thumbnail.MAX_SCALE);
     }
-    
+
     private static int compute_zoom_scale_decrease(int current_scale) {
         int new_scale = current_scale - MANUAL_STEPPING;
         return new_scale.clamp(Thumbnail.MIN_SCALE, Thumbnail.MAX_SCALE);
     }
-    
+
     protected override void init_collect_ui_filenames(Gee.List<string> ui_filenames) {
         base.init_collect_ui_filenames(ui_filenames);
-        
+
         ui_filenames.add("media.ui");
     }
 
@@ -274,35 +274,35 @@ public abstract class MediaPage : CheckerboardPage {
         set_action_sensitive("DecreaseSize", get_thumb_size() > Thumbnail.MIN_SCALE);
         set_action_sensitive("RemoveFromLibrary", selected_count > 0);
         set_action_sensitive("MoveToTrash", selected_count > 0);
-        
+
         if (DesktopIntegration.is_send_to_installed())
             set_action_sensitive("SendTo", selected_count > 0);
         else
             set_action_sensitive("SendTo", false);
-        
+
         set_action_sensitive("Rate", selected_count > 0);
         update_rating_sensitivities();
-        
+
         update_development_menu_item_sensitivity();
-        
+
         set_action_sensitive("PlayVideo", selected_count == 1
             && get_view().get_selected_source_at(0) is Video);
-        
+
         update_flag_action(selected_count);
-        
+
         base.update_actions(selected_count, count);
     }
-    
+
     private void on_media_altered(Gee.Map<DataObject, Alteration> altered) {
         foreach (DataObject object in altered.keys) {
             if (altered.get(object).has_detail("metadata", "flagged")) {
                 update_flag_action(get_view().get_selected_count());
-                
+
                 break;
             }
         }
     }
-    
+
     private void update_rating_sensitivities() {
         set_action_sensitive("RateRejected", can_rate_selected(Rating.REJECTED));
         set_action_sensitive("RateUnrated", can_rate_selected(Rating.UNRATED));
@@ -314,13 +314,13 @@ public abstract class MediaPage : CheckerboardPage {
         set_action_sensitive("IncreaseRating", can_increase_selected_rating());
         set_action_sensitive("DecreaseRating", can_decrease_selected_rating());
     }
-    
+
     private void update_development_menu_item_sensitivity() {
         if (get_view().get_selected().size == 0) {
             set_action_sensitive("RawDeveloper", false);
             return;
         }
-        
+
         // Collect some stats about what's selected.
         bool is_raw = false;    // True if any RAW photos are selected
         foreach (DataView view in get_view().get_selected()) {
@@ -331,15 +331,15 @@ public abstract class MediaPage : CheckerboardPage {
                 break;
             }
         }
-        
+
         // Enable/disable menu.
         set_action_sensitive("RawDeveloper", is_raw);
     }
-    
+
     private void update_flag_action(int selected_count) {
         set_action_sensitive("Flag", selected_count > 0);
     }
-    
+
     public override Core.ViewTracker? get_view_tracker() {
         return tracker;
     }
@@ -375,10 +375,10 @@ public abstract class MediaPage : CheckerboardPage {
             if(((Thumbnail) view).get_media_source().get_rating().can_decrease())
                 return true;
         }
-        
+
         return false;
     }
-    
+
     public ZoomSliderAssembly create_zoom_slider_assembly() {
         return new ZoomSliderAssembly();
     }
@@ -400,19 +400,19 @@ public abstract class MediaPage : CheckerboardPage {
             return base.on_mousewheel_down(event);
         }
     }
-    
+
     private void on_send_to() {
         DesktopIntegration.send_to((Gee.Collection<MediaSource>) get_view().get_selected_sources());
     }
-    
+
     protected void on_play_video() {
         if (get_view().get_selected_count() != 1)
             return;
-        
+
         Video? video = get_view().get_selected_at(0).get_source() as Video;
         if (video == null)
             return;
-        
+
         try {
             AppInfo.launch_default_for_uri(video.get_file().get_uri(), null);
         } catch (Error e) {
@@ -429,64 +429,64 @@ public abstract class MediaPage : CheckerboardPage {
             case "KP_Add":
                 activate_action("IncreaseSize");
             break;
-            
+
             case "minus":
             case "underscore":
             case "KP_Subtract":
                 activate_action("DecreaseSize");
             break;
-            
+
             case "period":
                 activate_action("IncreaseRating");
             break;
-            
+
             case "comma":
                 activate_action("DecreaseRating");
             break;
-            
+
             case "KP_1":
                 activate_action("RateOne");
             break;
-            
+
             case "KP_2":
                 activate_action("RateTwo");
             break;
-            
+
             case "KP_3":
                 activate_action("RateThree");
             break;
-            
+
             case "KP_4":
                 activate_action("RateFour");
             break;
-            
+
             case "KP_5":
                 activate_action("RateFive");
             break;
-            
+
             case "KP_0":
                 activate_action("RateUnrated");
             break;
-            
+
             case "KP_9":
                 activate_action("RateRejected");
             break;
-            
+
             case "slash":
                 activate_action("Flag");
             break;
-            
+
             default:
                 handled = false;
             break;
         }
-        
+
         return handled ? true : base.on_app_key_pressed(event);
     }
 
     public override void switched_to() {
         base.switched_to();
-        
+
         // set display options to match Configuration toggles (which can change while switched away)
         get_view().freeze_notifications();
         set_display_titles(Config.Facade.get_instance().get_display_photo_titles());
@@ -505,7 +505,7 @@ public abstract class MediaPage : CheckerboardPage {
 
         sync_sort();
     }
-    
+
     public override void switching_from() {
         disconnect_slider();
 
@@ -517,14 +517,14 @@ public abstract class MediaPage : CheckerboardPage {
         connected_slider.zoom_changed.connect(on_zoom_changed);
         load_persistent_thumbnail_scale();
     }
-    
+
     private void save_persistent_thumbnail_scale() {
         if (connected_slider == null)
             return;
-            
+
         Config.Facade.get_instance().set_photo_thumbnail_scale(connected_slider.get_scale());
     }
-    
+
     private void load_persistent_thumbnail_scale() {
         if (connected_slider == null)
             return;
@@ -534,11 +534,11 @@ public abstract class MediaPage : CheckerboardPage {
         connected_slider.set_scale(persistent_scale);
         set_thumb_size(persistent_scale);
     }
-    
+
     protected void disconnect_slider() {
         if (connected_slider == null)
             return;
-        
+
         connected_slider.zoom_changed.disconnect(on_zoom_changed);
         connected_slider = null;
     }
@@ -549,7 +549,7 @@ public abstract class MediaPage : CheckerboardPage {
 
         save_persistent_thumbnail_scale();
     }
-    
+
     protected abstract void on_export();
 
     protected virtual void on_increase_size() {
@@ -563,10 +563,10 @@ public abstract class MediaPage : CheckerboardPage {
     private void on_add_tags() {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         AddTagsDialog dialog = new AddTagsDialog();
         string[]? names = dialog.execute();
-        
+
         if (names != null) {
             get_command_manager().execute(new AddTagsCommand(
                 HierarchicalTagIndex.get_global_index().get_paths_for_names_array(names),
@@ -577,15 +577,15 @@ public abstract class MediaPage : CheckerboardPage {
     private void on_modify_tags() {
         if (get_view().get_selected_count() != 1)
             return;
-        
+
         MediaSource media = (MediaSource) get_view().get_selected_at(0).get_source();
-        
+
         ModifyTagsDialog dialog = new ModifyTagsDialog(media);
         Gee.ArrayList<Tag>? new_tags = dialog.execute();
-        
+
         if (new_tags == null)
             return;
-        
+
         get_command_manager().execute(new ModifyTagsCommand(media, new_tags));
     }
 
@@ -601,32 +601,32 @@ public abstract class MediaPage : CheckerboardPage {
         if (get_view().get_selected_count() > 0)
             get_command_manager().execute(new NewEventCommand(get_view().get_selected()));
     }
-    
+
     private void on_flag_unflag() {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         Gee.Collection<MediaSource> sources =
             (Gee.Collection<MediaSource>) get_view().get_selected_sources_of_type(typeof(MediaSource));
-        
+
         // If all are flagged, then unflag, otherwise flag
         bool flag = false;
         foreach (MediaSource source in sources) {
             Flaggable? flaggable = source as Flaggable;
             if (flaggable != null && !flaggable.is_flagged()) {
                 flag = true;
-                
+
                 break;
             }
         }
-        
+
         get_command_manager().execute(new FlagUnflagCommand(sources, flag));
     }
-    
+
     protected virtual void on_increase_rating() {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         SetRatingCommand command = new SetRatingCommand.inc_dec(get_view().get_selected(), true);
         get_command_manager().execute(command);
 
@@ -636,7 +636,7 @@ public abstract class MediaPage : CheckerboardPage {
     protected virtual void on_decrease_rating() {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         SetRatingCommand command = new SetRatingCommand.inc_dec(get_view().get_selected(), false);
         get_command_manager().execute(command);
 
@@ -646,7 +646,7 @@ public abstract class MediaPage : CheckerboardPage {
     protected virtual void on_set_rating(Rating rating) {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         SetRatingCommand command = new SetRatingCommand(get_view().get_selected(), rating);
         get_command_manager().execute(command);
 
@@ -656,7 +656,7 @@ public abstract class MediaPage : CheckerboardPage {
     protected virtual void on_rate_rejected() {
         on_set_rating(Rating.REJECTED);
     }
-    
+
     protected virtual void on_rate_unrated() {
         on_set_rating(Rating.UNRATED);
     }
@@ -708,9 +708,9 @@ public abstract class MediaPage : CheckerboardPage {
     protected virtual void on_edit_title() {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         Gee.List<MediaSource> media_sources = (Gee.List<MediaSource>) get_view().get_selected_sources();
-        
+
         EditTitleDialog edit_title_dialog = new EditTitleDialog(media_sources[0].get_title());
         string? new_title = edit_title_dialog.execute();
         if (new_title != null)
@@ -720,9 +720,9 @@ public abstract class MediaPage : CheckerboardPage {
     protected virtual void on_edit_comment() {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         Gee.List<MediaSource> media_sources = (Gee.List<MediaSource>) get_view().get_selected_sources();
-        
+
         EditCommentDialog edit_comment_dialog = new EditCommentDialog(media_sources[0].get_comment());
         string? new_comment = edit_comment_dialog.execute();
         if (new_comment != null)
@@ -731,36 +731,36 @@ public abstract class MediaPage : CheckerboardPage {
 
     protected virtual void on_display_titles(GLib.SimpleAction action, Variant? value) {
         bool display = value.get_boolean ();
-        
+
         set_display_titles(display);
-        
+
         Config.Facade.get_instance().set_display_photo_titles(display);
         action.set_state (value);
     }
 
     protected virtual void on_display_comments(GLib.SimpleAction action, Variant? value) {
         bool display = value.get_boolean ();
-        
+
         set_display_comments(display);
-        
+
         Config.Facade.get_instance().set_display_photo_comments(display);
         action.set_state (value);
     }
 
     protected virtual void on_display_ratings(GLib.SimpleAction action, Variant? value) {
         bool display = value.get_boolean ();
-        
+
         set_display_ratings(display);
-        
+
         Config.Facade.get_instance().set_display_photo_ratings(display);
         action.set_state (value);
     }
 
     protected virtual void on_display_tags(GLib.SimpleAction action, Variant? value) {
         bool display = value.get_boolean ();
-        
+
         set_display_tags(display);
-        
+
         Config.Facade.get_instance().set_display_photo_tags(display);
         action.set_state (value);
     }
@@ -774,11 +774,11 @@ public abstract class MediaPage : CheckerboardPage {
 
         int sort_by = get_menu_sort_by();
         bool sort_order = get_menu_sort_order();
-        
+
         set_view_comparator(sort_by, sort_order);
         set_config_photos_sort(sort_order, sort_by);
     }
-    
+
     private void on_raw_developer_changed(GLib.SimpleAction action,
                                           Variant? value) {
         RawDeveloper developer = RawDeveloper.SHOTWELL;
@@ -802,7 +802,7 @@ public abstract class MediaPage : CheckerboardPage {
     protected virtual void developer_changed(RawDeveloper rd) {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         // Check if any photo has edits
 
         // Display warning only when edits could be destroyed
@@ -814,13 +814,13 @@ public abstract class MediaPage : CheckerboardPage {
             Photo? p = view.get_source() as Photo;
             if (p != null && (!rd.is_equivalent(p.get_raw_developer()))) {
                 to_set.add(view);
-                
+
                 if (p.has_transformations()) {
                     need_warn = true;
                 }
             }
         }
-        
+
         if (!need_warn || Dialogs.confirm_warn_developer_changed(to_set.size)) {
             SetRawDeveloperCommand command = new SetRawDeveloperCommand(to_set, rd);
             get_command_manager().execute(command);
@@ -837,7 +837,7 @@ public abstract class MediaPage : CheckerboardPage {
 
     protected override void set_display_comments(bool display) {
         base.set_display_comments(display);
-    
+
         this.set_action_active ("ViewComment", display);
     }
 
@@ -857,25 +857,25 @@ public abstract class MediaPage : CheckerboardPage {
         // any member of the group knows the current value
         return int.parse (sort_by_title_action().get_state().get_string ());
     }
-    
+
     protected void set_menu_sort_by(int val) {
         var sort = "%d".printf (val);
         sort_by_title_action().change_state (sort);
     }
-    
+
     protected bool get_menu_sort_order() {
         // any member of the group knows the current value
         return sort_ascending_action().get_state ().get_string () == "ascending";
     }
-    
+
     protected void set_menu_sort_order(bool ascending) {
         sort_ascending_action().change_state (ascending ? "ascending" : "descending");
     }
-    
+
     void set_view_comparator(int sort_by, bool ascending) {
         Comparator comparator;
         ComparatorPredicate predicate;
-        
+
         switch (sort_by) {
             case SortBy.TITLE:
                 if (ascending)
@@ -883,21 +883,21 @@ public abstract class MediaPage : CheckerboardPage {
                 else comparator = Thumbnail.title_descending_comparator;
                 predicate = Thumbnail.title_comparator_predicate;
                 break;
-            
+
             case SortBy.EXPOSURE_DATE:
                 if (ascending)
                     comparator = Thumbnail.exposure_time_ascending_comparator;
                 else comparator = Thumbnail.exposure_time_desending_comparator;
                 predicate = Thumbnail.exposure_time_comparator_predicate;
                 break;
-            
+
             case SortBy.RATING:
                 if (ascending)
                     comparator = Thumbnail.rating_ascending_comparator;
                 else comparator = Thumbnail.rating_descending_comparator;
                 predicate = Thumbnail.rating_comparator_predicate;
                 break;
-            
+
             case SortBy.FILENAME:
                 if (ascending)
                     comparator = Thumbnail.filename_ascending_comparator;
@@ -911,38 +911,38 @@ public abstract class MediaPage : CheckerboardPage {
                 predicate = Thumbnail.title_comparator_predicate;
                 break;
         }
-        
+
         get_view().set_comparator(comparator, predicate);
     }
 
     protected void sync_sort() {
-        // It used to be that the config and UI could both agree on what 
+        // It used to be that the config and UI could both agree on what
         // sort order and criteria were selected, but the sorting wouldn't
-        // match them, due to the current view's comparator not actually 
-        // being set to match, and since there was a check to see if the 
+        // match them, due to the current view's comparator not actually
+        // being set to match, and since there was a check to see if the
         // config and UI matched that would frequently succeed in this case,
-        // the sorting was often wrong until the user went in and changed 
-        // it.  Because there is no tidy way to query the current view's 
-        // comparator, we now set it any time we even think the sorting 
+        // the sorting was often wrong until the user went in and changed
+        // it.  Because there is no tidy way to query the current view's
+        // comparator, we now set it any time we even think the sorting
         // might have changed to force them to always stay in sync.
         //
         // Although this means we pay for a re-sort every time, in practice,
         // this isn't terribly expensive - it _might_ take as long as .5 sec.
         // with a media page containing over 15000 items on a modern CPU.
-        
+
         bool sort_ascending;
         int sort_by;
         get_config_photos_sort(out sort_ascending, out sort_by);
-        
+
         set_menu_sort_by(sort_by);
         set_menu_sort_order(sort_ascending);
-        
+
         set_view_comparator(sort_by, sort_ascending);
     }
 
     public override void destroy() {
         disconnect_slider();
-        
+
         base.destroy();
     }
 
@@ -975,15 +975,15 @@ public abstract class MediaPage : CheckerboardPage {
     public void set_thumb_size(int new_scale) {
         if (get_thumb_size() == new_scale || !is_in_view())
             return;
-        
+
         new_scale = new_scale.clamp(Thumbnail.MIN_SCALE, Thumbnail.MAX_SCALE);
         get_checkerboard_layout().set_scale(new_scale);
-        
+
         // when doing mass operations on LayoutItems, freeze individual notifications
         get_view().freeze_notifications();
         get_view().set_property(Thumbnail.PROP_SIZE, new_scale);
         get_view().thaw_notifications();
-        
+
         set_action_sensitive("IncreaseSize", new_scale < Thumbnail.MAX_SCALE);
         set_action_sensitive("DecreaseSize", new_scale > Thumbnail.MIN_SCALE);
     }
@@ -991,7 +991,7 @@ public abstract class MediaPage : CheckerboardPage {
     public int get_thumb_size() {
         if (get_checkerboard_layout().get_scale() <= 0)
             get_checkerboard_layout().set_scale(Config.Facade.get_instance().get_photo_thumbnail_scale());
-            
+
         return get_checkerboard_layout().get_scale();
     }
 }

@@ -55,7 +55,7 @@ private class StripesEffect : Object, Transitions.Effect {
                 visuals.from_pos.y);
             ctx.paint_with_alpha(1 - Math.fmin(1, alpha * 2));
         }
-        
+
         if (visuals.to_pixbuf != null) {
             Gdk.cairo_set_source_pixbuf(ctx, visuals.to_pixbuf,visuals.to_pos.x, visuals.to_pos.y);
             int x = visuals.to_pos.x;

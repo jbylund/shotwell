@@ -92,7 +92,7 @@ public errordomain PublishingError {
     SSL_FAILED
 }
 
-/** 
+/**
  * Represents a connection to a publishing service.
  *
  * Developers of publishing plugins provide a class that implements this interface. At
@@ -132,13 +132,13 @@ public interface Publisher : GLib.Object {
      * Returns true if this publisher is in the running state; false otherwise.
      */
     public abstract bool is_running();
-    
+
     /**
      * Causes this publisher to enter a non-running state. This publisher should stop all
      * network operations and cease use of the shared services provided by the {@link PluginHost}.
      */
     public abstract void stop();
-    
+
     //
     // For future expansion.
     //
@@ -164,7 +164,7 @@ public interface DialogPane : GLib.Object {
      * pane is installed in the on-screen publishing dialog box.
      */
     public enum GeometryOptions {
-    
+
         /**
          * When the associated pane is installed, the on-screen publishing dialog box will be
          * sized normally and will not allow the user to change its size.
@@ -195,7 +195,7 @@ public interface DialogPane : GLib.Object {
      * Returns the Gtk.Widget that is this pane's on-screen representation.
      */
     public abstract Gtk.Widget get_widget();
-    
+
     /**
      * Returns a {@link GeometryOptions} bitfield describing how the on-screen publishing dialog
      * box should look and behave when this pane is installed.
@@ -213,7 +213,7 @@ public interface DialogPane : GLib.Object {
      * publishing dialog box and is no longer visible to the user.
      */
     public abstract void on_pane_uninstalled();
-    
+
     //
     // For future expansion.
     //
@@ -294,7 +294,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
      * and allowing it to interact with the user.
      *
      * If an error has posted, the {@link PluginHost} will not honor this request.
-     * 
+     *
      * @param pane the pane to install
      *
      * @param mode allows you to set the text displayed on the close/cancel button in the
@@ -323,7 +323,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
      * you need to display static text to the user.
      *
      * If an error has posted, the {@link PluginHost} will not honor this request.
-     * 
+     *
      * @param message the text to show in the pane
      *
      * @param mode allows you to set the text displayed on the close/cancel button in the
@@ -344,7 +344,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
      * Pango text formatting tags as well as unstyled text.
      *
      * If an error has posted, the {@link PluginHost} will not honor this request.
-     * 
+     *
      * @param markup the text to show in the pane, marked up with Pango formatting tags.
      *
      * @param mode allows you to set the text displayed on the close/cancel button in the
@@ -363,7 +363,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
     /**
      * Attempts to install a pane in the on-screen publishing dialog box notifying the user
      * that his or her publishing operation completed successfully.
-     * 
+     *
      * The text displayed depends on the type of media the current publishing service
      * supports. To provide visual consistency across publishing services and to allow
      * Shotwell to handle internationalization, always use this convenience method; don’t
@@ -385,16 +385,15 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
      * you need to tell the user that you’re querying account information over the network.
      * Queries such as this are almost always performed immediately after the user has logged
      * in to the remote service.
-     * 
+     *
      * If an error has posted, the {@link PluginHost} will not honor this request.
      */
     public abstract void install_account_fetch_wait_pane();
 
-
     /**
      * Works just like {@link install_account_fetch_wait_pane} but displays the static text
      * “Logging in...“
-     * 
+     *
      * As with {@link install_account_fetch_wait_pane}, this is a convenience method, but
      * you should you use it provide to visual consistency and to let Shotwell handle
      * internationalization. See the description of {@link install_account_fetch_wait_pane}
@@ -439,7 +438,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
      * @param is_locked when is_locked is true, the service selector combo box is made insensitive.
      * It appears greyed out and the user is prevented from switching to another publishing service.
      * When is_locked is false, the combo box is sensitive, allowing the user to freely switch
-     * from the current service to another service. 
+     * from the current service to another service.
      */
     public abstract void set_service_locked(bool is_locked);
 
@@ -500,7 +499,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
      * service.
      */
     public abstract Spit.Publishing.Publisher.MediaType get_publishable_media_type();
-    
+
     //
     // For future expansion.
     //
@@ -544,7 +543,7 @@ public interface Publishable : GLib.Object {
     public abstract string get_publishing_name();
 
     /**
-     * Returns a string value from the publishable corresponding with the parameter name 
+     * Returns a string value from the publishable corresponding with the parameter name
      * provided, or null if there is no value for this name.
      */
     public abstract string? get_param_string(string name);
@@ -559,12 +558,12 @@ public interface Publishable : GLib.Object {
      * Returns the kind of media item this publishable encapsulates.
      */
     public abstract Spit.Publishing.Publisher.MediaType get_media_type();
-    
+
     /**
      * Returns the creation timestamp on the file.
      */
     public abstract GLib.DateTime get_exposure_date_time();
-    
+
     /**
      * Returns the rating on the file.
      */
@@ -599,7 +598,7 @@ public interface Service : Object, Spit.Pluggable {
      * Returns the kinds of media that this service can work with.
      */
     public abstract Spit.Publishing.Publisher.MediaType get_supported_media();
-    
+
     //
     // For future expansion.
     //

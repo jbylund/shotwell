@@ -62,8 +62,6 @@ namespace Publishing.Tumblr {
     internal const string ENCODE_RFC_3986_EXTRA = "!*'();:@&=+$,/?%#[] \\";
     internal const int ORIGINAL_SIZE = -1;
 
-
-
     private class BlogEntry {
         public string blog;
         public string url;
@@ -96,7 +94,6 @@ namespace Publishing.Tumblr {
         private string username = "";
         private Spit.Publishing.Authenticator authenticator;
 
-
         private SizeEntry[] create_sizes() {
             SizeEntry[] result = new SizeEntry[0];
 
@@ -113,7 +110,6 @@ namespace Publishing.Tumblr {
 
         private BlogEntry[] create_blogs() {
             BlogEntry[] result = new BlogEntry[0];
-
 
             return result;
         }
@@ -188,7 +184,6 @@ namespace Publishing.Tumblr {
             session.set_access_phase_credentials(auth_token.get_string(),
                     auth_token_secret.get_string(), "");
 
-
             do_get_blogs();
         }
 
@@ -204,9 +199,7 @@ namespace Publishing.Tumblr {
                 host.post_error(err);
             }
 
-
         }
-
 
         private void on_info_request_txn_completed(Publishing.RESTSupport.Transaction txn) {
             txn.completed.disconnect(on_info_request_txn_completed);
@@ -220,7 +213,6 @@ namespace Publishing.Tumblr {
             do_parse_token_info_from_user_request(txn.get_response());
             do_show_publishing_options_pane();
         }
-
 
         private void do_parse_token_info_from_user_request(string response) {
             debug("ACTION: parsing info request response '%s' into list of available blogs", response);
@@ -265,8 +257,6 @@ namespace Publishing.Tumblr {
             publishing_options_pane.logout.connect(on_publishing_options_pane_logout);
             host.install_dialog_pane(publishing_options_pane);
         }
-
-
 
         private void on_publishing_options_pane_publish() {
             if (publishing_options_pane != null) {
@@ -338,7 +328,6 @@ namespace Publishing.Tumblr {
             host.install_success_pane();
         }
 
-
         private void on_upload_status_updated(int file_number, double completed_fraction) {
             if (!is_running())
                 return;
@@ -375,7 +364,6 @@ namespace Publishing.Tumblr {
 
             host.post_error(err);
         }
-
 
         private void do_logout() {
             debug("ACTION: logging user out, deauthenticating session, and erasing stored credentials");
@@ -420,18 +408,13 @@ namespace Publishing.Tumblr {
             running = false;
         }
 
-
         // UI elements
-
 
         /**
          * The publishing options pane.
          */
 
-
         internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object {
-
-
 
             private Gtk.Builder builder;
             private Gtk.Box pane_widget = null;
@@ -476,7 +459,6 @@ namespace Publishing.Tumblr {
                     blog_combo = (Gtk.ComboBoxText) this.builder.get_object("blog_combo");
                     blog_label = (Gtk.Label) this.builder.get_object("blog_label");
 
-
                     string upload_label_text = _("You are logged into Tumblr as %s.\n\n").printf(this.username);
                     upload_info_label.set_label(upload_label_text);
 
@@ -499,20 +481,14 @@ namespace Publishing.Tumblr {
                 }
             }
 
-
-
-
-
             private void on_logout_clicked() {
                 logout();
             }
 
             private void on_publish_clicked() {
 
-
                 publish();
             }
-
 
             private void populate_blog_combo() {
                 if (blogs != null) {
@@ -537,7 +513,6 @@ namespace Publishing.Tumblr {
             private void on_size_changed() {
                 publisher.set_persistent_default_size(size_combo.get_active());
             }
-
 
             protected void notify_publish() {
                 publish();
@@ -591,7 +566,6 @@ namespace Publishing.Tumblr {
                 return s.str;
             }
 
-
             public UploadTransaction(Publishing.RESTSupport.OAuth1.Session session,Spit.Publishing.Publishable publishable, string blog_url)  {
                 debug("Init upload transaction");
                 base(session, publishable,"https://api.tumblr.com/v2/blog/%s/post".printf(blog_url) );
@@ -606,8 +580,6 @@ namespace Publishing.Tumblr {
                             out payload_length);
 
                     string reqdata = this.encode(payload.data[0:payload_length]);
-
-
 
                     add_argument("data[0]", reqdata);
                     add_argument("type", "photo");
@@ -649,8 +621,6 @@ namespace Publishing.Tumblr {
             }
         }
 
-
-
         internal class Uploader : Publishing.RESTSupport.BatchUploader {
             private string blog_url = "";
             public Uploader(Publishing.RESTSupport.OAuth1.Session session, Spit.Publishing.Publishable[] publishables, string blog_url) {
@@ -658,7 +628,6 @@ namespace Publishing.Tumblr {
                 this.blog_url=blog_url;
 
             }
-
 
             protected override Publishing.RESTSupport.Transaction create_transaction(
                     Spit.Publishing.Publishable publishable) {

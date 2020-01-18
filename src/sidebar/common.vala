@@ -7,90 +7,90 @@
 // A simple grouping Entry that is only expandable
 public class Sidebar.Grouping : Object, Sidebar.Entry, Sidebar.ExpandableEntry,
     Sidebar.RenameableEntry {
-    
+
     private string name;
     private string? tooltip;
     private string? icon;
-    
+
     public Grouping(string name, string? icon, string? tooltip = null) {
         this.name = name;
         this.icon = icon;
         this.tooltip = tooltip;
     }
-    
+
     public void rename(string name) {
         this.name = name;
         sidebar_name_changed(name);
     }
-    
+
     public bool is_user_renameable() {
         return false;
     }
-    
+
     public string get_sidebar_name() {
         return name;
     }
-    
+
     public string? get_sidebar_tooltip() {
         return tooltip;
     }
-    
+
     public string? get_sidebar_icon() {
         return icon;
     }
-    
+
     public string to_string() {
         return name;
     }
-    
+
     public bool expand_on_select() {
         return true;
     }
 }
 
-// An end-node on the sidebar that represents a Page with its page context menu.  Additional 
+// An end-node on the sidebar that represents a Page with its page context menu.  Additional
 // interfaces can be added if additional functionality is required (such as a drop target).
 // This class also handles the bookwork of creating the Page on-demand and maintaining it in memory.
 public abstract class Sidebar.SimplePageEntry : Object, Sidebar.Entry, Sidebar.SelectableEntry,
     Sidebar.PageRepresentative, Sidebar.Contextable {
     private Page? page = null;
-    
+
     public abstract string get_sidebar_name();
-    
+
     public virtual string? get_sidebar_tooltip() {
         return get_sidebar_name();
     }
-    
+
     public abstract string? get_sidebar_icon();
-    
+
     public virtual string to_string() {
         return get_sidebar_name();
     }
-    
+
     protected abstract Page create_page();
-    
+
     public bool has_page() {
         return page != null;
     }
-    
+
     protected Page get_page() {
         if (page == null) {
             page = create_page();
             page_created(page);
         }
-        
+
         return page;
     }
-    
+
     internal void pruned(Sidebar.Tree tree) {
         if (page == null)
             return;
-        
+
         destroying_page(page);
         page.destroy();
         page = null;
     }
-    
+
     public Gtk.Menu? get_sidebar_context_menu(Gdk.EventButton? event) {
         return get_page().get_page_context_menu();
     }
@@ -101,7 +101,7 @@ public class Sidebar.RootOnlyBranch : Sidebar.Branch {
     public RootOnlyBranch(Sidebar.Entry root) {
         base (root, Sidebar.Branch.Options.NONE, null_comparator);
     }
-    
+
     private static int null_comparator(Sidebar.Entry a, Sidebar.Entry b) {
         return (a != b) ? -1 : 0;
     }
@@ -116,12 +116,12 @@ public class Sidebar.RootOnlyBranch : Sidebar.Branch {
  */
 public class Sidebar.Header : Sidebar.Grouping, Sidebar.EmphasizableEntry {
     private bool emphasized;
-    
+
     public Header(string name, string? tooltip = null, bool emphasized = true) {
         base(name, null, tooltip);
         this.emphasized = emphasized;
     }
-    
+
     public bool is_emphasized() {
         return emphasized;
     }

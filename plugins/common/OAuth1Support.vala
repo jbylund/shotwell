@@ -178,7 +178,6 @@ namespace Publishing.RESTSupport.OAuth1 {
             }
         }
 
-
         public override void execute() throws Spit.Publishing.PublishingError {
             var signature = ((Session) get_parent_session()).sign_transaction(this);
             add_argument("oauth_signature", signature);
@@ -219,7 +218,6 @@ namespace Publishing.RESTSupport.OAuth1 {
             var signature = session.sign_transaction(this, auth_header_fields);
             add_authorization_header_field("oauth_signature", signature);
 
-
             string authorization_header = get_authorization_header_string();
 
             debug("executing upload transaction: authorization header string = '%s'",
@@ -229,5 +227,4 @@ namespace Publishing.RESTSupport.OAuth1 {
         }
     }
 }
-
 

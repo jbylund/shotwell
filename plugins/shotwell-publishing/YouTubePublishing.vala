@@ -56,7 +56,7 @@ namespace Publishing.YouTube {
 
 private const string DEVELOPER_KEY =
     "AIzaSyB6hLnm0n5j8Y6Bkvh9bz3i8ADM2bJdYeY";
-    
+
 private enum PrivacySetting {
     PUBLIC,
     UNLISTED,
@@ -75,15 +75,15 @@ private class PublishingParameters {
     public PrivacySetting get_privacy() {
         return this.privacy;
     }
-    
+
     public void set_privacy(PrivacySetting privacy) {
         this.privacy = privacy;
     }
-    
+
     public string? get_user_name() {
         return user_name;
     }
-    
+
     public void set_user_name(string? user_name) {
         this.user_name = user_name;
     }
@@ -136,10 +136,10 @@ public class YouTubePublisher : Publishing.RESTSupport.GooglePublisher {
     public override bool is_running() {
         return running;
     }
-    
+
     public override void start() {
         debug("YouTubePublisher: started.");
-        
+
         if (is_running())
             return;
 
@@ -158,9 +158,9 @@ public class YouTubePublisher : Publishing.RESTSupport.GooglePublisher {
 
     protected override void on_login_flow_complete() {
         debug("EVENT: OAuth login flow complete.");
-        
+
         publishing_parameters.set_user_name(get_session().get_user_name());
-        
+
         this.youtube_service = new GData.YouTubeService(DEVELOPER_KEY,
                 new YouTubeAuthorizer(get_session(), this.authenticator));
         do_show_publishing_options_pane();
@@ -188,7 +188,7 @@ public class YouTubePublisher : Publishing.RESTSupport.GooglePublisher {
         debug("EVENT: uploader reports upload %.2f percent complete.", 100.0 * completed_fraction);
 
         assert(progress_reporter != null);
-        
+
         if (!is_running())
             return;
 
@@ -199,7 +199,7 @@ public class YouTubePublisher : Publishing.RESTSupport.GooglePublisher {
         int num_published) {
         uploader.upload_complete.disconnect(on_upload_complete);
         uploader.upload_error.disconnect(on_upload_error);
-        
+
         debug("EVENT: uploader reports upload complete; %d items published.", num_published);
 
         if (!is_running())

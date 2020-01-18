@@ -31,7 +31,7 @@ private class BlindsEffect : Object, Transitions.Effect {
 
     private const int BLIND_WIDTH = 50;
     private int current_blind_width;
-   
+
     private Cairo.ImageSurface[] to_blinds;
     private int blind_count;
 
@@ -52,9 +52,9 @@ private class BlindsEffect : Object, Transitions.Effect {
             blind_count = visuals.to_pixbuf.width / BLIND_WIDTH;
             current_blind_width =
                 (int) Math.ceil((double) visuals.to_pixbuf.width / (double) blind_count);
-              
+
             to_blinds = new Cairo.ImageSurface[blind_count];
-            
+
             for (int i = 0; i < blind_count; ++i) {
                 to_blinds[i] = new Cairo.ImageSurface(Cairo.Format.RGB24, current_blind_width,
                     visuals.to_pixbuf.height);
@@ -76,14 +76,14 @@ private class BlindsEffect : Object, Transitions.Effect {
                 visuals.from_pos.y);
             ctx.paint_with_alpha(1 - alpha * 2);
         }
-        
+
         for (int i = 0; i < blind_count; ++i) {
             ctx.set_source_surface(to_blinds[i], x + i * current_blind_width, y);
             ctx.rectangle(x + i * current_blind_width, y, current_blind_width * (alpha + 0.5),
                 visuals.to_pixbuf.height);
             ctx.fill();
         }
-        
+
         ctx.clip();
         ctx.paint();
     }

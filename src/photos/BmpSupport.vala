@@ -15,15 +15,15 @@ class BmpFileFormatProperties : PhotoFileFormatProperties {
     public static void init() {
         instance = new BmpFileFormatProperties();
     }
-    
+
     public static BmpFileFormatProperties get_instance() {
         return instance;
     }
-    
+
     public override PhotoFileFormat get_file_format() {
         return PhotoFileFormat.BMP;
     }
-    
+
     public override PhotoFileFormatFlags get_flags() {
         return PhotoFileFormatFlags.NONE;
     }
@@ -35,15 +35,15 @@ class BmpFileFormatProperties : PhotoFileFormatProperties {
     public override string get_default_extension() {
         return KNOWN_EXTENSIONS[0];
     }
-    
+
     public override string[] get_known_extensions() {
         return KNOWN_EXTENSIONS;
     }
-    
+
     public override string get_default_mime_type() {
         return KNOWN_MIME_TYPES[0];
     }
-    
+
     public override string[] get_mime_types() {
         return KNOWN_MIME_TYPES;
     }
@@ -74,14 +74,14 @@ public class BmpSniffer : GdkSniffer {
     public override DetectedPhotoInformation? sniff(out bool is_corrupted) throws Error {
         // Rely on GdkSniffer to detect corruption
         is_corrupted = false;
-        
+
         if (!is_bmp_file(file))
             return null;
-        
+
         DetectedPhotoInformation? detected = base.sniff(out is_corrupted);
         if (detected == null)
             return null;
-        
+
         return (detected.file_format == PhotoFileFormat.BMP) ? detected : null;
     }
 }
@@ -90,7 +90,7 @@ public class BmpReader : GdkReader {
     public BmpReader(string filepath) {
         base (filepath, PhotoFileFormat.BMP);
     }
-    
+
     public override Gdk.Pixbuf scaled_read(Dimensions full, Dimensions scaled) throws Error {
         Gdk.Pixbuf result = null;
         /* if we encounter a situation where there are two orders of magnitude or more of
@@ -105,7 +105,7 @@ public class BmpReader : GdkReader {
              (scaled.height < 100))) {
             Dimensions prefetch_dimensions = full.get_scaled_by_constraint(1000,
                 ScaleConstraint.DIMENSIONS);
-                                  
+
             result = new Gdk.Pixbuf.from_file_at_scale(get_filepath(), prefetch_dimensions.width,
                 prefetch_dimensions.height, false);
 
@@ -123,7 +123,7 @@ public class BmpWriter : PhotoFileWriter {
     public BmpWriter(string filepath) {
         base (filepath, PhotoFileFormat.BMP);
     }
-    
+
     public override void write(Gdk.Pixbuf pixbuf, Jpeg.Quality quality) throws Error {
         pixbuf.save(get_filepath(), "bmp", null);
     }
@@ -133,12 +133,12 @@ public class BmpMetadataWriter : PhotoFileMetadataWriter {
     public BmpMetadataWriter(string filepath) {
         base (filepath, PhotoFileFormat.BMP);
     }
-    
+
     public override void write_metadata(PhotoMetadata metadata) throws Error {
-        // Metadata writing isn't supported for .BMPs, so this is a no-op. 
+        // Metadata writing isn't supported for .BMPs, so this is a no-op.
     }
 }
-             
+
 public class BmpFileFormatDriver : PhotoFileFormatDriver {
     private static BmpFileFormatDriver instance = null;
 
@@ -146,39 +146,39 @@ public class BmpFileFormatDriver : PhotoFileFormatDriver {
         instance = new BmpFileFormatDriver();
         BmpFileFormatProperties.init();
     }
-    
+
     public static BmpFileFormatDriver get_instance() {
         return instance;
     }
-    
+
     public override PhotoFileFormatProperties get_properties() {
         return BmpFileFormatProperties.get_instance();
     }
-    
+
     public override PhotoFileReader create_reader(string filepath) {
         return new BmpReader(filepath);
     }
-    
+
     public override bool can_write_image() {
         return true;
     }
-    
+
     public override bool can_write_metadata() {
         return false;
     }
-    
+
     public override PhotoFileWriter? create_writer(string filepath) {
         return new BmpWriter(filepath);
     }
-    
+
     public override PhotoFileMetadataWriter? create_metadata_writer(string filepath) {
         return new BmpMetadataWriter(filepath);
     }
-    
+
     public override PhotoFileSniffer create_sniffer(File file, PhotoFileSniffer.Options options) {
         return new BmpSniffer(file, options);
     }
-    
+
     public override PhotoMetadata create_metadata() {
         return new PhotoMetadata();
     }

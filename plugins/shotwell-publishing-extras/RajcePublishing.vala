@@ -9,7 +9,7 @@ public class RajceService : Object, Spit.Pluggable, Spit.Publishing.Service
     private const string ICON_FILENAME = "rajce.png";
 
     private static Gdk.Pixbuf[] icon_pixbuf_set = null;
-    
+
     public RajceService(GLib.File resource_directory)
 	{
         if (icon_pixbuf_set == null)
@@ -23,17 +23,17 @@ public class RajceService : Object, Spit.Pluggable, Spit.Publishing.Service
         return Spit.negotiate_interfaces(min_host_interface, max_host_interface,
             Spit.Publishing.CURRENT_INTERFACE);
     }
-    
+
     public unowned string get_id()
 	{
         return "org.yorba.shotwell.publishing.rajce";
     }
-    
+
     public unowned string get_pluggable_name()
 	{
         return "Rajce";
     }
-    
+
     public void get_info(ref Spit.PluggableInfo info)
 	{
         info.authors = "rajce.net developers";
@@ -46,7 +46,7 @@ public class RajceService : Object, Spit.Pluggable, Spit.Publishing.Service
         info.license = Resources.LICENSE;
         info.icons = icon_pixbuf_set;
     }
-    
+
     public Spit.Publishing.Publisher create_publisher(Spit.Publishing.PluginHost host)
 	{
         return new Publishing.Rajce.RajcePublisher(this, host);
@@ -56,7 +56,7 @@ public class RajceService : Object, Spit.Pluggable, Spit.Publishing.Service
 	{
         return( Spit.Publishing.Publisher.MediaType.PHOTO /*| Spit.Publishing.Publisher.MediaType.VIDEO*/ );
     }
-    
+
     public void activation(bool enabled) {}
 }
 
@@ -87,30 +87,30 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         this.service = service;
         this.host = host;
         this.session = new Session();
-        
+
         foreach(Spit.Publishing.Publishable p in host.get_publishables())
             media_type |= p.get_media_type();
     }
-    
+
     private string get_rajce_url()
 	{
         return "http://www.rajce.idnes.cz/liveAPI/index.php";
     }
 
 	// Publisher interface implementation
-	
+
     public Spit.Publishing.Service get_service() { return service; }
     public Spit.Publishing.PluginHost get_host() { return host; }
     public bool is_running() { return running; }
-    
+
     public void start()
 	{
         if (is_running())
             return;
-        
+
         debug("RajcePublisher: start");
         running = true;
-        
+
         if (session.is_authenticated())
 		{
             debug("RajcePublisher: session is authenticated.");
@@ -128,7 +128,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
                 do_show_authentication_pane();
         }
     }
-    
+
     public void stop()
 	{
         debug("RajcePublisher: stop");
@@ -154,7 +154,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
 //    private void set_strip_metadata(bool strip_metadata) { host.set_config_bool("strip-metadata", strip_metadata); }
 
     // Actions and events
-    
+
     /**
      * Action that shows the authentication pane.
      */
@@ -179,7 +179,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
             return;
         do_network_login(username, token, remember);
     }
-    
+
     /**
      * Action to perform a network login to a Rajce service.
      */
@@ -204,7 +204,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
             do_show_error(err);
         }
     }
-    
+
     /**
      * Event triggered when the network login action is complete and successful.
      */
@@ -213,7 +213,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         debug("EVENT: on_login_network_complete");
         txn.completed.disconnect(on_login_network_complete);
         txn.network_error.disconnect(on_login_network_error);
-        
+
         try
 		{
             Publishing.RESTSupport.XmlDocument doc = Publishing.RESTSupport.XmlDocument.parse_string( txn.get_response(), Transaction.validate_xml);
@@ -229,7 +229,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
 			{
 				maxH = maxW;
 			}
-			session.authenticate( sessionToken->get_content(), nick->get_content(), 0, maxH, int.parse( quality->get_content() ) ); 
+			session.authenticate( sessionToken->get_content(), nick->get_content(), 0, maxH, int.parse( quality->get_content() ) );
         }
 		catch (Spit.Publishing.PublishingError err)
 		{
@@ -248,7 +248,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         }
         do_fetch_albums();
     }
-    
+
     /**
      * Event triggered when a network login action fails due to a network error.
      */
@@ -272,7 +272,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         GetAlbumsTransaction get_albums_trans = new GetAlbumsTransaction(session, get_url() );
         get_albums_trans.network_error.connect(on_albums_fetch_error);
         get_albums_trans.completed.connect(on_albums_fetch_complete);
-        
+
         try
 		{
             get_albums_trans.execute();
@@ -315,7 +315,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
 		        bool hidden = ( int.parse( doc.get_named_child( album, "hidden" )->get_content() ) > 0 ? true : false );
 		        bool secure = ( int.parse( doc.get_named_child( album, "secure" )->get_content() ) > 0 ? true : false );
 		        int photoCount = int.parse( doc.get_named_child( album, "photoCount" )->get_content() );
-				list.insert( 0, new Album( id, albumName, url, thumbUrl, createDate, updateDate, hidden, secure, photoCount ) ); 
+				list.insert( 0, new Album( id, albumName, url, thumbUrl, createDate, updateDate, hidden, secure, photoCount ) );
 			}
 			list.sort( Album.compare_albums );
 			albums = list.to_array();
@@ -329,7 +329,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         }
         do_show_publishing_options_pane();
     }
-    
+
     /**
      * Event triggered when the fetch albums transaction fails due to a network error.
      */
@@ -340,7 +340,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         bad_txn.network_error.disconnect(on_albums_fetch_error);
         on_network_error(bad_txn, err);
     }
-    
+
     /**
      * Action that shows the publishing options pane.
      */
@@ -354,7 +354,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         host.install_dialog_pane(opts_pane, Spit.Publishing.PluginHost.ButtonMode.CLOSE);
         host.set_dialog_default_widget(opts_pane.get_default_widget());
     }
-    
+
     /**
      * Event triggered when the user clicks logout in the publishing options pane.
      */
@@ -364,7 +364,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         session.deauthenticate();
         do_show_authentication_pane( AuthenticationPane.Mode.INTRO );
     }
-  
+
     /**
      * Event triggered when the user clicks publish in the publishing options pane.
      *
@@ -376,7 +376,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         this.parameters = parameters;
         do_begin_upload();
     }
-  
+
     /**
      * Begin upload action: open existing album or create a new one
      */
@@ -446,7 +446,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         }
         do_upload_photos();
     }
-    
+
     /**
      * Event triggered when the create album transaction fails due to a network error.
      */
@@ -484,7 +484,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         }
         do_upload_photos();
     }
-    
+
     /**
      * Event triggered when the open album transaction fails due to a network error.
      */
@@ -504,13 +504,13 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         debug("ACTION: uploading photos");
         progress_reporter = host.serialize_publishables( session.get_maxsize() );
         Spit.Publishing.Publishable[] publishables = host.get_publishables();
-        
+
         Uploader uploader = new Uploader( session, get_url(), publishables, parameters );
         uploader.upload_complete.connect( on_upload_photos_complete );
         uploader.upload_error.connect( on_upload_photos_error );
         uploader.upload( on_upload_photos_status_updated );
     }
-    
+
     /**
      * Event triggered when the batch uploader reports that at least one of the
      * network transactions encapsulating uploads has completed successfully
@@ -520,11 +520,11 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         debug("EVENT: on_upload_photos_complete");
         uploader.upload_complete.disconnect(on_upload_photos_complete);
         uploader.upload_error.disconnect(on_upload_photos_error);
-        
+
         // TODO: should a message be displayed to the user if num_published is zero?
 		do_end_upload();
     }
-    
+
     /**
      * Event triggered when the batch uploader reports that at least one of the
      * network transactions encapsulating uploads has caused a network error
@@ -536,7 +536,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         uploader.upload_error.disconnect(on_upload_photos_error);
         do_show_error(err);
     }
-    
+
     /**
      * Event triggered when upload progresses and the status needs to be updated.
      */
@@ -561,7 +561,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
 			do_close_album();
 		}
 	}
-	
+
 	/**
      * End upload action: get album url
      */
@@ -610,7 +610,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         }
         do_close_album();
     }
-    
+
     /**
      * Event triggered when the get album url transaction fails due to a network error.
      */
@@ -623,7 +623,6 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
 //        on_network_error(bad_txn, err);
         do_close_album();
     }
-
 
     /**
      * End upload action: close album
@@ -671,7 +670,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         }
         do_show_success_pane();
     }
-    
+
     /**
      * Event triggered when the close album transaction fails due to a network error.
      */
@@ -685,7 +684,6 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         do_show_success_pane();
     }
 
-		
     /**
      * Action to display the success pane in the publishing dialog.
      */
@@ -705,7 +703,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         host.set_service_locked(false);
         host.install_success_pane();
     }
-    
+
     /**
      * Helper event to handle network errors.
      */
@@ -714,7 +712,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         debug("EVENT: on_network_error");
         do_show_error(err);
     }
-    
+
     /**
      * Action to display an error to the user.
      */
@@ -739,11 +737,11 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         } else if(e is Spit.Publishing.PublishingError.EXPIRED_SESSION) {
             error_type = "EXPIRED_SESSION";
         }
-        
+
         debug("Unhandled error: type=%s; message='%s'".printf(error_type, e.message));
         do_show_error_message(_("An error message occurred when publishing to Rajce. Please try again."));
     }
-    
+
     /**
      * Action to display an error message to the user.
      */
@@ -752,7 +750,7 @@ public class RajcePublisher : Spit.Publishing.Publisher, GLib.Object
         debug("ACTION: do_show_error_message");
         host.install_static_message_pane(message, Spit.Publishing.PluginHost.ButtonMode.CLOSE);
     }
-    
+
 }
 
 // Rajce Album
@@ -893,7 +891,7 @@ internal class AuthenticationPane : Spit.Publishing.DialogPane, Object
 			label3.set_label(_("_Password") );
 			remember_checkbutton.set_label(_("_Remember") );
 			login_button.set_label(_("Log in") );
-			
+
             username_entry.changed.connect(on_user_changed);
             password_entry.changed.connect(on_password_changed);
             login_button.clicked.connect(on_login_button_clicked);
@@ -906,7 +904,7 @@ internal class AuthenticationPane : Spit.Publishing.DialogPane, Object
             warning("Could not load UI: %s", e.message);
         }
     }
-    
+
     public Gtk.Widget get_default_widget()
 	{
         return login_button;
@@ -932,23 +930,23 @@ internal class AuthenticationPane : Spit.Publishing.DialogPane, Object
 		this.crypt = true;
         update_login_button_sensitivity();
     }
-    
+
     private void update_login_button_sensitivity()
 	{
         login_button.set_sensitive(username_entry.text_length > 0 &&
                                    password_entry.text_length > 0);
     }
-    
+
     public Gtk.Widget get_widget()
 	{
         return pane_widget;
     }
-    
+
     public Spit.Publishing.DialogPane.GeometryOptions get_preferred_geometry()
 	{
         return Spit.Publishing.DialogPane.GeometryOptions.NONE;
     }
-    
+
     public void on_pane_installed()
 	{
         username_entry.grab_focus();
@@ -957,7 +955,7 @@ internal class AuthenticationPane : Spit.Publishing.DialogPane, Object
         update_login_button_sensitivity();
     }
     public void on_pane_uninstalled() {}
-  
+
 }
 
 internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object
@@ -965,7 +963,7 @@ internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object
 	RajcePublisher publisher;
     private Album[] albums;
     private string username;
-	
+
 	private Gtk.Builder builder = null;
     private Gtk.Box pane_widget = null;
     private Gtk.Label login_identity_label = null;
@@ -988,13 +986,13 @@ internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object
         this.albums = albums;
         this.publisher = publisher;
         this.pane_widget = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
-		
+
         try
 		{
 		    this.builder = new Gtk.Builder();
 			builder.add_from_resource (Resources.RESOURCE_PATH + "/rajce_publishing_options_pane.ui");
             builder.connect_signals(null);
-			
+
 		    pane_widget = (Gtk.Box) builder.get_object("rajce_pane_widget");
 		    login_identity_label = (Gtk.Label) builder.get_object("login_identity_label");
 		    publish_to_label = (Gtk.Label) builder.get_object("publish_to_label");
@@ -1017,7 +1015,7 @@ internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object
 			show_check.set_label(_("Open target _album in browser") );
 			publish_button.set_label(_("_Publish") );
 			logout_button.set_label(_("_Logout") );
-			
+
 		    use_existing_radio.clicked.connect(on_use_existing_radio_clicked);
 		    create_new_radio.clicked.connect(on_create_new_radio_clicked);
 		    new_album_entry.changed.connect(on_new_album_entry_changed);
@@ -1028,7 +1026,7 @@ internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object
 		{
             warning("Could not load UI: %s", e.message);
         }
-		
+
     }
 
     private void on_publish_clicked()
@@ -1102,12 +1100,12 @@ internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object
         create_new_radio.set_active(true);
 		on_create_new_radio_clicked();
     }
-    
+
     protected void notify_publish(PublishingParameters parameters)
 	{
         publish( parameters );
     }
-    
+
     protected void notify_logout()
 	{
         logout();
@@ -1121,19 +1119,19 @@ internal class PublishingOptionsPane : Spit.Publishing.DialogPane, GLib.Object
 	{
         return pane_widget;
     }
-    
+
     public Spit.Publishing.DialogPane.GeometryOptions get_preferred_geometry()
 	{
         return Spit.Publishing.DialogPane.GeometryOptions.NONE;
     }
-    
+
     public void on_pane_installed()
 	{
         installed();
         publish.connect(notify_publish);
         logout.connect(notify_logout);
     }
-    
+
     public void on_pane_uninstalled()
 	{
         publish.disconnect(notify_publish);
@@ -1146,7 +1144,7 @@ internal class PublishingParameters
     public string? album_name;
     public bool? album_hidden;
     public int? album_id;
-    
+
     private PublishingParameters()
 	{
     }
@@ -1206,11 +1204,11 @@ internal class Session : Publishing.RESTSupport.Session {
 	    maxsize = null;
 	    quality = null;
     }
-	
+
     public void set_usertoken( string? usertoken ){ this.usertoken = usertoken; }
     public void set_albumtoken( string? albumtoken ){ this.albumtoken = albumtoken; }
     public void set_albumticket( string? albumticket ){ this.albumticket = albumticket; }
-	
+
     public string get_usertoken() { return usertoken; }
     public string get_albumtoken() { return albumtoken; }
     public string get_albumticket() { return albumticket; }
@@ -1225,7 +1223,7 @@ internal class ArgItem
     public string? key;
     public string? val;
     public ArgItem[] children;
-	
+
     public ArgItem( string? k, string? v )
 	{
 		key = k;
@@ -1247,7 +1245,7 @@ internal class ArgItem
 	{
 		foreach( ArgItem child in children )
 		{
-			child = null;			
+			child = null;
 		}
 	}
 }
@@ -1299,7 +1297,7 @@ internal class LiveApiRequest
     {
 		ArgItem newItem = new ArgItem( name, null );
 		newItem.AddChildren( val );
-        _params += newItem; 
+        _params += newItem;
     }
     /// <summary>
     /// create XML fragment containing all parameters
@@ -1344,7 +1342,6 @@ internal class LiveApiRequest
     }
 }
 
-
 /**
  * Generic REST transaction class.
  *
@@ -1366,7 +1363,7 @@ internal class Transaction : Publishing.RESTSupport.Transaction
             return "No XML returned from server";
 		}
         string name = root->name;
-        
+
         // treat malformed root as an error condition
         if( name == null || name != "response" )
 		{
@@ -1397,10 +1394,10 @@ internal class SessionLoginTransaction : Transaction
 		debug("SessionLoginTransaction: URL: %s", url);
         base.with_endpoint_url(session, url);
 		LiveApiRequest req = new LiveApiRequest( "login" );
-		req.AddParam( "clientID", "RajceShotwellPlugin" ); 
-		req.AddParam( "currentVersion", "1.1.1.1" ); 
-		req.AddParam( "login", username ); 
-		req.AddParam( "password", token ); 
+		req.AddParam( "clientID", "RajceShotwellPlugin" );
+		req.AddParam( "currentVersion", "1.1.1.1" );
+		req.AddParam( "login", username );
+		req.AddParam( "password", token );
 		string xml = req.Params2XmlString();
         add_argument("data", xml);
     }
@@ -1437,10 +1434,10 @@ internal class CreateAlbumTransaction : Transaction
 	{
         base.with_endpoint_url(session, url);
 		LiveApiRequest req = new LiveApiRequest( "createAlbum" );
-		req.AddParam( "token", session.get_usertoken() ); 
-		req.AddParam( "albumName", albumName ); 
-		req.AddParam( "albumDescription", "" ); 
-		req.AddParamBool( "albumVisible", !hidden ); 
+		req.AddParam( "token", session.get_usertoken() );
+		req.AddParam( "albumName", albumName );
+		req.AddParam( "albumDescription", "" );
+		req.AddParamBool( "albumVisible", !hidden );
 		string xml = req.Params2XmlString();
         add_argument("data", xml);
     }
@@ -1455,8 +1452,8 @@ internal class OpenAlbumTransaction : Transaction
 	{
         base.with_endpoint_url(session, url);
 		LiveApiRequest req = new LiveApiRequest( "openAlbum" );
-		req.AddParam( "token", session.get_usertoken() ); 
-		req.AddParamInt( "albumID", albumID ); 
+		req.AddParam( "token", session.get_usertoken() );
+		req.AddParamInt( "albumID", albumID );
 		string xml = req.Params2XmlString();
         add_argument("data", xml);
     }
@@ -1471,8 +1468,8 @@ internal class GetAlbumUrlTransaction : Transaction
 	{
         base.with_endpoint_url(session, url);
 		LiveApiRequest req = new LiveApiRequest( "getAlbumUrl" );
-		req.AddParam( "token", session.get_usertoken() ); 
-		req.AddParam( "albumToken", session.get_albumtoken() ); 
+		req.AddParam( "token", session.get_usertoken() );
+		req.AddParam( "albumToken", session.get_albumtoken() );
 		string xml = req.Params2XmlString();
         add_argument("data", xml);
     }
@@ -1487,8 +1484,8 @@ internal class CloseAlbumTransaction : Transaction
 	{
         base.with_endpoint_url(session, url);
 		LiveApiRequest req = new LiveApiRequest( "closeAlbum" );
-		req.AddParam( "token", session.get_usertoken() ); 
-		req.AddParam( "albumToken", session.get_albumtoken() ); 
+		req.AddParam( "token", session.get_usertoken() );
+		req.AddParam( "albumToken", session.get_albumtoken() );
 		string xml = req.Params2XmlString();
         add_argument("data", xml);
     }
@@ -1503,7 +1500,7 @@ internal class GetCategoriesTransaction : Transaction
 	{
         base.with_endpoint_url(session, url);
 		LiveApiRequest req = new LiveApiRequest( "getCategories" );
-		req.AddParam( "token", session.get_usertoken() ); 
+		req.AddParam( "token", session.get_usertoken() );
 		string xml = req.Params2XmlString();
         add_argument("data", xml);
     }
@@ -1520,27 +1517,27 @@ private class AddPhotoTransaction : Publishing.RESTSupport.UploadTransaction
 	{
         base.with_endpoint_url( session, publishable, url );
         this.parameters = parameters;
-        
+
         debug("RajcePlugin: Uploading photo %s to%s album %s", publishable.get_serialized_file().get_basename(), ( parameters.album_id > 0 ? "" : " new" ), parameters.album_name );
 
 		string basename = publishable.get_param_string( Spit.Publishing.Publishable.PARAM_STRING_BASENAME );
 		string comment = publishable.get_param_string( Spit.Publishing.Publishable.PARAM_STRING_COMMENT );
 		string pubname = publishable.get_publishing_name();
-		
+
 		int width = session.get_maxsize();
 		int height = session.get_maxsize();
-		
+
 		LiveApiRequest req = new LiveApiRequest( "addPhoto" );
-		req.AddParam( "token", session.get_usertoken() ); 
-		req.AddParamInt( "width", width ); 
-		req.AddParamInt( "height", height ); 
-		req.AddParam( "albumToken", session.get_albumtoken() ); 
-		req.AddParam( "photoName", pubname ); 
-		req.AddParam( "fullFileName", basename ); 
-		req.AddParam( "description", ( comment != null ? comment : "" ) ); 
+		req.AddParam( "token", session.get_usertoken() );
+		req.AddParamInt( "width", width );
+		req.AddParamInt( "height", height );
+		req.AddParam( "albumToken", session.get_albumtoken() );
+		req.AddParam( "photoName", pubname );
+		req.AddParam( "fullFileName", basename );
+		req.AddParam( "description", ( comment != null ? comment : "" ) );
 		string xml = req.Params2XmlString( false );
         add_argument( "data", xml );
-		
+
         GLib.HashTable<string, string> disposition_table = new GLib.HashTable<string, string>(GLib.str_hash, GLib.str_equal);
         disposition_table.insert("name", "photo");
         disposition_table.insert("filename", Soup.URI.encode( basename, null ) );
@@ -1548,7 +1545,6 @@ private class AddPhotoTransaction : Publishing.RESTSupport.UploadTransaction
     }
 
 }
-
 
 }
 

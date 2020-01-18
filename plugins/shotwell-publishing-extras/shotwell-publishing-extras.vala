@@ -22,19 +22,19 @@ private class ShotwellPublishingExtraServices : Object, Spit.Module {
         pluggables += new Gallery3Service(module_file.get_parent());
 #endif
     }
-    
+
     public unowned string get_module_name() {
         return _("Shotwell Extra Publishing Services");
     }
-    
+
     public unowned string get_version() {
         return _VERSION;
     }
-    
+
     public unowned string get_id() {
         return "org.yorba.shotwell.publishing.extras";
     }
-    
+
     public unowned Spit.Pluggable[]? get_pluggables() {
         return pluggables;
     }
@@ -44,7 +44,7 @@ private class ShotwellPublishingExtraServices : Object, Spit.Module {
 public Spit.Module? spit_entry_point(Spit.EntryPointParams *params) {
     params->module_spit_interface = Spit.negotiate_interfaces(params->host_min_spit_interface,
         params->host_max_spit_interface, Spit.CURRENT_INTERFACE);
-    
+
     return (params->module_spit_interface != Spit.UNSUPPORTED_INTERFACE)
         ? new ShotwellPublishingExtraServices(params->module_file) : null;
 }

@@ -11,7 +11,7 @@ public void init() throws Error {
     core_ids += "org.yorba.shotwell.publishing.flickr";
     core_ids += "org.yorba.shotwell.publishing.youtube";
     core_ids += "org.yorba.shotwell.publishing.gnome-photos";
-    
+
     Plugins.register_extension_point(typeof(Spit.Publishing.Service), _("Publishing"),
         Resources.PUBLISH, core_ids);
 }

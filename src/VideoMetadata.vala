@@ -5,17 +5,17 @@
  */
 
 public class VideoMetadata : MediaMetadata {
-    
+
     private MetadataDateTime timestamp = null;
     private string title = null;
     private string comment = null;
-   
+
     public VideoMetadata() {
     }
-    
+
     ~VideoMetadata() {
     }
-    
+
     public override void read_from_file(File file) throws Error {
         QuickTimeMetadataLoader quicktime = new QuickTimeMetadataLoader(file);
         if (quicktime.is_supported()) {
@@ -24,7 +24,7 @@ public class VideoMetadata : MediaMetadata {
 	        // TODO: is there an quicktime.get_comment ??
             comment = null;
             return;
-        }    
+        }
         AVIMetadataLoader avi = new AVIMetadataLoader(file);
         if (avi.is_supported()) {
             timestamp = avi.get_creation_date_time();
@@ -32,22 +32,22 @@ public class VideoMetadata : MediaMetadata {
             comment = null;
             return;
         }
-        
+
         throw new IOError.NOT_SUPPORTED("File %s is not a supported video format", file.get_path());
     }
-    
+
     public override MetadataDateTime? get_creation_date_time() {
         return timestamp;
     }
-    
+
     public override string? get_title() {
         return title;
     }
-    
+
     public override string? get_comment() {
         return comment;
     }
-    
+
 }
 
 private class QuickTimeMetadataLoader {
@@ -61,11 +61,11 @@ private class QuickTimeMetadataLoader {
     public QuickTimeMetadataLoader(File file) {
         this.file = file;
     }
-    
+
     public MetadataDateTime? get_creation_date_time() {
         return new MetadataDateTime((time_t) get_creation_date_time_for_quicktime());
     }
-    
+
     public string? get_title() {
         // Not supported.
         return null;
@@ -74,12 +74,12 @@ private class QuickTimeMetadataLoader {
     // Checks if the given file is a QuickTime file.
     public bool is_supported() {
         QuickTimeAtom test = new QuickTimeAtom(file);
-        
+
         bool ret = false;
         try {
             test.open_file();
             test.read_atom();
-            
+
             // Look for the header.
             if ("ftyp" == test.get_current_atom_name()) {
                 ret = true;
@@ -102,7 +102,7 @@ private class QuickTimeMetadataLoader {
         } catch (GLib.Error e) {
             debug("Error while testing for QuickTime file for %s: %s", file.get_path(), e.message);
         }
-        
+
         try {
             test.close_file();
         } catch (GLib.Error e) {
@@ -114,7 +114,7 @@ private class QuickTimeMetadataLoader {
     private ulong get_creation_date_time_for_quicktime() {
         QuickTimeAtom test = new QuickTimeAtom(file);
         time_t timestamp = 0;
-        
+
         try {
             test.open_file();
             bool done = false;
@@ -131,7 +131,7 @@ private class QuickTimeMetadataLoader {
                             done = true;
                             break;
                         }
-                        
+
                         if ("mvhd" == child.get_current_atom_name()) {
                             // Skip 4 bytes (version + flags)
                             child.read_uint32();
@@ -148,13 +148,13 @@ private class QuickTimeMetadataLoader {
         } catch (GLib.Error e) {
             debug("Error while testing for QuickTime file: %s", e.message);
         }
-        
+
         try {
             test.close_file();
         } catch (GLib.Error e) {
             debug("Error while closing Quicktime file: %s", e.message);
         }
-        
+
         // Some Android phones package videos recorded with their internal cameras in a 3GP
         // container that looks suspiciously like a QuickTime container but really isn't -- for
         // the timestamps of these Android 3GP videos are relative to the UNIX epoch
@@ -165,7 +165,7 @@ private class QuickTimeMetadataLoader {
         // (http://redmine.yorba.org/issues/3314) for more information.
         if (timestamp < 0)
             timestamp += QUICKTIME_EPOCH_ADJUSTMENT;
-        
+
         return (ulong) timestamp;
     }
 }
@@ -177,16 +177,16 @@ private class QuickTimeAtom {
     private uint64 section_offset = 0;
     private GLib.DataInputStream input = null;
     private QuickTimeAtom? parent = null;
-    
+
     public QuickTimeAtom(GLib.File file) {
         this.file = file;
     }
-    
+
     private QuickTimeAtom.with_input_stream(GLib.DataInputStream input, QuickTimeAtom parent) {
         this.input = input;
         this.parent = parent;
     }
-    
+
     public void open_file() throws GLib.Error {
         close_file();
         input = new GLib.DataInputStream(file.read());
@@ -195,21 +195,21 @@ private class QuickTimeAtom {
         section_offset = 0;
         section_name = "";
     }
-    
+
     public void close_file() throws GLib.Error {
         if (null != input) {
             input.close();
             input = null;
         }
     }
-    
+
     private void advance_section_offset(uint64 amount) {
         section_offset += amount;
         if (null != parent) {
             parent.advance_section_offset(amount);
         }
     }
-    
+
     public QuickTimeAtom get_first_child_atom() {
         // Child will simply have the input stream
         // but not the size/offset.  This works because
@@ -218,17 +218,17 @@ private class QuickTimeAtom {
         // from the current position.
         return new QuickTimeAtom.with_input_stream(input, this);
     }
-    
+
     public uchar read_byte() throws GLib.Error {
         advance_section_offset(1);
         return input.read_byte();
     }
-    
+
     public uint32 read_uint32() throws GLib.Error {
         advance_section_offset(4);
         return input.read_uint32();
     }
-    
+
     public uint64 read_uint64() throws GLib.Error {
         advance_section_offset(8);
         return input.read_uint64();
@@ -237,7 +237,7 @@ private class QuickTimeAtom {
     public void read_atom() throws GLib.Error {
         // Read atom size.
         section_size = read_uint32();
-        
+
         // Read atom name.
         GLib.StringBuilder sb = new GLib.StringBuilder();
         sb.append_c((char) read_byte());
@@ -245,10 +245,10 @@ private class QuickTimeAtom {
         sb.append_c((char) read_byte());
         sb.append_c((char) read_byte());
         section_name = sb.str;
-        
+
         // Check string.
         if (section_name.length != 4) {
-            throw new IOError.NOT_SUPPORTED("QuickTime atom name length is invalid for %s", 
+            throw new IOError.NOT_SUPPORTED("QuickTime atom name length is invalid for %s",
                 file.get_path());
         }
         for (int i = 0; i < section_name.length; i++) {
@@ -256,60 +256,60 @@ private class QuickTimeAtom {
                 throw new IOError.NOT_SUPPORTED("Bad QuickTime atom in file %s", file.get_path());
             }
         }
-        
+
         if (1 == section_size) {
             // This indicates the section size is a 64-bit
             // value, specified below the atom name.
             section_size = read_uint64();
         }
     }
-    
+
     private void skip(uint64 skip_amount) throws GLib.Error {
         skip_uint64(input, skip_amount);
     }
-    
+
     public uint64 section_size_remaining() {
         assert(section_size >= section_offset);
         return section_size - section_offset;
     }
-    
+
     public void next_atom() throws GLib.Error {
         skip(section_size_remaining());
         section_size = 0;
         section_offset = 0;
     }
-    
+
     public string get_current_atom_name() {
         return section_name;
     }
-   
+
     public bool is_last_atom() {
         return 0 == section_size;
     }
-    
+
 }
 
 private class AVIMetadataLoader {
 
     private File file = null;
-    
+
     // A numerical date string, i.e 2010:01:28 14:54:25
     private const int NUMERICAL_DATE_LENGTH = 19;
-    
+
     // Marker for timestamp section in a Nikon nctg blob.
     private const uint16 NIKON_NCTG_TIMESTAMP_MARKER = 0x13;
-    
+
     // Size limit to ensure we don't parse forever on a bad file.
     private const int MAX_STRD_LENGTH = 100;
 
     public AVIMetadataLoader(File file) {
         this.file = file;
     }
-    
+
     public MetadataDateTime? get_creation_date_time() {
         return new MetadataDateTime((time_t) get_creation_date_time_for_avi());
     }
-    
+
     public string? get_title() {
         // Not supported.
         return null;
@@ -330,15 +330,15 @@ private class AVIMetadataLoader {
         } catch (GLib.Error e) {
             debug("Error while testing for AVI file: %s", e.message);
         }
-        
+
         try {
             chunk.close_file();
         } catch (GLib.Error e) {
             debug("Error while closing AVI file: %s", e.message);
-        } 
+        }
         return ret;
     }
-    
+
     // Parses a Nikon nctg tag.  Based losely on avi_read_nikon() in FFmpeg.
     private string read_nikon_nctg_tag(AVIChunk chunk) throws GLib.Error {
         bool found_date = false;
@@ -351,7 +351,7 @@ private class AVIMetadataLoader {
             }
             chunk.skip(size);
         }
-        
+
         if (found_date) {
             // Read numerical date string, example: 2010:01:28 14:54:25
             GLib.StringBuilder sb = new GLib.StringBuilder();
@@ -362,7 +362,7 @@ private class AVIMetadataLoader {
         }
         return "";
     }
-    
+
     // Parses a Fujifilm strd tag. Based on information from:
     // http://www.eden-foundation.org/products/code/film_date_stamp/index.html
     private string read_fuji_strd_tag(AVIChunk chunk) throws GLib.Error {
@@ -388,14 +388,14 @@ private class AVIMetadataLoader {
                 return ""; // Give up searching.
             }
         }
-        
+
         if (sb.str.length < NUMERICAL_DATE_LENGTH) {
-            return ""; 
+            return "";
         }
         // Date is now at the end of the string.
         return sb.str.substring(sb.str.length - NUMERICAL_DATE_LENGTH);
     }
-    
+
     // Recursively read file until the section is found.
     private string? read_section(AVIChunk chunk) throws GLib.Error {
         while (true) {
@@ -408,7 +408,7 @@ private class AVIMetadataLoader {
             } else if ("strd" == name) {
                 return read_fuji_strd_tag(chunk);
             }
-            
+
             if ("LIST" == name) {
                 chunk.read_name(); // Read past list name.
                 string result = read_section(chunk.get_first_child_chunk());
@@ -416,7 +416,7 @@ private class AVIMetadataLoader {
                     return result;
                 }
             }
-            
+
             if (chunk.is_last_chunk()) {
                 break;
             }
@@ -424,22 +424,22 @@ private class AVIMetadataLoader {
         }
         return null;
     }
-    
+
     // Parses a date from a string.
-    // Largely based on GStreamer's avi/gstavidemux.c 
-    // and the information here: 
+    // Largely based on GStreamer's avi/gstavidemux.c
+    // and the information here:
     // http://www.eden-foundation.org/products/code/film_date_stamp/index.html
     private ulong parse_date(string sdate) {
         if (sdate.length == 0) {
             return 0;
         }
-        
+
         Date date = Date();
         uint seconds = 0;
         int year, month, day, hour, min, sec;
         char weekday[4];
         char monthstr[4];
-        
+
         if (sdate[0].isdigit()) {
             // Format is: 2005:08:17 11:42:43
             // Format is: 2010/11/30/ 19:42
@@ -462,22 +462,22 @@ private class AVIMetadataLoader {
             date.set_dmy((DateDay) day, month_from_string((string) monthstr), (DateYear) year);
             seconds = sec + min * 60 + hour * 3600;
         }
-        
+
         Time time = Time();
         date.to_time(out time);
-        
+
         // watch for overflow (happens on quasi-bogus dates, like Year 200)
         time_t tm = time.mktime();
         ulong result = tm + seconds;
         if (result < tm) {
             debug("Overflow for timestamp in video file %s", file.get_path());
-            
+
             return 0;
         }
-        
+
         return result;
     }
-    
+
     private DateMonth month_from_string(string s) {
         switch (s.down()) {
         case "jan":
@@ -521,12 +521,12 @@ private class AVIMetadataLoader {
         } catch (GLib.Error e) {
             debug("Error while reading AVI file: %s", e.message);
         }
-        
+
         try {
             chunk.close_file();
         } catch (GLib.Error e) {
             debug("Error while closing AVI file: %s", e.message);
-        } 
+        }
         return timestamp;
     }
 }
@@ -539,16 +539,16 @@ private class AVIChunk {
     private GLib.DataInputStream input = null;
     private AVIChunk? parent = null;
     private const int MAX_STRING_TO_SECTION_LENGTH = 1024;
-    
+
     public AVIChunk(GLib.File file) {
         this.file = file;
     }
-    
+
     private AVIChunk.with_input_stream(GLib.DataInputStream input, AVIChunk parent) {
         this.input = input;
         this.parent = parent;
-    }   
-    
+    }
+
     public void open_file() throws GLib.Error {
         close_file();
         input = new GLib.DataInputStream(file.read());
@@ -557,47 +557,47 @@ private class AVIChunk {
         section_offset = 0;
         section_name = "";
     }
-    
+
     public void close_file() throws GLib.Error {
         if (null != input) {
             input.close();
             input = null;
         }
     }
-    
+
     public void nonsection_skip(uint64 skip_amount) throws GLib.Error {
         skip_uint64(input, skip_amount);
     }
-    
+
     public void skip(uint64 skip_amount) throws GLib.Error {
         advance_section_offset(skip_amount);
         skip_uint64(input, skip_amount);
     }
-    
+
     public AVIChunk get_first_child_chunk() {
         return new AVIChunk.with_input_stream(input, this);
     }
-    
+
     private void advance_section_offset(uint64 amount) {
         if ((section_offset + amount) > section_size)
             amount = section_size - section_offset;
-        
+
         section_offset += amount;
         if (null != parent) {
             parent.advance_section_offset(amount);
         }
     }
-    
+
     public uchar read_byte() throws GLib.Error {
         advance_section_offset(1);
         return input.read_byte();
     }
-    
+
     public uint16 read_uint16() throws GLib.Error {
        advance_section_offset(2);
        return input.read_uint16();
     }
-    
+
     public void read_chunk() throws GLib.Error {
         // don't use checked reads here because they advance the section offset, which we're trying
         // to determine here
@@ -610,7 +610,7 @@ private class AVIChunk {
         section_size = input.read_uint32();
         section_offset = 0;
     }
-    
+
     public string read_name() throws GLib.Error {
         GLib.StringBuilder sb = new GLib.StringBuilder();
         sb.append_c((char) read_byte());
@@ -619,26 +619,26 @@ private class AVIChunk {
         sb.append_c((char) read_byte());
         return sb.str;
     }
-    
+
     public void next_chunk() throws GLib.Error {
         skip(section_size_remaining());
         section_size = 0;
         section_offset = 0;
     }
-    
+
     public string get_current_chunk_name() {
         return section_name;
     }
-   
+
     public bool is_last_chunk() {
         return section_size == 0;
     }
-    
+
     public uint64 section_size_remaining() {
         assert(section_size >= section_offset);
         return section_size - section_offset;
     }
-    
+
     // Reads section contents into a string.
     public string section_to_string() throws GLib.Error {
         GLib.StringBuilder sb = new GLib.StringBuilder();
@@ -650,6 +650,6 @@ private class AVIChunk {
         }
         return sb.str;
     }
-    
+
 }
 

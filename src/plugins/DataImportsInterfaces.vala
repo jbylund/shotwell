@@ -36,7 +36,7 @@ public errordomain DataImportError {
     UNSUPPORTED_VERSION
 }
 
-/** 
+/**
  * Represents a module that is able to import data from a specific database format.
  *
  * Developers of data import plugins provide a class that implements this interface. At
@@ -63,23 +63,23 @@ public interface DataImporter : GLib.Object {
      * Returns true if this data importer is in the running state; false otherwise.
      */
     public abstract bool is_running();
-    
+
     /**
      * Causes this data importer to enter a non-running state. This data importer should stop all
      * data access operations and cease use of the shared services provided by the {@link PluginHost}.
      */
     public abstract void stop();
-    
+
     /**
      * Causes this data importer to enter start the import of a library.
      */
     public abstract void on_library_selected(ImportableLibrary library);
-    
+
     /**
      * Causes this data importer to enter start the import of a library file.
      */
     public abstract void on_file_selected(File file);
-    
+
     //
     // For future expansion.
     //
@@ -109,15 +109,15 @@ public interface ImportableLibrary : GLib.Object {
  */
 public interface ImportableMediaItem : GLib.Object {
     public abstract ImportableTag[] get_tags();
-    
+
     public abstract ImportableEvent? get_event();
-    
+
     public abstract ImportableRating get_rating();
-    
+
     public abstract string? get_title();
-    
+
     public abstract string get_folder_path();
-    
+
     public abstract string get_filename();
 
     public abstract time_t? get_exposure_time();
@@ -130,7 +130,7 @@ public interface ImportableMediaItem : GLib.Object {
  */
 public interface ImportableTag : GLib.Object {
     public abstract string get_name();
-    
+
     public abstract ImportableTag? get_parent();
 }
 
@@ -153,9 +153,9 @@ public interface ImportableEvent : GLib.Object {
  */
 public interface ImportableRating : GLib.Object {
     public abstract bool is_unrated();
-    
+
     public abstract bool is_rejected();
-    
+
     public abstract int get_value();
 }
 
@@ -171,7 +171,7 @@ public interface DialogPane : GLib.Object {
      * pane is installed in the on-screen publishing dialog box.
      */
     public enum GeometryOptions {
-    
+
         /**
          * When the associated pane is installed, the on-screen publishing dialog box will be
          * sized normally and will not allow the user to change its size.
@@ -202,7 +202,7 @@ public interface DialogPane : GLib.Object {
      * Returns the Gtk.Widget that is this pane's on-screen representation.
      */
     public abstract Gtk.Widget get_widget();
-    
+
     /**
      * Returns a {@link GeometryOptions} bitfield describing how the on-screen publishing dialog
      * box should look and behave when this pane is installed.
@@ -220,7 +220,7 @@ public interface DialogPane : GLib.Object {
      * publishing dialog box and is no longer visible to the user.
      */
     public abstract void on_pane_uninstalled();
-    
+
     //
     // For future expansion.
     //
@@ -261,7 +261,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
         CLOSE = 0,
         CANCEL = 1
     }
-    
+
     /**
      * Notifies the user that an unrecoverable import error has occurred and halts
      * the import process.
@@ -303,7 +303,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
      * and allowing it to interact with the user.
      *
      * If an error has posted, the {@link PluginHost} will not honor this request.
-     * 
+     *
      * @param pane the pane to install
      *
      * @param mode allows you to set the text displayed on the close/cancel button in the
@@ -332,7 +332,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
      * you need to display static text to the user.
      *
      * If an error has posted, the {@link PluginHost} will not honor this request.
-     * 
+     *
      * @param message the text to show in the pane
      *
      * @param mode allows you to set the text displayed on the close/cancel button in the
@@ -347,7 +347,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
      */
     public abstract void install_static_message_pane(string message,
         ButtonMode mode = ButtonMode.CANCEL);
-    
+
     /**
      * Attempts to install a library selection pane that presents a list of
      * discovered libraries to the user.
@@ -373,7 +373,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
         ImportableLibrary[] discovered_libraries,
         string? file_select_label
     );
-    
+
     /**
      * Attempts to install a progress pane that provides the user with feedback
      * on import preparation.
@@ -385,7 +385,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
     public abstract void install_import_progress_pane(
         string message
     );
-    
+
     /**
      * Update the progress bar installed by install_import_progress_pane.
      *
@@ -401,7 +401,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
         double progress,
         string? progress_message = null
     );
-    
+
     /**
      * Sends an importable media item to the host in order to prepare it for import
      * and update the progress bar installed by install_import_progress_pane.
@@ -427,7 +427,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
         double host_progress_delta = 0.0,
         string? progress_message = null
     );
-    
+
     /**
      * Finalize the import sequence for the plugin. This tells the host that
      * all media items have been processed and that the plugin has finished all
@@ -448,7 +448,7 @@ public interface PluginHost : GLib.Object, Spit.HostInterface {
         ImportedItemsCountCallback report_imported_items_count,
         string? finalize_message = null
     );
-    
+
     //
     // For future expansion.
     //

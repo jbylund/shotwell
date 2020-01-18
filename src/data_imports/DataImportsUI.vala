@@ -11,11 +11,11 @@ internal const string NO_PLUGINS_ENABLED_MESSAGE =
 
 public class ConcreteDialogPane : Spit.DataImports.DialogPane, GLib.Object {
     private Gtk.Box pane_widget;
-    
+
     public ConcreteDialogPane() {
         pane_widget = new Gtk.Box(Gtk.Orientation.VERTICAL, 8);
     }
-    
+
     public Gtk.Widget get_widget() {
         return pane_widget;
     }
@@ -36,12 +36,12 @@ public class StaticMessagePane : ConcreteDialogPane {
         Gtk.Label message_label = new Gtk.Label(message_string);
         (get_widget() as Gtk.Box).pack_start(message_label, true, true, 0);
     }
-    
+
     public StaticMessagePane.with_pango(string msg) {
         Gtk.Label label = new Gtk.Label(null);
         label.set_markup(msg);
         label.set_line_wrap(true);
-        
+
         (get_widget() as Gtk.Box).pack_start(label, true, true, 0);
     }
 }
@@ -52,7 +52,7 @@ public class LibrarySelectionPane : ConcreteDialogPane {
     private File? selected_file = null;
     private Gtk.Button import_button;
     private Gtk.RadioButton? file_radio = null;
-    
+
     public LibrarySelectionPane(
         Spit.DataImports.PluginHost host,
         string welcome_message,
@@ -60,9 +60,9 @@ public class LibrarySelectionPane : ConcreteDialogPane {
         string? file_select_label
     ) {
         assert(discovered_libraries.length > 0 || on_file_selected != null);
-        
+
         this.host = host;
-        
+
         Gtk.Box content_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 8);
         content_box.set_margin_start(30);
         content_box.set_margin_end(30);
@@ -71,13 +71,13 @@ public class LibrarySelectionPane : ConcreteDialogPane {
         welcome_label.set_line_wrap(true);
         welcome_label.set_halign(Gtk.Align.START);
         content_box.pack_start(welcome_label, true, true, 6);
-        
+
         // margins for buttons
         int radio_margin_left = 20;
         int radio_margin_right = 20;
         int chooser_margin_left = radio_margin_left;
         int chooser_margin_right = radio_margin_right;
-        
+
         Gtk.RadioButton lib_radio = null;
         if (discovered_libraries.length > 0) {
             chooser_margin_left = radio_margin_left + 20;
@@ -108,7 +108,7 @@ public class LibrarySelectionPane : ConcreteDialogPane {
             file_chooser.set_margin_end(chooser_margin_right);
             content_box.pack_start(file_chooser, false, false, 6);
         }
-        
+
         import_button = new Gtk.Button.with_mnemonic(_("_Import"));
         import_button.clicked.connect(() => {
             if (selected_library != null)
@@ -122,12 +122,12 @@ public class LibrarySelectionPane : ConcreteDialogPane {
         button_box.layout_style = Gtk.ButtonBoxStyle.CENTER;
         button_box.add(import_button);
         content_box.pack_end(button_box, true, false, 6);
-        
+
         (get_widget() as Gtk.Box).pack_start(content_box, true, true, 0);
-        
+
         set_import_button_sensitivity();
     }
-    
+
     private Gtk.RadioButton create_radio_button(
         Gtk.Box box, Gtk.RadioButton? group, Spit.DataImports.ImportableLibrary? library, string label,
         int margin_left, int margin_right
@@ -142,22 +142,22 @@ public class LibrarySelectionPane : ConcreteDialogPane {
                 this.selected_library = library;
                 set_import_button_sensitivity();
             }
-            
+
         });
         button.set_margin_start(margin_left);
         button.set_margin_end(margin_right);
         box.pack_start(button, false, false, 6);
         return button;
     }
-    
+
     private void set_import_button_sensitivity() {
         import_button.set_sensitive(selected_library != null || selected_file != null);
     }
-    
+
     private void on_library_selected(Spit.DataImports.ImportableLibrary library) {
         host.get_data_importer().on_library_selected(library);
     }
-    
+
     private void on_file_selected(File file) {
         host.get_data_importer().on_file_selected(file);
     }
@@ -167,7 +167,7 @@ public class ProgressPane : ConcreteDialogPane {
     private Gtk.Label message_label;
     private Gtk.Label progress_label;
     private Gtk.ProgressBar progress_bar;
-    
+
     public ProgressPane(string message) {
         Gtk.Box content_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 8);
         message_label = new Gtk.Label(message);
@@ -176,10 +176,10 @@ public class ProgressPane : ConcreteDialogPane {
         content_box.pack_start(progress_bar, false, true, 6);
         progress_label = new Gtk.Label("");
         content_box.pack_start(progress_label, false, true, 6);
-        
+
         (get_widget() as Gtk.Container).add(content_box);
     }
-    
+
     public void update_progress(double progress, string? progress_message) {
         progress_bar.set_fraction(progress);
         if (progress_message != null)
@@ -215,14 +215,14 @@ public class DataImportsDialog : Gtk.Dialog {
 
         resizable = false;
         delete_event.connect(on_window_close);
-        
+
         string title = _("Import From Application");
         string label = _("Import media _from:");
-        
+
         set_title(title);
 
         Spit.DataImports.Service[] loaded_services = Spit.DataImports.load_services();
-        
+
         if (loaded_services.length > 0) {
             // Install the service selector part only if there is at least one
             // service to select from
@@ -284,11 +284,10 @@ public class DataImportsDialog : Gtk.Dialog {
                 ((Gtk.Box) get_content_area()).pack_start(service_area_layouter, false, false, 0);
             }
         }
-        
+
         // Install the central area in all cases
         central_area_layouter = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
         ((Gtk.Box) get_content_area()).pack_start(central_area_layouter, true, true, 0);
-        
 
         if (use_header) {
             close_cancel_button = new Gtk.Button.with_mnemonic("_Cancel");
@@ -305,7 +304,7 @@ public class DataImportsDialog : Gtk.Dialog {
         close_cancel_button.clicked.connect(on_close_cancel_clicked);
 
         set_standard_window_mode();
-        
+
         if (loaded_services.length > 0) {
             // trigger the selected service if at least one service is available
             on_service_changed();
@@ -314,35 +313,35 @@ public class DataImportsDialog : Gtk.Dialog {
             install_pane(new StaticMessagePane.with_pango(NO_PLUGINS_ENABLED_MESSAGE));
             set_close_button_mode();
         }
-        
+
         show_all();
     }
-    
+
     public static DataImportsDialog get_or_create_instance() {
         if (instance == null) {
             instance = new DataImportsDialog();
         }
-        return instance;   
+        return instance;
     }
-    
+
     public static void terminate_instance() {
         if (instance != null) {
             instance.terminate();
         }
         instance = null;
     }
-    
+
     private bool on_window_close(Gdk.EventAny evt) {
         debug("DataImportsDialog: on_window_close( ): invoked.");
         terminate();
-        
+
         return true;
     }
-    
+
     private void on_service_changed() {
         debug("DataImportsDialog: on_service_changed invoked.");
         string service_name = service_selector_box.get_active_text();
-        
+
         Spit.DataImports.Service? selected_service = null;
         Spit.DataImports.Service[] services = Spit.DataImports.load_all_services();
         foreach (Spit.DataImports.Service service in services) {
@@ -358,13 +357,13 @@ public class DataImportsDialog : Gtk.Dialog {
         host = new Spit.DataImports.ConcreteDataImportsHost(selected_service, this);
         host.start_importing();
     }
-    
+
     private void on_close_cancel_clicked() {
         debug("DataImportsDialog: on_close_cancel_clicked( ): invoked.");
-        
+
         terminate();
     }
-    
+
     private void terminate() {
         debug("DataImportsDialog: terminate( ): invoked.");
 
@@ -377,14 +376,14 @@ public class DataImportsDialog : Gtk.Dialog {
         destroy();
         instance = null;
     }
-    
+
     private void set_large_window_mode() {
         set_size_request(LARGE_WINDOW_WIDTH, LARGE_WINDOW_HEIGHT);
         central_area_layouter.set_size_request(LARGE_WINDOW_WIDTH - BORDER_REGION_WIDTH,
             LARGE_WINDOW_HEIGHT - BORDER_REGION_HEIGHT);
         resizable = false;
     }
-    
+
     private void set_colossal_window_mode() {
         set_size_request(COLOSSAL_WINDOW_WIDTH, COLOSSAL_WINDOW_HEIGHT);
         central_area_layouter.set_size_request(COLOSSAL_WINDOW_WIDTH - BORDER_REGION_WIDTH,
@@ -427,7 +426,7 @@ public class DataImportsDialog : Gtk.Dialog {
     public void unlock_service() {
         service_selector_box.set_sensitive(true);
     }
-    
+
     public void install_pane(Spit.DataImports.DialogPane pane) {
         debug("DataImportsDialog: install_pane( ): invoked.");
 
@@ -458,7 +457,7 @@ public class DataImportsDialog : Gtk.Dialog {
         active_pane = pane;
         pane.on_pane_installed();
     }
-    
+
     private static DataImportsDialog? instance;
 }
 

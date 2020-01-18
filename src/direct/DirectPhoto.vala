@@ -6,14 +6,14 @@
 
 public class DirectPhoto : Photo {
     private const int PREVIEW_BEST_FIT = 360;
-    
+
     public static DirectPhotoSourceCollection global = null;
-    
+
     public signal void can_rotate_changed(bool b);
-    
+
     private Gdk.Pixbuf preview = null;
     private bool loaded = false;
-    
+
     private DirectPhoto(PhotoRow row) {
         base (row);
     }
@@ -39,7 +39,7 @@ public class DirectPhoto : Photo {
 
     public static void init(File initial_file) {
         init_photo();
-        
+
         global = new DirectPhotoSourceCollection(initial_file);
         DirectPhoto photo;
         string? reason = global.fetch(initial_file, out photo, false);
@@ -47,7 +47,7 @@ public class DirectPhoto : Photo {
             warning("fetch error: %s", reason);
         global.add(photo);
     }
-    
+
     public static void terminate() {
         terminate_photo();
     }
@@ -55,14 +55,14 @@ public class DirectPhoto : Photo {
     // Gets the dimensions of this photo's pixbuf when scaled to original
     // size and saves them where get_raw_dimensions can find them.
     private void save_dims() {
-        try {                                                                       
+        try {
             backing_photo_row.dim = Dimensions.for_pixbuf(get_pixbuf_with_options(Scaling.for_original(),
                 Exception.CROP | Exception.STRAIGHTEN | Exception.ORIENTATION));
         } catch (Error e) {
             warning("Dimensions for image %s could not be gotten.", to_string());
         }
     }
-    
+
     // Loads a photo on demand.
     public ImportResult demand_load() {
         if (loaded) {
@@ -83,19 +83,19 @@ public class DirectPhoto : Photo {
         save_dims();
         return ImportResult.SUCCESS;
     }
-    
+
     // This method should only be called by DirectPhotoSourceCollection.  Use
     // DirectPhoto.global.fetch to import files into the system.
     public static ImportResult internal_import(File file, out DirectPhoto photo) {
         PhotoImportParams params = new PhotoImportParams.create_placeholder(file, ImportID.generate());
         Photo.create_pre_import(params);
         PhotoTable.get_instance().add(params.row);
-        
+
         photo = new DirectPhoto(params.row);
-        
+
         return ImportResult.SUCCESS;
     }
-    
+
     public override Gdk.Pixbuf get_preview_pixbuf(Scaling scaling) throws Error {
         if (preview == null) {
             preview = get_thumbnail(PREVIEW_BEST_FIT);
@@ -106,7 +106,7 @@ public class DirectPhoto : Photo {
 
         return scaling.perform_on_pixbuf(preview, Gdk.InterpType.BILINEAR, true);
     }
-    
+
     public override void rotate(Rotation rotation) {
         can_rotate_now = false;
         can_rotate_changed(false);
@@ -129,7 +129,7 @@ public class DirectPhoto : Photo {
 
     protected override void notify_altered(Alteration alteration) {
         preview = null;
-        
+
         base.notify_altered(alteration);
     }
 
@@ -141,7 +141,7 @@ public class DirectPhoto : Photo {
     protected override void set_user_metadata_for_export(PhotoMetadata metadata) {
         // TODO: implement this method, see ticket
     }
-    
+
     protected override void apply_user_metadata_for_reimport(PhotoMetadata metadata) {
     }
 
@@ -149,16 +149,16 @@ public class DirectPhoto : Photo {
         // always returns false -- direct-edit mode has no concept of the trash can
         return false;
     }
-    
+
     public override bool is_offline() {
         // always returns false -- direct-edit mode has no concept of offline photos
         return false;
     }
-    
+
     public override void trash() {
         // a no-op -- direct-edit mode has no concept of the trash can
     }
-    
+
     public override void untrash() {
         // a no-op -- direct-edit mode has no concept of the trash can
     }
@@ -166,7 +166,7 @@ public class DirectPhoto : Photo {
     public override void mark_offline() {
         // a no-op -- direct-edit mode has no concept of offline photos
     }
-    
+
     public override void mark_online() {
         // a no-op -- direct-edit mode has no concept of offline photos
     }
@@ -175,70 +175,70 @@ public class DirectPhoto : Photo {
 public class DirectPhotoSourceCollection : DatabaseSourceCollection {
     private const int DISCOVERED_FILES_BATCH_ADD = 500;
     private Gee.Collection<DirectPhoto> prepared_photos = new Gee.ArrayList<DirectPhoto>();
-    private Gee.HashMap<File, DirectPhoto> file_map = new Gee.HashMap<File, DirectPhoto>(file_hash, 
+    private Gee.HashMap<File, DirectPhoto> file_map = new Gee.HashMap<File, DirectPhoto>(file_hash,
         file_equal);
     private DirectoryMonitor monitor;
-    
+
     public DirectPhotoSourceCollection(File initial_file) {
         base("DirectPhotoSourceCollection", get_direct_key);
-        
+
         // only use the monitor for discovery in the specified directory, not its children
         monitor = new DirectoryMonitor(initial_file.get_parent(), false, false);
         monitor.file_discovered.connect(on_file_discovered);
         monitor.discovery_completed.connect(on_discovery_completed);
-        
+
         monitor.start_discovery();
     }
-    
+
     public override bool holds_type_of_source(DataSource source) {
         return source is DirectPhoto;
     }
-    
+
     private static int64 get_direct_key(DataSource source) {
         DirectPhoto photo = (DirectPhoto) source;
         PhotoID photo_id = photo.get_photo_id();
-        
+
         return photo_id.id;
     }
-    
+
     public override void notify_items_added(Gee.Iterable<DataObject> added) {
         foreach (DataObject object in added) {
             DirectPhoto photo = (DirectPhoto) object;
             File file = photo.get_file();
-            
+
             assert(!file_map.has_key(file));
-            
+
             file_map.set(file, photo);
         }
-        
+
         base.notify_items_added(added);
     }
-    
+
     public override void notify_items_removed(Gee.Iterable<DataObject> removed) {
         foreach (DataObject object in removed) {
             DirectPhoto photo = (DirectPhoto) object;
             File file = photo.get_file();
-            
+
             bool is_removed = file_map.unset(file);
             assert(is_removed);
         }
-        
+
         base.notify_items_removed(removed);
     }
-    
+
     public bool has_source_for_file(File file) {
         return file_map.has_key(file);
     }
-    
+
     private void on_file_discovered(File file, FileInfo info) {
         // skip already-seen files
         if (has_source_for_file(file))
             return;
-        
+
         // only add files that look like photo files we support
         if (!PhotoFileFormat.is_file_supported(file))
             return;
-        
+
         DirectPhoto photo;
         string? reason = fetch(file, out photo, false);
         if (reason != null)
@@ -247,33 +247,33 @@ public class DirectPhotoSourceCollection : DatabaseSourceCollection {
         if (prepared_photos.size >= DISCOVERED_FILES_BATCH_ADD)
             flush_prepared_photos();
     }
-    
+
     private void on_discovery_completed() {
         flush_prepared_photos();
     }
-    
+
     private void flush_prepared_photos() {
         add_many(prepared_photos);
         prepared_photos.clear();
     }
-    
+
     public bool has_file(File file) {
         return file_map.has_key(file);
     }
-    
+
     public void reimport_photo(DirectPhoto photo) {
         photo.discard_prefetched();
         DirectPhoto reimported_photo;
         fetch(photo.get_file(), out reimported_photo, true);
     }
-    
+
     // Returns an error string if unable to fetch, null otherwise
     public string? fetch(File file, out DirectPhoto photo, bool reimport) {
         // fetch from the map first, which ensures that only one DirectPhoto exists for each file
         photo = file_map.get(file);
         if (photo != null) {
             string? reason = null;
-            
+
             if (reimport) {
                 try {
                     Orientation ori_tmp = Orientation.TOP_LEFT;
@@ -302,18 +302,18 @@ public class DirectPhotoSourceCollection : DatabaseSourceCollection {
 
             return reason;
         }
-        
+
         // for DirectPhoto, a fetch on an unknown file is an implicit import into the in-memory
         // database (which automatically adds the new DirectPhoto object to DirectPhoto.global)
         ImportResult result = DirectPhoto.internal_import(file, out photo);
-        
+
         return (result == ImportResult.SUCCESS) ? null : result.to_string();
     }
-    
+
     public bool has_file_source(File file) {
         return file_map.has_key(file);
     }
-    
+
     public DirectPhoto? get_file_source(File file) {
         return file_map.get(file);
     }

@@ -25,7 +25,7 @@ private static int read_number(owned string s, ref long byte_index) {
      * Given a string in the form [numerals]*[everythingelse]*
      * returns the int value of the first block and increments index
      * by its length as a side effect.
-     * Notice that "numerals" is not just 0-9 but everything else 
+     * Notice that "numerals" is not just 0-9 but everything else
      * Unicode considers a numeral (see: string::isdigit())
      */
     int number = 0;

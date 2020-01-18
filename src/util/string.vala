@@ -26,7 +26,7 @@ public int utf8_ci_compare(void *a, void *b) {
 public string uchar_array_to_string(uchar[] data, int length = -1) {
     if (length < 0)
         length = data.length;
-    
+
     StringBuilder builder = new StringBuilder();
     for (int ctr = 0; ctr < length; ctr++) {
         if (data[ctr] != '\0')
@@ -34,7 +34,7 @@ public string uchar_array_to_string(uchar[] data, int length = -1) {
         else
             break;
     }
-    
+
     return builder.str;
 }
 
@@ -43,11 +43,11 @@ public uchar[] string_to_uchar_array(string str) {
     uchar[] data = new uchar[0];
     for (int ctr = 0; ctr < str.length; ctr++)
         data += (uchar) str[ctr];
-    
+
     return data;
 }
 
-// Markup.escape_text() will crash if the UTF-8 text is not valid; it relies on a call to 
+// Markup.escape_text() will crash if the UTF-8 text is not valid; it relies on a call to
 // g_utf8_next_char(), which demands that the string be validated before use, which escape_text()
 // does not do.  This handles this problem by kicking back an empty string if the text is not
 // valid.  Text should be validated upon entry to the system as well to guard against this
@@ -64,7 +64,7 @@ public long find_last_offset(string str, char c) {
         if (str[offset] == c)
             return offset;
     }
-    
+
     return -1;
 }
 
@@ -76,7 +76,7 @@ public bool is_in_ci_array(string str, string[] strings) {
         if (strdown == str_element)
             return true;
     }
-    
+
     return false;
 }
 
@@ -130,7 +130,7 @@ private string? guess_convert(string text) {
 public string? prepare_input_text(string? text, PrepareInputTextOptions options, int dest_length) {
     if (text == null)
         return null;
-    
+
     string? prepped = text;
     if (PrepareInputTextOptions.VALIDATE in options) {
         if (!text.validate()) {
@@ -148,27 +148,27 @@ public string? prepare_input_text(string? text, PrepareInputTextOptions options,
     // http://trac.yorba.org/ticket/2952
     if ((options & PrepareInputTextOptions.NORMALIZE) != 0)
         prepped = prepped.normalize(-1, NormalizeMode.NFC);
-    
+
     if ((options & PrepareInputTextOptions.STRIP) != 0)
         prepped = prepped.strip();
-        
+
     // Ticket #3245 - Prevent carriage return mayhem
     // in image titles, tag names, etc.
     if ((options & PrepareInputTextOptions.STRIP_CRLF) != 0)
         prepped = prepped.delimit("\n\r", ' ');
-    
+
     if ((options & PrepareInputTextOptions.EMPTY_IS_NULL) != 0 && is_string_empty(prepped))
         return null;
-    
-    // Ticket #3196 - Allow calling functions to limit the length of the 
-    // string we return to them. Passing any negative value is interpreted 
+
+    // Ticket #3196 - Allow calling functions to limit the length of the
+    // string we return to them. Passing any negative value is interpreted
     // as 'do not truncate'.
-    if (dest_length >= 0) { 
+    if (dest_length >= 0) {
         StringBuilder sb = new StringBuilder(prepped);
         sb.truncate(dest_length);
         return sb.str;
     }
-    
+
     // otherwise, return normally.
     return prepped;
 }
@@ -213,13 +213,13 @@ public string strip_leading_zeroes(string str) {
     bool prev_is_space = true;
     for (unowned string iter = str; iter.get_char() != 0; iter = iter.next_char()) {
         unichar ch = iter.get_char();
-        
+
         if (!prev_is_space || ch != '0') {
             stripped.append_unichar(ch);
             prev_is_space = ch.isspace();
         }
     }
-    
+
     return stripped.str;
 }
 
@@ -245,11 +245,11 @@ public string remove_diacritics(string istring) {
 
 public string to_hex_string(string str) {
     StringBuilder builder = new StringBuilder();
-    
+
     uint8 *data = (uint8 *) str;
     while (*data != 0)
         builder.append_printf("%02Xh%s", *data++, (*data != 0) ? " " : "");
-    
+
     return builder.str;
 }
 
@@ -271,7 +271,7 @@ public string to_hex_string(string str) {
 // See note above.
 public uint collated_hash(void *ptr) {
     string str = (string) ptr;
-    
+
     return str_hash(str.collate_key());
 }
 
@@ -284,16 +284,16 @@ public uint precollated_hash(void *ptr) {
 public int collated_compare(void *a, void *b) {
     string astr = (string) a;
     string bstr = (string) b;
-    
+
     int result = astr.collate(bstr);
-    
+
     return (result != 0) ? result : strcmp(astr, bstr);
 }
 
 // See note above.
 public int precollated_compare(string astr, string akey, string bstr, string bkey) {
     int result = strcmp(akey, bkey);
-    
+
     return (result != 0) ? result : strcmp(astr, bstr);
 }
 

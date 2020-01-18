@@ -58,8 +58,6 @@ namespace Publishing.Authenticator.Shotwell.Tumblr {
 
                 password_entry = builder.get_object ("password_entry") as Gtk.Entry;
 
-
-
                 login_button = builder.get_object("login_button") as Gtk.Button;
 
                 username_entry.changed.connect(on_user_changed);
@@ -81,7 +79,6 @@ namespace Publishing.Authenticator.Shotwell.Tumblr {
             login(username_entry.get_text(),
                     password_entry.get_text());
         }
-
 
         private void on_user_changed() {
             update_login_button_sensitivity();

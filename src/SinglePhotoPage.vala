@@ -56,7 +56,7 @@ public abstract class SinglePhotoPage : Page {
 
         add(viewport);
 
-        canvas.add_events(Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.STRUCTURE_MASK 
+        canvas.add_events(Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.STRUCTURE_MASK
             | Gdk.EventMask.SUBSTRUCTURE_MASK);
 
         viewport.size_allocate.connect(on_viewport_resize);
@@ -467,7 +467,6 @@ public abstract class SinglePhotoPage : Page {
         text_ctx = new Cairo.Context(pixmap);
         set_source_color_from_string(text_ctx, "#fff");
 
-
         // no need to resize canvas, viewport does that automatically
 
         new_surface(pixmap_ctx, pixmap_dim);
@@ -485,7 +484,7 @@ public abstract class SinglePhotoPage : Page {
 
     public override bool key_press_event(Gdk.EventKey event) {
         // if the user holds the arrow keys down, we will receive a steady stream of key press
-        // events for an operation that isn't designed for a rapid succession of output ... 
+        // events for an operation that isn't designed for a rapid succession of output ...
         // we staunch the supply of new photos to under a quarter second (#533)
         bool nav_ok = (event.time - last_nav_key) > KEY_REPEAT_INTERVAL_MSEC;
 
@@ -525,5 +524,4 @@ public abstract class SinglePhotoPage : Page {
         repaint();
     }
 }
-
 

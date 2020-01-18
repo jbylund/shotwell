@@ -290,7 +290,6 @@ namespace Publishing.Authenticator.Shotwell.Google {
             this.params.insert("ExpiryTime", new Variant.int64(abs_time));
         }
 
-
         private void on_access_token_available(string token) {
             debug("EVENT: an OAuth access token has become available; token = '%s'.", token);
 
@@ -373,7 +372,6 @@ namespace Publishing.Authenticator.Shotwell.Google {
             this.authenticated();
         }
 
-
         private void do_exchange_refresh_token_for_access_token() {
             debug("ACTION: exchanging OAuth refresh token for OAuth access token.");
 
@@ -434,7 +432,6 @@ namespace Publishing.Authenticator.Shotwell.Google {
 
             this.do_hosted_web_authentication();
         }
-
 
     }
 }
