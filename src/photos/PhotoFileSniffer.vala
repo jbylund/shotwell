@@ -81,24 +81,21 @@ public class PhotoFileInterrogator {
         return is_photo_corrupted;
     }
 
-    public void interrogate() throws Error {
+    public DetectedPhotoInformation? interrogate() throws Error {
         foreach (PhotoFileFormat file_format in PhotoFileFormat.get_supported()) {
             PhotoFileSniffer sniffer = file_format.create_sniffer(file, options);
-
             bool is_corrupted;
             detected = sniffer.sniff(out is_corrupted);
             if (detected != null && !is_corrupted) {
                 assert(detected.file_format == file_format);
-
-                break;
+                return detected;
             } else if (is_corrupted) {
                 message("Sniffing halted for %s: potentially corrupted image file", file.get_path());
                 is_photo_corrupted = true;
-                detected = null;
-
-                break;
+                return detected;
             }
         }
+        return null;
     }
 }
 
