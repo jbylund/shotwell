@@ -23,19 +23,19 @@ private class ShotwellTransitions : Object, Spit.Module {
         pluggables += new ChessEffectDescriptor(resource_directory);
         pluggables += new StripesEffectDescriptor(resource_directory);
     }
-    
+
     public unowned string get_module_name() {
         return _("Core Slideshow Transitions");
     }
-    
+
     public unowned string get_version() {
         return _VERSION;
     }
-    
+
     public unowned string get_id() {
         return "org.yorba.shotwell.transitions";
     }
-    
+
     public unowned Spit.Pluggable[]? get_pluggables() {
         return pluggables;
     }
@@ -45,7 +45,7 @@ private class ShotwellTransitions : Object, Spit.Module {
 public Spit.Module? spit_entry_point(Spit.EntryPointParams *params) {
     params->module_spit_interface = Spit.negotiate_interfaces(params->host_min_spit_interface,
         params->host_max_spit_interface, Spit.CURRENT_INTERFACE);
-    
+
     return (params->module_spit_interface != Spit.UNSUPPORTED_INTERFACE)
         ? new ShotwellTransitions(params->module_file) : null;
 }
@@ -55,7 +55,7 @@ public abstract class ShotwellTransitionDescriptor : Object, Spit.Pluggable, Spi
     private const string ICON_FILENAME = "slideshow-plugin.png";
 
     private static Gdk.Pixbuf[] icon_pixbuf_set = null;
-    
+
     protected ShotwellTransitionDescriptor(GLib.File resource_directory) {
         if (icon_pixbuf_set == null)
             icon_pixbuf_set =
@@ -66,11 +66,11 @@ public abstract class ShotwellTransitionDescriptor : Object, Spit.Pluggable, Spi
         return Spit.negotiate_interfaces(min_host_interface, max_host_interface,
             Spit.Transitions.CURRENT_INTERFACE);
     }
-    
+
     public abstract unowned string get_id();
-    
+
     public abstract unowned string get_pluggable_name();
-    
+
     public void get_info(ref Spit.PluggableInfo info) {
         info.authors = "Maxim Kartashev";
         info.copyright = _("Copyright 2010 Maxim Kartashev, Copyright 2016 Software Freedom Conservancy Inc.");
@@ -82,10 +82,10 @@ public abstract class ShotwellTransitionDescriptor : Object, Spit.Pluggable, Spi
         info.license = Resources.LICENSE;
         info.icons = icon_pixbuf_set;
     }
-    
+
     public void activation(bool enabled) {
     }
-    
+
     public abstract Spit.Transitions.Effect create(Spit.HostInterface host);
 }
 

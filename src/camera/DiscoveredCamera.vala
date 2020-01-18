@@ -56,7 +56,6 @@ public class DiscoveredCamera {
             var client = new GUdev.Client(null);
             var device = client.query_by_device_file(path);
 
-
             // Create alternative uris (used for unmount)
             var serial = device.get_property("ID_SERIAL");
             this.mount_uris += "gphoto2://%s".printf(serial);
@@ -110,10 +109,9 @@ public class DiscoveredCamera {
 
     private string? get_port_path(string port) {
         // Accepted format is usb:001,005
-        return port.has_prefix("usb:") ? 
+        return port.has_prefix("usb:") ?
             "/dev/bus/usb/%s".printf(port.substring(4).replace(",", "/")) : null;
     }
- 
-}
 
+}
 

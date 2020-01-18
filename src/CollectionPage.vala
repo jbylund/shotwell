@@ -6,11 +6,11 @@
 
 public class CollectionViewManager : ViewManager {
     private CollectionPage page;
-    
+
     public CollectionViewManager(CollectionPage page) {
         this.page = page;
     }
-    
+
     public override DataView create_view(DataSource source) {
         return page.create_thumbnail(source);
     }
@@ -18,25 +18,25 @@ public class CollectionViewManager : ViewManager {
 
 public abstract class CollectionPage : MediaPage {
     private const double DESKTOP_SLIDESHOW_TRANSITION_SEC = 2.0;
-    
+
     protected class CollectionSearchViewFilter : DefaultSearchViewFilter {
         public override uint get_criteria() {
-            return SearchFilterCriteria.TEXT | SearchFilterCriteria.FLAG | 
+            return SearchFilterCriteria.TEXT | SearchFilterCriteria.FLAG |
                 SearchFilterCriteria.MEDIA | SearchFilterCriteria.RATING | SearchFilterCriteria.SAVEDSEARCH;
         }
     }
-    
+
     private ExporterUI exporter = null;
     private CollectionSearchViewFilter search_filter = new CollectionSearchViewFilter();
-    
+
     protected CollectionPage(string page_name) {
         base (page_name);
-        
+
         get_view().items_altered.connect(on_photos_altered);
-        
+
         init_item_context_menu("CollectionContextMenu");
         init_toolbar("CollectionToolbar");
-        
+
         show_all();
 
         // watch for updates to the external app settings
@@ -56,9 +56,9 @@ public abstract class CollectionPage : MediaPage {
             Gtk.SeparatorToolItem drawn_separator = new Gtk.SeparatorToolItem();
             drawn_separator.set_expand(false);
             drawn_separator.set_draw(true);
-            
+
             get_toolbar().insert(drawn_separator, -1);
-            
+
             // zoom slider assembly
             MediaPage.ZoomSliderAssembly zoom_slider_assembly = create_zoom_slider_assembly();
             connect_slider(zoom_slider_assembly);
@@ -70,25 +70,25 @@ public abstract class CollectionPage : MediaPage {
             Gtk.BindingEntry.add_signal(binding_set, Gdk.Key.space, Gdk.ModifierType.CONTROL_MASK, "clicked", 0);
 
         }
-        
+
         return toolbar;
     }
-    
+
     private static InjectionGroup create_file_menu_injectables() {
         InjectionGroup group = new InjectionGroup("FileExtrasPlaceholder");
-        
+
         group.add_menu_item(_("_Print"), "Print", "<Primary>p");
         group.add_separator();
         group.add_menu_item(_("_Publish"), "Publish", "<Primary><Shift>p");
         group.add_menu_item(_("Send _To…"), "SendTo");
         group.add_menu_item(_("Set as _Desktop Background"), "SetBackground", "<Primary>b");
-        
+
         return group;
     }
-    
+
     private static InjectionGroup create_edit_menu_injectables() {
         InjectionGroup group = new InjectionGroup("EditExtrasPlaceholder");
-        
+
         group.add_menu_item(_("_Duplicate"), "Duplicate", "<Primary>D");
 
         return group;
@@ -96,17 +96,17 @@ public abstract class CollectionPage : MediaPage {
 
     private static InjectionGroup create_view_menu_fullscreen_injectables() {
         InjectionGroup group = new InjectionGroup("ViewExtrasFullscreenSlideshowPlaceholder");
-        
+
         group.add_menu_item(_("Fullscreen"), "CommonFullscreen", "F11");
         group.add_separator();
         group.add_menu_item(_("S_lideshow"), "Slideshow", "F5");
-        
+
         return group;
     }
 
     private static InjectionGroup create_photos_menu_edits_injectables() {
         InjectionGroup group = new InjectionGroup("PhotosExtrasEditsPlaceholder");
-        
+
         group.add_menu_item(_("Rotate _Right"),
                             "RotateClockwise",
                             "<Primary>r");
@@ -125,21 +125,21 @@ public abstract class CollectionPage : MediaPage {
         group.add_menu_item(_("_Paste Color Adjustments"),
                             "PasteColorAdjustments",
                             "<Primary><Shift>v");
-        
+
         return group;
     }
-  
+
     private static InjectionGroup create_photos_menu_date_injectables() {
         InjectionGroup group = new InjectionGroup("PhotosExtrasDateTimePlaceholder");
-        
+
         group.add_menu_item(_("Adjust Date and Time…"), "AdjustDateTime", "F4");
-        
+
         return group;
     }
 
     private static InjectionGroup create_photos_menu_externals_injectables() {
         InjectionGroup group = new InjectionGroup("PhotosExtrasExternalsPlaceholder");
-        
+
         group.add_menu_item(_("Open With E_xternal Editor"),
                             "ExternalEdit",
                             "<Primary>Return");
@@ -147,13 +147,13 @@ public abstract class CollectionPage : MediaPage {
                             "ExternalEditRAW",
                             "<Primary><Shift>Return");
         group.add_menu_item(_("_Play"), "PlayVideo", "<Primary>Y");
-        
+
         return group;
     }
-    
+
     protected override void init_collect_ui_filenames(Gee.List<string> ui_filenames) {
         base.init_collect_ui_filenames(ui_filenames);
-        
+
         ui_filenames.add("collection.ui");
     }
 
@@ -191,38 +191,38 @@ public abstract class CollectionPage : MediaPage {
 
     protected override InjectionGroup[] init_collect_injection_groups() {
         InjectionGroup[] groups = base.init_collect_injection_groups();
-        
+
         groups += create_file_menu_injectables();
         groups += create_edit_menu_injectables();
         groups += create_view_menu_fullscreen_injectables();
         groups += create_photos_menu_edits_injectables();
         groups += create_photos_menu_date_injectables();
         groups += create_photos_menu_externals_injectables();
-        
+
         return groups;
     }
-    
+
     private bool selection_has_video() {
         return MediaSourceCollection.has_video((Gee.Collection<MediaSource>) get_view().get_selected_sources());
     }
-    
+
     private bool page_has_photo() {
         return MediaSourceCollection.has_photo((Gee.Collection<MediaSource>) get_view().get_sources());
     }
-    
+
     private bool selection_has_photo() {
         return MediaSourceCollection.has_photo((Gee.Collection<MediaSource>) get_view().get_selected_sources());
     }
-    
+
     protected override void init_actions(int selected_count, int count) {
         base.init_actions(selected_count, count);
-        
+
         set_action_sensitive("RotateClockwise", true);
         set_action_sensitive("RotateCounterclockwise", true);
         set_action_sensitive("Enhance", true);
         set_action_sensitive("Publish", true);
     }
-    
+
     protected override void update_actions(int selected_count, int count) {
         //FIXME: Hack. Otherwise it will disable actions that just have been enabled by photo page
         if (AppWindow.get_instance().get_current_page() != this) {
@@ -241,15 +241,15 @@ public abstract class CollectionPage : MediaPage {
 
         bool selection_has_videos = selection_has_video();
         bool page_has_photos = page_has_photo();
-        
+
         // don't allow duplication of the selection if it contains a video -- videos are huge and
         // and they're not editable anyway, so there seems to be no use case for duplicating them
         set_action_sensitive("Duplicate", has_selected && (!selection_has_videos));
-        set_action_sensitive("ExternalEdit", 
+        set_action_sensitive("ExternalEdit",
             (!primary_is_video) && one_selected && !is_string_empty(Config.Facade.get_instance().get_external_photo_app()));
         set_action_sensitive("ExternalEditRAW",
             one_selected && (!primary_is_video)
-            && ((Photo) get_view().get_selected_at(0).get_source()).get_master_file_format() == 
+            && ((Photo) get_view().get_selected_at(0).get_source()).get_master_file_format() ==
                 PhotoFileFormat.RAW
             && !is_string_empty(Config.Facade.get_instance().get_external_raw_app()));
         set_action_sensitive("Revert", (!selection_has_videos) && can_revert_selected());
@@ -262,18 +262,18 @@ public abstract class CollectionPage : MediaPage {
         set_action_sensitive("RotateCounterclockwise", (!selection_has_videos) && has_selected);
         set_action_sensitive("FlipHorizontally", (!selection_has_videos) && has_selected);
         set_action_sensitive("FlipVertically", (!selection_has_videos) && has_selected);
-        
+
         // Allow changing of exposure time, even if there's a video in the current
         // selection.
         set_action_sensitive("AdjustDateTime", has_selected);
-        
+
         set_action_sensitive("NewEvent", has_selected);
         set_action_sensitive("AddTags", has_selected);
         set_action_sensitive("ModifyTags", one_selected);
         set_action_sensitive("Slideshow", page_has_photos && (!primary_is_video));
         set_action_sensitive("Print", (!selection_has_videos) && has_selected);
         set_action_sensitive("Publish", has_selected);
-        
+
         set_action_sensitive("SetBackground", (!selection_has_videos) && has_selected );
         if (has_selected) {
             debug ("Setting action label for SetBackground...");
@@ -285,47 +285,47 @@ public abstract class CollectionPage : MediaPage {
     }
 
     private void on_photos_altered(Gee.Map<DataObject, Alteration> altered) {
-        // only check for revert if the media object is a photo and its image has changed in some 
+        // only check for revert if the media object is a photo and its image has changed in some
         // way and it's in the selection
         foreach (DataObject object in altered.keys) {
             DataView view = (DataView) object;
-            
+
             if (!view.is_selected() || !altered.get(view).has_subject("image"))
             continue;
-            
+
             LibraryPhoto? photo = view.get_source() as LibraryPhoto;
             if (photo == null)
                 continue;
-            
+
             // since the photo can be altered externally to Shotwell now, need to make the revert
             // command available appropriately, even if the selection doesn't change
             set_action_sensitive("Revert", can_revert_selected());
             set_action_sensitive("CopyColorAdjustments", photo.has_color_adjustments());
-            
+
             break;
         }
     }
-    
+
     private void on_print() {
         if (get_view().get_selected_count() > 0) {
             PrintManager.get_instance().spool_photo(
                 (Gee.Collection<Photo>) get_view().get_selected_sources_of_type(typeof(Photo)));
         }
     }
-    
+
     private void on_external_app_changed() {
         int selected_count = get_view().get_selected_count();
-        
+
         set_action_sensitive("ExternalEdit", selected_count == 1 && Config.Facade.get_instance().get_external_photo_app() != "");
     }
-    
+
     // see #2020
     // double click = switch to photo page
     // Super + double click = open in external editor
     // Enter = switch to PhotoPage
     // Ctrl + Enter = open in external editor (handled with accelerators)
     // Shift + Ctrl + Enter = open in external RAW editor (handled with accelerators)
-    protected override void on_item_activated(CheckerboardItem item, CheckerboardPage.Activator 
+    protected override void on_item_activated(CheckerboardItem item, CheckerboardPage.Activator
         activator, CheckerboardPage.KeyboardModifiers modifiers) {
         Thumbnail thumbnail = (Thumbnail) item;
 
@@ -336,11 +336,11 @@ public abstract class CollectionPage : MediaPage {
             on_play_video();
             return;
         }
-        
+
         LibraryPhoto? photo = thumbnail.get_media_source() as LibraryPhoto;
         if (photo == null)
             return;
-        
+
         // switch to full-page view or open in external editor
         debug("activating %s", photo.to_string());
 
@@ -354,7 +354,7 @@ public abstract class CollectionPage : MediaPage {
                 LibraryWindow.get_app().switch_to_photo_page(this, photo);
         }
     }
-    
+
     protected override bool on_app_key_pressed(Gdk.EventKey event) {
         bool handled = true;
         switch (Gdk.keyval_name(event.keyval)) {
@@ -368,27 +368,27 @@ public abstract class CollectionPage : MediaPage {
             case "KP_End":
                 key_press_event(event);
             break;
-            
+
             case "bracketright":
                 activate_action("RotateClockwise");
             break;
-            
+
             case "bracketleft":
                 activate_action("RotateCounterclockwise");
             break;
-            
+
             default:
                 handled = false;
             break;
         }
-        
+
         return handled ? true : base.on_app_key_pressed(event);
     }
 
     protected override void on_export() {
         if (exporter != null)
             return;
-        
+
         Gee.Collection<MediaSource> export_list =
             (Gee.Collection<MediaSource>) get_view().get_selected_sources();
         if (export_list.size == 0)
@@ -397,7 +397,7 @@ public abstract class CollectionPage : MediaPage {
         bool has_some_photos = selection_has_photo();
         bool has_some_videos = selection_has_video();
         assert(has_some_photos || has_some_videos);
-               
+
         // if we don't have any photos, then everything is a video, so skip displaying the Export
         // dialog and go right to the video export operation
         if (!has_some_photos) {
@@ -427,9 +427,9 @@ public abstract class CollectionPage : MediaPage {
         ScaleConstraint constraint;
         if (!export_dialog.execute(out scale, out constraint, ref export_params))
             return;
-        
+
         Scaling scaling = Scaling.for_constraint(constraint, scale, false);
-        
+
         // handle the single-photo case, which is treated like a Save As file operation
         if (export_list.size == 1) {
             LibraryPhoto photo = null;
@@ -437,12 +437,12 @@ public abstract class CollectionPage : MediaPage {
                 photo = p;
                 break;
             }
-            
+
             File save_as =
                 ExportUI.choose_file(photo.get_export_basename_for_parameters(export_params));
             if (save_as == null)
                 return;
-            
+
             try {
                 AppWindow.get_instance().set_busy_cursor();
                 photo.export(save_as, scaling, export_params.quality,
@@ -453,7 +453,7 @@ public abstract class CollectionPage : MediaPage {
                 AppWindow.get_instance().set_normal_cursor();
                 export_error_dialog(save_as, false);
             }
-            
+
             return;
         }
 
@@ -461,40 +461,40 @@ public abstract class CollectionPage : MediaPage {
         File export_dir = ExportUI.choose_dir(title);
         if (export_dir == null)
             return;
-        
+
         exporter = new ExporterUI(new Exporter(export_list, export_dir, scaling, export_params));
         exporter.export(on_export_completed);
     }
-    
+
     private void on_export_completed() {
         exporter = null;
     }
-    
+
     private bool can_revert_selected() {
         foreach (DataSource source in get_view().get_selected_sources()) {
             LibraryPhoto? photo = source as LibraryPhoto;
             if (photo != null && (photo.has_transformations() || photo.has_editable()))
                 return true;
         }
-        
+
         return false;
     }
-    
+
     private bool can_revert_editable_selected() {
         foreach (DataSource source in get_view().get_selected_sources()) {
             LibraryPhoto? photo = source as LibraryPhoto;
             if (photo != null && photo.has_editable())
                 return true;
         }
-        
+
         return false;
     }
-   
+
     private void on_rotate_clockwise() {
         if (get_view().get_selected_count() == 0)
             return;
-        
-        RotateMultipleCommand command = new RotateMultipleCommand(get_view().get_selected(), 
+
+        RotateMultipleCommand command = new RotateMultipleCommand(get_view().get_selected(),
             Rotation.CLOCKWISE, Resources.ROTATE_CW_FULL_LABEL, Resources.ROTATE_CW_TOOLTIP,
             _("Rotating"), _("Undoing Rotate"));
         get_command_manager().execute(command);
@@ -509,51 +509,51 @@ public abstract class CollectionPage : MediaPage {
     private void on_rotate_counterclockwise() {
         if (get_view().get_selected_count() == 0)
             return;
-        
-        RotateMultipleCommand command = new RotateMultipleCommand(get_view().get_selected(), 
+
+        RotateMultipleCommand command = new RotateMultipleCommand(get_view().get_selected(),
             Rotation.COUNTERCLOCKWISE, Resources.ROTATE_CCW_FULL_LABEL, Resources.ROTATE_CCW_TOOLTIP,
             _("Rotating"), _("Undoing Rotate"));
         get_command_manager().execute(command);
     }
-    
+
     private void on_flip_horizontally() {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         RotateMultipleCommand command = new RotateMultipleCommand(get_view().get_selected(),
             Rotation.MIRROR, Resources.HFLIP_LABEL, "", _("Flipping Horizontally"),
             _("Undoing Flip Horizontally"));
         get_command_manager().execute(command);
     }
-    
+
     private void on_flip_vertically() {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         RotateMultipleCommand command = new RotateMultipleCommand(get_view().get_selected(),
             Rotation.UPSIDE_DOWN, Resources.VFLIP_LABEL, "", _("Flipping Vertically"),
             _("Undoing Flip Vertically"));
         get_command_manager().execute(command);
     }
-    
+
     private void on_revert() {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         if (can_revert_editable_selected()) {
             if (!revert_editable_dialog(AppWindow.get_instance(),
                 (Gee.Collection<Photo>) get_view().get_selected_sources())) {
                 return;
             }
-            
+
             foreach (DataObject object in get_view().get_selected_sources())
                 ((Photo) object).revert_to_master();
         }
-        
+
         RevertMultipleCommand command = new RevertMultipleCommand(get_view().get_selected());
         get_command_manager().execute(command);
     }
-    
+
     public void on_copy_adjustments() {
         if (get_view().get_selected_count() != 1)
             return;
@@ -561,29 +561,29 @@ public abstract class CollectionPage : MediaPage {
         PixelTransformationBundle.set_copied_color_adjustments(photo.get_color_adjustments());
         set_action_sensitive("PasteColorAdjustments", true);
     }
-    
+
     public void on_paste_adjustments() {
         PixelTransformationBundle? copied_adjustments = PixelTransformationBundle.get_copied_color_adjustments();
         if (get_view().get_selected_count() == 0 || copied_adjustments == null)
             return;
-        
+
         AdjustColorsMultipleCommand command = new AdjustColorsMultipleCommand(get_view().get_selected(),
             copied_adjustments, Resources.PASTE_ADJUSTMENTS_LABEL, Resources.PASTE_ADJUSTMENTS_TOOLTIP);
         get_command_manager().execute(command);
     }
-    
+
     private void on_enhance() {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         EnhanceMultipleCommand command = new EnhanceMultipleCommand(get_view().get_selected());
         get_command_manager().execute(command);
     }
-    
+
     private void on_duplicate_photo() {
         if (get_view().get_selected_count() == 0)
             return;
-        
+
         DuplicateMultiplePhotosCommand command = new DuplicateMultiplePhotosCommand(
             get_view().get_selected());
         get_command_manager().execute(command);
@@ -595,7 +595,7 @@ public abstract class CollectionPage : MediaPage {
 
         bool selected_has_videos = false;
         bool only_videos_selected = true;
-        
+
         foreach (DataView dv in get_view().get_selected()) {
             if (dv.get_source() is Video)
                 selected_has_videos = true;
@@ -616,11 +616,11 @@ public abstract class CollectionPage : MediaPage {
             get_command_manager().execute(command);
         }
     }
-    
+
     private void on_external_edit() {
         if (get_view().get_selected_count() != 1)
             return;
-        
+
         Photo photo = (Photo) get_view().get_selected_at(0).get_source();
         try {
             AppWindow.get_instance().set_busy_cursor();
@@ -631,11 +631,11 @@ public abstract class CollectionPage : MediaPage {
             open_external_editor_error_dialog(err, photo);
         }
     }
-    
+
     private void on_external_edit_raw() {
         if (get_view().get_selected_count() != 1)
             return;
-        
+
         Photo photo = (Photo) get_view().get_selected_at(0).get_source();
         if (photo.get_master_file_format() != PhotoFileFormat.RAW)
             return;
@@ -649,12 +649,12 @@ public abstract class CollectionPage : MediaPage {
             AppWindow.error_message(Resources.launch_editor_failed(err));
         }
     }
-    
+
     public void on_set_background() {
         Gee.ArrayList<LibraryPhoto> photos = new Gee.ArrayList<LibraryPhoto>();
         MediaSourceCollection.filter_media((Gee.Collection<MediaSource>) get_view().get_selected_sources(),
             photos, null);
-        
+
         bool desktop, screensaver;
         if (photos.size == 1) {
             SetBackgroundPhotoDialog dialog = new SetBackgroundPhotoDialog();
@@ -674,30 +674,30 @@ public abstract class CollectionPage : MediaPage {
             }
         }
     }
-    
+
     private void on_slideshow() {
         if (get_view().get_count() == 0)
             return;
-        
+
         // use first selected photo, else use first photo
         Gee.List<DataSource>? sources = (get_view().get_selected_count() > 0)
             ? get_view().get_selected_sources_of_type(typeof(LibraryPhoto))
             : get_view().get_sources_of_type(typeof(LibraryPhoto));
         if (sources == null || sources.size == 0)
             return;
-        
+
         Thumbnail? thumbnail = (Thumbnail?) get_view().get_view_for_source(sources[0]);
         if (thumbnail == null)
             return;
-        
+
         LibraryPhoto? photo = thumbnail.get_media_source() as LibraryPhoto;
         if (photo == null)
             return;
-        
+
         AppWindow.get_instance().go_fullscreen(new SlideshowPage(LibraryPhoto.global, get_view(),
             photo));
     }
-    
+
     protected override bool on_ctrl_pressed(Gdk.EventKey? event) {
         Gtk.ToolButton? rotate_button = this.builder.get_object ("ToolRotate") as Gtk.ToolButton;
         if (rotate_button != null) {
@@ -708,7 +708,7 @@ public abstract class CollectionPage : MediaPage {
 
         return base.on_ctrl_pressed(event);
     }
-    
+
     protected override bool on_ctrl_released(Gdk.EventKey? event) {
         Gtk.ToolButton? rotate_button = this.builder.get_object ("ToolRotate") as Gtk.ToolButton;
         if (rotate_button != null) {
@@ -719,7 +719,7 @@ public abstract class CollectionPage : MediaPage {
 
         return base.on_ctrl_released(event);
     }
-    
+
     public override SearchViewFilter get_search_view_filter() {
         return search_filter;
     }

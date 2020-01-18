@@ -12,7 +12,7 @@ Gdk.RGBA fetch_color(string spec) {
     Gdk.RGBA rgba = Gdk.RGBA();
     if (!rgba.parse(spec))
         error("Can't parse color %s", spec);
-    
+
     return rgba;
 }
 
@@ -219,10 +219,10 @@ void fix_cairo_pixbuf(Gdk.Pixbuf pixbuf) {
  * @param angle The amount to rotate by, given in degrees.
  * @param dest_width The width of the computed rectangle.
  * @param dest_height The height of the computed rectangle.
- */ 
+ */
 void compute_arb_rotated_size(double src_width, double src_height, double angle,
     out double dest_width, out double dest_height) {
-    
+
     angle = Math.fabs(degrees_to_radians(angle));
     assert(angle <= Math.PI_2);
     dest_width = src_width * Math.cos(angle) + src_height * Math.sin(angle);
@@ -234,7 +234,7 @@ void compute_arb_rotated_size(double src_width, double src_height, double angle,
  *
  * @param source_pixbuf The source image that needs to be angled.
  * @param angle The angle the source image should be rotated by.
- */ 
+ */
 Gdk.Pixbuf rotate_arb(Gdk.Pixbuf source_pixbuf, double angle) {
     // if the straightening angle has been reset
     // or was never set in the first place, nothing
@@ -249,7 +249,7 @@ Gdk.Pixbuf rotate_arb(Gdk.Pixbuf source_pixbuf, double angle) {
     double x_tmp, y_tmp;
     compute_arb_rotated_size(source_pixbuf.width, source_pixbuf.height, angle,
                              out x_tmp, out y_tmp);
-                             
+
     Gdk.Pixbuf dest_pixbuf = new Gdk.Pixbuf(
             Gdk.Colorspace.RGB, true, 8, (int) Math.round(x_tmp), (int) Math.round(y_tmp));
 
@@ -257,21 +257,21 @@ Gdk.Pixbuf rotate_arb(Gdk.Pixbuf source_pixbuf, double angle) {
         (uchar []) dest_pixbuf.pixels,
         source_pixbuf.has_alpha ? Cairo.Format.ARGB32 : Cairo.Format.RGB24,
         dest_pixbuf.width, dest_pixbuf.height, dest_pixbuf.rowstride);
-            
+
     Cairo.Context context = new Cairo.Context(surface);
-    
+
     context.set_source_rgb(0, 0, 0);
     context.rectangle(0, 0, dest_pixbuf.width, dest_pixbuf.height);
     context.fill();
-    
+
     context.translate(dest_pixbuf.width / 2, dest_pixbuf.height / 2);
     context.rotate(degrees_to_radians(angle));
     context.translate(- source_pixbuf.width / 2, - source_pixbuf.height / 2);
-    
+
     Gdk.cairo_set_source_pixbuf(context, source_pixbuf, 0, 0);
     context.get_source().set_filter(Cairo.Filter.BEST);
     context.paint();
-    
+
     // prepare the newly-drawn image for use by
     // the rest of the pipeline.
     fix_cairo_pixbuf(dest_pixbuf);
@@ -303,21 +303,21 @@ Gdk.Point rotate_point_arb(Gdk.Point source_point, int img_w, int img_h, double 
     double dest_width;
     double dest_height;
     compute_arb_rotated_size(img_w, img_h, angle, out dest_width, out dest_height);
-    
+
     Cairo.Matrix matrix = Cairo.Matrix.identity();
     matrix.translate(dest_width / 2, dest_height / 2);
     matrix.rotate(degrees_to_radians(angle));
     matrix.translate(- img_w / 2, - img_h / 2);
     if (invert)
         assert(matrix.invert() == Cairo.Status.SUCCESS);
-    
-    double dest_x = source_point.x; 
+
+    double dest_x = source_point.x;
     double dest_y = source_point.y;
     matrix.transform_point(ref dest_x, ref dest_y);
-    
+
     return { (int) dest_x, (int) dest_y };
 }
-    
+
 /**
  * @brief <u>De</u>rotates a point around the upper left corner of an image from an arbitrary angle,
  * given in degrees, and returns the de-rotated point, taking into account any translation necessary
@@ -397,22 +397,22 @@ Box clamp_inside_rotated_image(Box src, int img_w, int img_h, double angle_deg,
     Gdk.Point top_right = derotate_point_arb({src.right, src.top}, img_w, img_h, angle_deg);
     Gdk.Point bottom_left = derotate_point_arb({src.left, src.bottom}, img_w, img_h, angle_deg);
     Gdk.Point bottom_right = derotate_point_arb({src.right, src.bottom}, img_w, img_h, angle_deg);
-    
+
     double angle = degrees_to_radians(angle_deg);
     int top_offset = 0, bottom_offset = 0, left_offset = 0, right_offset = 0;
-    
+
     int top = int.min(top_left.y, top_right.y);
     if (top < 0)
         top_offset = (int) ((0 - top) * Math.cos(angle));
-        
+
     int bottom = int.max(bottom_left.y, bottom_right.y);
     if (bottom > img_h)
         bottom_offset = (int) ((img_h - bottom) * Math.cos(angle));
-        
+
     int left = int.min(top_left.x, bottom_left.x);
     if (left < 0)
         left_offset = (int) ((0 - left) * Math.cos(angle));
-        
+
     int right = int.max(top_right.x, bottom_right.x);
     if (right > img_w)
         right_offset = (int) ((img_w - right) * Math.cos(angle));

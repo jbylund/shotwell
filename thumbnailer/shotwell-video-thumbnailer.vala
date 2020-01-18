@@ -1,6 +1,6 @@
 /* Copyright 2016 Software Freedom Conservancy Inc.
- * 
- * This is a Vala-rewrite of GStreamer snapshot example. Adapted from earlier 
+ *
+ * This is a Vala-rewrite of GStreamer snapshot example. Adapted from earlier
  * work from Wim Taymans.
  *
  * This software is licensed under the GNU LGPL (version 2.1 or later).
@@ -41,16 +41,16 @@ class ShotwellThumbnailer {
             stdout.printf("usage: %s [filename]\n Writes video thumbnail to stdout\n", args[0]);
             return 1;
         }
-        
+
         descr = "playbin uri=\"%s\" audio-sink=fakesink video-sink=\"gdkpixbufsink name=sink\"".printf(File.new_for_commandline_arg(args[1]).get_uri());
-        
+
         try {
             // Create new pipeline.
             pipeline = Gst.parse_launch(descr);
-            
+
             // Get sink.
             sink = pipeline.video_sink;
-            
+
             // Set to PAUSED to make the first frame arrive in the sink.
             ret = pipeline.set_state(Gst.State.PAUSED);
             if (ret == Gst.StateChangeReturn.FAILURE) {
@@ -60,7 +60,7 @@ class ShotwellThumbnailer {
                 warning("Live sources not supported yet.\n");
                 return 4;
             }
-            
+
             // This can block for up to 5 seconds. If your machine is really overloaded,
             // it might time out before the pipeline prerolled and we generate an error. A
             // better way is to run a mainloop and catch errors there.
@@ -125,12 +125,12 @@ class ShotwellThumbnailer {
 
             // cleanup and exit.
             pipeline.set_state(Gst.State.NULL);
-            
+
         } catch (Error e) {
             warning(e.message);
             return 2;
         }
-        
+
         return 0;
     }
 }

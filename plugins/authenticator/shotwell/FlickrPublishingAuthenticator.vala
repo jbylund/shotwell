@@ -183,7 +183,6 @@ namespace Publishing.Authenticator.Shotwell.Flickr {
                 host.post_error(new Spit.Publishing.PublishingError.MALFORMED_RESPONSE(
                             "'%s' isn't a valid response to an OAuth authentication request", response));
 
-
             on_authentication_token_available(oauth_token, oauth_token_secret);
         }
 

@@ -34,18 +34,18 @@ public abstract class PhotoFileSniffer {
         GET_ALL =       0x00000000,
         NO_MD5 =        0x00000001
     }
-    
+
     protected File file;
     protected Options options;
     protected bool calc_md5;
-    
+
     protected PhotoFileSniffer(File file, Options options) {
         this.file = file;
         this.options = options;
-        
+
         calc_md5 = (options & Options.NO_MD5) == 0;
     }
-    
+
     public abstract DetectedPhotoInformation? sniff(out bool is_corrupted) throws Error;
 }
 
@@ -63,39 +63,39 @@ public class PhotoFileInterrogator {
     private PhotoFileSniffer.Options options;
     private DetectedPhotoInformation? detected = null;
     private bool is_photo_corrupted = false;
-    
+
     public PhotoFileInterrogator(File file,
         PhotoFileSniffer.Options options = PhotoFileSniffer.Options.GET_ALL) {
         this.file = file;
         this.options = options;
     }
-    
+
     // This should only be called after interrogate().  Will return null every time, otherwise.
     // If called after interrogate and returns null, that indicates the file is not an image file.
     public DetectedPhotoInformation? get_detected_photo_information() {
         return detected;
     }
-    
+
     // Call after interrogate().
     public bool get_is_photo_corrupted() {
         return is_photo_corrupted;
     }
-    
+
     public void interrogate() throws Error {
         foreach (PhotoFileFormat file_format in PhotoFileFormat.get_supported()) {
             PhotoFileSniffer sniffer = file_format.create_sniffer(file, options);
-            
+
             bool is_corrupted;
             detected = sniffer.sniff(out is_corrupted);
             if (detected != null && !is_corrupted) {
                 assert(detected.file_format == file_format);
-                
+
                 break;
             } else if (is_corrupted) {
                 message("Sniffing halted for %s: potentially corrupted image file", file.get_path());
                 is_photo_corrupted = true;
                 detected = null;
-                
+
                 break;
             }
         }

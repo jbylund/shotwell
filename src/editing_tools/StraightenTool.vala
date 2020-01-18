@@ -34,7 +34,7 @@ public class StraightenTool : EditingTool {
             this.is_active = true;
             this.angle0 = angle;
         }
-        
+
         public bool update(int x, int y) {
             if (this.is_active) {
                 this.x[1] = x;
@@ -44,7 +44,7 @@ public class StraightenTool : EditingTool {
 
             return false;
         }
-        
+
         public void clear() {
             this.is_active = false;
         }
@@ -67,15 +67,15 @@ public class StraightenTool : EditingTool {
         public void draw(Cairo.Context ctx) {
             if (!is_active)
                 return;
-            
+
             double angle = get_angle() ?? 0.0;
             if (angle == 0.0)
                 return;
-                
+
             double alpha = 1.0;
             if (angle < MIN_ANGLE || angle > MAX_ANGLE)
                 alpha = 0.35;
-                
+
             // b&w dashing so it will be more visible on
             // different backgrounds.
             ctx.set_source_rgba(0.0, 0.0, 0.0, alpha);
@@ -84,13 +84,13 @@ public class StraightenTool : EditingTool {
             ctx.line_to(x[1] + 0.5, y[1] + 0.5);
             ctx.stroke();
             ctx.set_dash(GUIDE_DASH, -GUIDE_DASH[0] / 2);
-            ctx.set_source_rgba(1.0, 1.0, 1.0, alpha); 
+            ctx.set_source_rgba(1.0, 1.0, 1.0, alpha);
             ctx.move_to(x[0] + 0.5, y[0] + 0.5);
             ctx.line_to(x[1] + 0.5, y[1] + 0.5);
             ctx.stroke();
         }
     }
-    
+
     private class StraightenToolWindow : EditingToolWindow {
         public const int CONTROL_SPACING = 8;
 
@@ -178,11 +178,11 @@ public class StraightenTool : EditingTool {
     private int crop_height;
 
     private StraightenGuide guide = new StraightenGuide();
-    
+
     // As the crop box rotates, we adjust its center and/or scale it so that it fits in the image.
     private Gdk.Point rotated_center;   // in image coordinates
     private double rotate_scale;    // always <= 1.0: rotation may shrink but not grow box
-    
+
     private double preview_scale;
 
     private StraightenTool() {
@@ -228,7 +228,7 @@ public class StraightenTool : EditingTool {
         update_rotated_surface();
         this.canvas.repaint();
     }
-    
+
     private void on_slider_stopped_delayed() {
         high_qual_repaint();
     }
@@ -275,7 +275,7 @@ public class StraightenTool : EditingTool {
             return;     // no change
 
         last_viewport = viewport;
-            
+
         Gdk.Pixbuf low_res_tmp = null;
         try {
             low_res_tmp =
@@ -305,7 +305,7 @@ public class StraightenTool : EditingTool {
     void adjust_for_rotation() {
         double width, height;
         compute_arb_rotated_size(crop_width, crop_height, photo_angle, out width, out height);
-        
+
         // First compute a scaling factor that will let the rotated box fit in the image.
         rotate_scale = double.min(image_dims.width / width, image_dims.height / height);
         rotate_scale = double.min(rotate_scale, 1.0);
@@ -352,7 +352,7 @@ public class StraightenTool : EditingTool {
             image_dims.width, image_dims.height, incoming_angle);
         crop_width = crop_region.get_width();
         crop_height = crop_region.get_height();
-        
+
         adjust_for_rotation();
 
         prepare_image();
@@ -454,7 +454,7 @@ public class StraightenTool : EditingTool {
     /**
      * Draw the rotated photo and grid.
      */
-    private void update_rotated_surface() {        
+    private void update_rotated_surface() {
         draw_rotated_source(photo_surf, rotate_ctx, view_width, view_height, photo_angle);
         rotate_ctx.set_line_width(1.0);
         draw_superimposed_grid(rotate_ctx, view_width, view_height);

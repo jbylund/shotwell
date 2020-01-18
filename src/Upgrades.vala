@@ -11,15 +11,15 @@ public class Upgrades {
     private static Upgrades? instance = null;
     private uint64 total_steps = 0;
     private Gee.LinkedList<UpgradeTask> task_list = new Gee.LinkedList<UpgradeTask>();
-    
+
     private Upgrades() {
         // Add all upgrade tasks here.
         add(new MimicsRemovalTask());
-        
+
         if (Application.get_instance().get_raw_thumbs_fix_required())
             add(new FixupRawThumbnailsTask());
     }
-    
+
     // Call this to initialize the subsystem.
     public static void init() {
         assert(instance == null);
@@ -29,18 +29,18 @@ public class Upgrades {
     public static Upgrades get_instance() {
         return instance;
     }
-    
+
     // Gets the total number of steps for the progress monitor.
     public uint64 get_step_count() {
         return total_steps;
     }
-    
+
     // Performs all upgrade tasks.
     public void execute(ProgressMonitor? monitor = null) {
         foreach (UpgradeTask task in task_list)
             task.execute(monitor);
     }
-    
+
     private void add(UpgradeTask task) {
         total_steps += task.get_step_count();
         task_list.add(task);
@@ -53,7 +53,7 @@ public class Upgrades {
 private interface UpgradeTask : Object{
     // Returns the number of steps involved in the upgrade.
     public abstract uint64 get_step_count();
-    
+
     // Performs the upgrade.  Note that when using the progress
     // monitor, the total number of steps must be equal to the
     // step count above.
@@ -67,7 +67,7 @@ private class MimicsRemovalTask : Object, UpgradeTask {
     // Mimics folder (to be deleted, if present)
     private File mimic_dir = AppDirs.get_data_dir().get_child("mimics");
     private uint64 num_mimics = 0;
-    
+
     public uint64 get_step_count() {
         try {
             num_mimics = count_files_in_directory(mimic_dir);
@@ -76,7 +76,7 @@ private class MimicsRemovalTask : Object, UpgradeTask {
         }
         return num_mimics;
     }
-    
+
     public void execute(ProgressMonitor? monitor = null) {
         try {
             delete_all_files(mimic_dir, null, monitor, num_mimics, null);
@@ -93,17 +93,17 @@ private class MimicsRemovalTask : Object, UpgradeTask {
 private class FixupRawThumbnailsTask : Object, UpgradeTask {
     public uint64 get_step_count() {
         int num_raw_files = 0;
-        
+
         foreach (PhotoRow phr in PhotoTable.get_instance().get_all()) {
             if (phr.master.file_format == PhotoFileFormat.RAW)
                 num_raw_files++;
         }
         return num_raw_files;
     }
-    
+
     public void execute(ProgressMonitor? monitor = null) {
         debug("Executing thumbnail deletion and fixup");
-        
+
         foreach (PhotoRow phr in PhotoTable.get_instance().get_all()) {
             if ((phr.master.file_format == PhotoFileFormat.RAW) &&
                 (phr.developer == RawDeveloper.CAMERA)) {

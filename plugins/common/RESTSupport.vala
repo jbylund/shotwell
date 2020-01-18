@@ -26,7 +26,7 @@ public abstract class Session {
     private string? endpoint_url = null;
     private Soup.Session soup_session = null;
     private bool transactions_stopped = false;
-    
+
     public signal void wire_message_unqueued(Soup.Message message);
     public signal void authenticated();
     public signal void authentication_failed(Spit.Publishing.PublishingError err);
@@ -36,41 +36,41 @@ public abstract class Session {
         soup_session = new Soup.Session ();
         this.soup_session.ssl_use_system_ca_file = true;
     }
-    
+
     protected void notify_wire_message_unqueued(Soup.Message message) {
         wire_message_unqueued(message);
     }
-    
+
     protected void notify_authenticated() {
         authenticated();
     }
-    
+
     protected void notify_authentication_failed(Spit.Publishing.PublishingError err) {
         authentication_failed(err);
     }
 
     public abstract bool is_authenticated();
-    
+
     public string? get_endpoint_url() {
         return endpoint_url;
     }
-    
+
     public void stop_transactions() {
         transactions_stopped = true;
         soup_session.abort();
     }
-    
+
     public bool are_transactions_stopped() {
         return transactions_stopped;
     }
-    
+
     public void send_wire_message(Soup.Message message) {
         if (are_transactions_stopped())
             return;
 
         soup_session.request_unqueued.connect(notify_wire_message_unqueued);
         soup_session.send_message(message);
-        
+
         soup_session.request_unqueued.disconnect(notify_wire_message_unqueued);
     }
 
@@ -140,7 +140,7 @@ public class Argument {
     public static int compare(Argument arg1, Argument arg2) {
         return strcmp(arg1.key, arg2.key);
     }
-    
+
     public static Argument[] sort(Argument[] inputArray) {
         Gee.TreeSet<Argument> sorted_args = new Gee.TreeSet<Argument>(Argument.compare);
 
@@ -164,17 +164,16 @@ public class Transaction {
     private Spit.Publishing.PublishingError? err = null;
     private string? endpoint_url = null;
     private bool use_custom_payload;
-    
+
     public signal void chunk_transmitted(int bytes_written_so_far, int total_bytes);
     public signal void network_error(Spit.Publishing.PublishingError err);
     public signal void completed();
 
-    
     public Transaction(Session parent_session, HttpMethod method = HttpMethod.POST) {
         // if our creator doesn't specify an endpoint url by using the Transaction.with_endpoint_url
         // constructor, then our parent session must have a non-null endpoint url
         assert(parent_session.get_endpoint_url() != null);
-        
+
         this.parent_session = parent_session;
 
         message = new Soup.Message(method.to_string(), parent_session.get_endpoint_url());
@@ -268,12 +267,12 @@ public class Transaction {
             case Soup.Status.CREATED: // HTTP code 201 (CREATED) signals that a new
                                                // resource was created in response to a PUT or POST
             break;
-            
+
             case Soup.Status.CANT_RESOLVE:
             case Soup.Status.CANT_RESOLVE_PROXY:
                 throw new Spit.Publishing.PublishingError.NO_ANSWER("Unable to resolve %s (error code %u)",
                     get_endpoint_url(), message.status_code);
-            
+
             case Soup.Status.CANT_CONNECT:
             case Soup.Status.CANT_CONNECT_PROXY:
                 throw new Spit.Publishing.PublishingError.NO_ANSWER("Unable to connect to %s (error code %u)",
@@ -281,7 +280,7 @@ public class Transaction {
             case Soup.Status.SSL_FAILED:
                 throw new Spit.Publishing.PublishingError.SSL_FAILED ("Unable to connect to %s: Secure connection failed",
                     get_endpoint_url ());
-            
+
             default:
                 // status codes below 100 are used by Soup, 100 and above are defined HTTP codes
                 if (message.status_code >= 100) {
@@ -292,7 +291,7 @@ public class Transaction {
                         get_endpoint_url(), message.status_code);
                 }
         }
-        
+
         // All valid communication involves body data in the response
         if (message.response_body.data == null || message.response_body.data.length == 0)
             throw new Spit.Publishing.PublishingError.MALFORMED_RESPONSE("No response data from %s",
@@ -302,11 +301,11 @@ public class Transaction {
     public Argument[] get_arguments() {
         return arguments;
     }
-    
+
     public Argument[] get_sorted_arguments() {
         return Argument.sort(get_arguments());
     }
-    
+
     protected void set_is_executed(bool is_executed) {
         this.is_executed = is_executed;
     }
@@ -315,15 +314,15 @@ public class Transaction {
         parent_session.wire_message_unqueued.connect(on_message_unqueued);
         message.wrote_body_data.connect(on_wrote_body_data);
         parent_session.send_wire_message(message);
-        
+
         parent_session.wire_message_unqueued.disconnect(on_message_unqueued);
         message.wrote_body_data.disconnect(on_wrote_body_data);
-        
+
         if (err != null)
             network_error(err);
         else
             completed();
-        
+
         if (err != null)
             throw err;
      }
@@ -335,12 +334,12 @@ public class Transaction {
     protected virtual void add_header(string key, string value) {
         message.request_headers.append(key, value);
     }
-    
+
     // set custom_payload to null to have this transaction send the default payload of
     // key-value pairs appended through add_argument(...) (this is how most REST requests work).
     // To send a payload other than traditional key-value pairs (such as an XML document or a JPEG
     // image) to the endpoint, set the custom_payload parameter to a non-null value. If the
-    // custom_payload you specify is text data, then it's null terminated, and its length is just 
+    // custom_payload you specify is text data, then it's null terminated, and its length is just
     // custom_payload.length, so you don't have to pass in a payload_length parameter in this case.
     // If, however, custom_payload is binary data (such as a JEPG), then the caller must set
     // payload_length to the byte length of the custom_payload buffer
@@ -352,13 +351,13 @@ public class Transaction {
             use_custom_payload = false;
             return;
         }
-        
+
         ulong length = (payload_length > 0) ? payload_length : custom_payload.length;
         message.set_request(payload_content_type, Soup.MemoryUse.COPY, custom_payload.data[0:length]);
 
         use_custom_payload = true;
     }
-    
+
     // When writing a specialized transaction subclass you should rarely need to
     // call this method. In general, it's better to leave the underlying Soup message
     // alone and let the Transaction class manage it for you. You should only need
@@ -367,7 +366,7 @@ public class Transaction {
     protected void set_message(Soup.Message message) {
         this.message = message;
     }
-    
+
     public bool get_is_executed() {
         return is_executed;
     }
@@ -387,7 +386,7 @@ public class Transaction {
 
             return;
          }
-         
+
         //  REST POST requests must transmit at least one argument
         if (get_method() == HttpMethod.POST)
             assert(arguments.length > 0);
@@ -399,7 +398,7 @@ public class Transaction {
             if (i < arguments.length - 1)
                 formdata_string += "&";
         }
-        
+
         // for GET requests with arguments, append the formdata string to the endpoint url after a
         // query divider ('?') -- but make sure to save the old (caller-specified) endpoint URL
         // and restore it after the GET so that the underlying Soup message remains consistent
@@ -430,7 +429,7 @@ public class Transaction {
         assert(get_is_executed());
         return (string) message.response_body.data;
     }
-    
+
     public unowned Soup.MessageHeaders get_response_headers() {
         assert(get_is_executed());
         return message.response_headers;
@@ -440,7 +439,7 @@ public class Transaction {
         assert(get_is_executed());
         return message;
     }
-   
+
     public void add_argument(string name, string value) {
         arguments += new Argument(name, value);
     }
@@ -456,11 +455,11 @@ public class Transaction {
 
         add_argument(name, value);
     }
-    
+
     public string? get_endpoint_url() {
         return (endpoint_url != null) ? endpoint_url : parent_session.get_endpoint_url();
     }
-    
+
     public Session get_parent_session() {
         return parent_session;
     }
@@ -478,10 +477,10 @@ public class UploadTransaction : Transaction {
         this.mime_type = media_type_to_mime_type(publishable.get_media_type());
 
         binary_disposition_table = create_default_binary_disposition_table();
-        
+
         message_headers = new Gee.HashMap<string, string>();
     }
-    
+
     public UploadTransaction.with_endpoint_url(Session session,
         Spit.Publishing.Publishable publishable, string endpoint_url) {
         base.with_endpoint_url(session, endpoint_url);
@@ -489,14 +488,14 @@ public class UploadTransaction : Transaction {
         this.mime_type = media_type_to_mime_type(publishable.get_media_type());
 
         binary_disposition_table = create_default_binary_disposition_table();
-        
+
         message_headers = new Gee.HashMap<string, string>();
     }
-    
+
     protected override void add_header(string key, string value) {
         message_headers.set(key, value);
     }
-    
+
     private static string media_type_to_mime_type(Spit.Publishing.Publisher.MediaType media_type) {
         if (media_type == Spit.Publishing.Publisher.MediaType.PHOTO)
             return "image/jpeg";
@@ -560,18 +559,18 @@ public class UploadTransaction : Transaction {
             cont = i.next();
         }
         set_message(outbound_message);
-        
+
         set_is_executed(true);
         send();
     }
 }
 
 public class XmlDocument {
-    // Returns non-null string if an error condition is discovered in the XML (such as a well-known 
+    // Returns non-null string if an error condition is discovered in the XML (such as a well-known
     // node).  The string is used when generating a PublishingError exception.  This delegate does
     // not need to check for general-case malformed XML.
     public delegate string? CheckForErrorResponse(XmlDocument doc);
-    
+
     private Xml.Doc* document;
 
     private XmlDocument(Xml.Doc* doc) {
@@ -589,7 +588,7 @@ public class XmlDocument {
     public Xml.Node* get_named_child(Xml.Node* parent, string child_name)
         throws Spit.Publishing.PublishingError {
         Xml.Node* doc_node_iter = parent->children;
-    
+
         for ( ; doc_node_iter != null; doc_node_iter = doc_node_iter->next) {
             if (doc_node_iter->name == child_name)
                 return doc_node_iter;
@@ -600,7 +599,7 @@ public class XmlDocument {
     }
 
     public string get_property_value(Xml.Node* node, string property_key)
-        throws Spit.Publishing.PublishingError {  
+        throws Spit.Publishing.PublishingError {
         string value_string = node->get_prop(property_key);
         if (value_string == null)
             throw new Spit.Publishing.PublishingError.MALFORMED_RESPONSE("Can't find XML " +
@@ -636,13 +635,13 @@ public class XmlDocument {
             throw new Spit.Publishing.PublishingError.MALFORMED_RESPONSE("Unable to parse XML " +
                 "document");
         }
-        
+
         XmlDocument rest_doc = new XmlDocument(doc);
 
         string? result = check_for_error_response(rest_doc);
         if (result != null)
             throw new Spit.Publishing.PublishingError.SERVICE_ERROR("%s", result);
-        
+
         return rest_doc;
     }
 }
@@ -657,11 +656,11 @@ public string decimal_entity_encode(string source) {
     string current_char = source;
     while (true) {
         int current_char_value = (int) (current_char.get_char_validated());
-        
+
         // null character signals end of string
         if (current_char_value < 1)
             break;
-        
+
         // no need to escape ASCII characters except the ampersand, greater-than sign and less-than
         // signs, which are special in the world of XML
         if ((current_char_value < 128) && (current_char_value != '&') && (current_char_value != '<') &&
@@ -672,7 +671,7 @@ public string decimal_entity_encode(string source) {
 
         current_char = current_char.next_char();
     }
-    
+
     return encoded_str_builder.str;
 }
 
@@ -695,7 +694,7 @@ public abstract class BatchUploader {
         bool stop = false;
         foreach (Spit.Publishing.Publishable publishable in publishables) {
             GLib.File? file = publishable.get_serialized_file();
-            
+
             // if the current publishable hasn't been serialized, then skip it
             if (file == null) {
                 current_file++;
@@ -707,28 +706,28 @@ public abstract class BatchUploader {
                     status_updated(current_file + 1, fraction_complete);
 
             Transaction txn = create_transaction(publishables[current_file]);
-           
+
             txn.chunk_transmitted.connect(on_chunk_transmitted);
-            
+
             try {
                 txn.execute();
             } catch (Spit.Publishing.PublishingError err) {
                 upload_error(err);
                 stop = true;
             }
-                
-            txn.chunk_transmitted.disconnect(on_chunk_transmitted);           
-            
+
+            txn.chunk_transmitted.disconnect(on_chunk_transmitted);
+
             if (stop)
                 break;
-            
+
             current_file++;
         }
-        
+
         if (!stop)
             upload_complete(current_file);
     }
-    
+
     private void on_chunk_transmitted(int bytes_written_so_far, int total_bytes) {
         double file_span = 1.0 / publishables.length;
         double this_file_fraction_complete = ((double) bytes_written_so_far) / total_bytes;
@@ -738,17 +737,17 @@ public abstract class BatchUploader {
 		if (status_updated != null)
 	        status_updated(current_file + 1, fraction_complete);
     }
-    
+
     protected Session get_session() {
         return session;
     }
-    
+
     protected Spit.Publishing.Publishable get_current_publishable() {
         return publishables[current_file];
     }
-    
+
     protected abstract Transaction create_transaction(Spit.Publishing.Publishable publishable);
-    
+
     public void upload(Spit.Publishing.ProgressCallback? status_updated = null) {
         this.status_updated = status_updated;
 
@@ -762,14 +761,14 @@ public abstract class BatchUploader {
 // may be empty.
 public string asciify_string(string s) {
     string t = s.normalize();  // default normalization yields a maximally decomposed form
-    
+
     StringBuilder b = new StringBuilder();
     for (unowned string u = t; u.get_char() != 0 ; u = u.next_char()) {
         unichar c = u.get_char();
         if ((int) c < 128)
             b.append_unichar(c);
     }
-    
+
     return b.str;
 }
 
@@ -782,39 +781,39 @@ public abstract class GoogleSession : Session {
 public abstract class GooglePublisher : Object, Spit.Publishing.Publisher {
     private const string OAUTH_CLIENT_ID = "1073902228337-gm4uf5etk25s0hnnm0g7uv2tm2bm1j0b.apps.googleusercontent.com";
     private const string OAUTH_CLIENT_SECRET = "_kA4RZz72xqed4DqfO7xMmMN";
-    
+
     private class GoogleSessionImpl : GoogleSession {
         public string? access_token;
         public string? user_name;
         public string? refresh_token;
-        
+
         public GoogleSessionImpl() {
             this.access_token = null;
             this.user_name = null;
             this.refresh_token = null;
         }
-        
+
         public override bool is_authenticated() {
             return (access_token != null);
         }
-        
+
         public override string get_user_name() {
             assert (user_name != null);
             return user_name;
         }
-        
+
         public override string get_access_token() {
             assert(is_authenticated());
             return access_token;
         }
-        
+
         public override void deauthenticate() {
             access_token = null;
             user_name = null;
             refresh_token = null;
         }
     }
-    
+
     public class AuthenticatedTransaction : Publishing.RESTSupport.Transaction {
         private AuthenticatedTransaction.with_endpoint_url(GoogleSession session,
             string endpoint_url, Publishing.RESTSupport.HttpMethod method) {
@@ -835,7 +834,7 @@ public abstract class GooglePublisher : Object, Spit.Publishing.Publisher {
     private weak Spit.Publishing.PluginHost host;
     private weak Spit.Publishing.Service service;
     private Spit.Publishing.Authenticator authenticator;
-    
+
     protected GooglePublisher(Spit.Publishing.Service service, Spit.Publishing.PluginHost host,
         string scope) {
         this.scope = scope;
@@ -857,15 +856,15 @@ public abstract class GooglePublisher : Object, Spit.Publishing.Publisher {
     }
 
     protected abstract void on_login_flow_complete();
-    
+
     protected abstract void do_logout();
-    
+
     public abstract bool is_running();
-    
+
     public abstract void start();
-    
+
     public abstract void stop();
-    
+
     public Spit.Publishing.Service get_service() {
         return service;
     }

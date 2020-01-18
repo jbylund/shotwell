@@ -12,7 +12,7 @@ namespace Util {
 
     public void init() throws Error {
     }
-    
+
     public void terminate() {
     }
 }

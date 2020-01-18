@@ -22,7 +22,7 @@ private abstract class Properties : Gtk.Box {
 
         label.set_justify(Gtk.Justification.RIGHT);
         label.get_style_context().add_class("dim-label");
-        
+
         label.set_markup(GLib.Markup.printf_escaped("<span font_weight=\"bold\">%s</span>", label_text));
 
         if (multi_line) {
@@ -76,25 +76,25 @@ private abstract class Properties : Gtk.Box {
 
         line_count++;
     }
-    
+
     protected string get_prettyprint_time(Time time) {
         string timestring = time.format(Resources.get_hh_mm_format_string());
-        
+
         if (timestring[0] == '0')
             timestring = timestring.substring(1, -1);
-        
+
         return timestring;
     }
-    
+
     protected string get_prettyprint_time_with_seconds(Time time) {
         string timestring = time.format(Resources.get_hh_mm_ss_format_string());
-        
+
         if (timestring[0] == '0')
             timestring = timestring.substring(1, -1);
-        
+
         return timestring;
     }
-    
+
     protected string get_prettyprint_date(Time date) {
         string date_string = null;
         Time today = Time.local(time_t());
@@ -108,7 +108,7 @@ private abstract class Properties : Gtk.Box {
 
         return date_string;
     }
-    
+
     protected virtual void get_single_properties(DataView view) {
     }
 
@@ -129,7 +129,7 @@ private abstract class Properties : Gtk.Box {
             count = view.get_count();
             iter = (Gee.Iterable<DataView>) view.get_all();
         }
-        
+
         if (iter == null || count == 0)
             return;
 
@@ -207,12 +207,12 @@ private class BasicProperties : Properties {
         DataSource source = view.get_source();
 
         title = source.get_name();
-        
-        if (source is PhotoSource || source is PhotoImportSource) {           
+
+        if (source is PhotoSource || source is PhotoImportSource) {
             start_time = (source is PhotoSource) ? ((PhotoSource) source).get_exposure_time() :
                 ((PhotoImportSource) source).get_exposure_time();
             end_time = start_time;
-                        
+
             PhotoMetadata? metadata = (source is PhotoSource) ? ((PhotoSource) source).get_metadata() :
                 ((PhotoImportSource) source).get_metadata();
 
@@ -220,11 +220,11 @@ private class BasicProperties : Properties {
                 exposure = metadata.get_exposure_string();
                 if (exposure == null)
                     exposure = "";
-                
+
                 aperture = metadata.get_aperture_string(true);
                 if (aperture == null)
                     aperture = "";
-                
+
                 iso = metadata.get_iso_string();
                 if (iso == null)
                     iso = "";
@@ -233,10 +233,10 @@ private class BasicProperties : Properties {
                     metadata.get_orientation().rotate_dimensions(metadata.get_pixel_dimensions()) :
                     Dimensions(0, 0);
             }
-            
+
             if (source is PhotoSource)
                 dimensions = ((PhotoSource) source).get_dimensions();
-            
+
             if (source is Photo && ((Photo) source).get_master_file_format() == PhotoFileFormat.RAW) {
                 Photo photo = source as Photo;
                 raw_developer = photo.get_raw_developer().get_label();
@@ -252,7 +252,7 @@ private class BasicProperties : Properties {
             int event_video_count;
             MediaSourceCollection.count_media(event_source.get_media(), out event_photo_count,
                 out event_video_count);
-            
+
             photo_count = event_photo_count;
             video_count = event_video_count;
         } else if (source is VideoSource || source is VideoImportSource) {
@@ -295,7 +295,7 @@ private class BasicProperties : Properties {
                 photo_count++;
             } else if (source is EventSource) {
                 EventSource event_source = (EventSource) source;
-          
+
                 if (event_count == -1)
                     event_count = 0;
 
@@ -351,13 +351,13 @@ private class BasicProperties : Properties {
         // display the title if a Tag page
         if (title == "" && page is TagPage)
             title = ((TagPage) page).get_tag().get_user_visible_name();
-            
+
         if (title != "")
             add_line(_("Title:"), guarded_markup_escape_text(title));
 
         if (photo_count >= 0 || video_count >= 0) {
             string label = _("Items:");
-  
+
             if (event_count >= 0) {
                 string event_num_string = (ngettext("%d Event", "%d Events", event_count)).printf(
                     event_count);
@@ -375,9 +375,9 @@ private class BasicProperties : Properties {
                 add_line(label, video_num_string);
                 return;
             }
-            
+
             add_line(label, photo_num_string);
-            
+
             if (video_count > 0)
                 add_line("", video_num_string);
         }
@@ -415,46 +415,46 @@ private class BasicProperties : Properties {
                 label = "";
             }
         }
-        
+
         if (clip_duration > 0.0) {
             add_line(_("Duration:"), _("%.1f seconds").printf(clip_duration));
         }
-        
+
         if (raw_developer != "") {
             add_line(_("Developer:"), raw_developer);
         }
-        
+
         // RAW+JPEG flag.
         if (raw_assoc != "")
             add_line("", raw_assoc);
 
         if (exposure != "" || aperture != "" || iso != "") {
             string line = null;
-            
+
             // attempt to put exposure and aperture on the same line
             if (exposure != "")
                 line = exposure;
-            
+
             if (aperture != "") {
                 if (line != null)
                     line += ", " + aperture;
                 else
                     line = aperture;
             }
-            
+
             // if not both available but ISO is, add it to the first line
             if ((exposure == "" || aperture == "") && iso != "") {
                 if (line != null)
                     line += ", " + "ISO " + iso;
                 else
                     line = "ISO " + iso;
-                
+
                 add_line(_("Exposure:"), line);
             } else {
                 // fit both on the top line, emit and move on
                 if (line != null)
                     add_line(_("Exposure:"), line);
-                
+
                 // emit ISO on a second unadorned line
                 if (iso != "") {
                     if (line != null)
@@ -505,7 +505,7 @@ private class ExtendedProperties : Properties {
 
     // common stuff
     private string comment;
-        
+
     protected override void clear_properties() {
         base.clear_properties();
 
@@ -562,10 +562,10 @@ private class ExtendedProperties : Properties {
             } catch (Error e) {
                 metadata = photo.get_metadata();
             }
-            
+
             if (metadata == null)
                 return;
-            
+
             // Fix up any timestamp weirdness.
             //
             // If the exposure date wasn't properly set (the most likely cause of this
@@ -573,7 +573,7 @@ private class ExtendedProperties : Properties {
             // row.
             if (metadata.get_exposure_date_time() == null)
                 metadata.set_exposure_date_time(new MetadataDateTime(photo.get_timestamp()));
-            
+
             is_raw = (photo.get_master_file_format() == PhotoFileFormat.RAW);
             original_dim = metadata.get_pixel_dimensions();
             camera_make = metadata.get_camera_make();
@@ -623,10 +623,10 @@ private class ExtendedProperties : Properties {
 
             add_line(_("Focal length:"), (focal_length != "" && focal_length != null) ?
                 focal_length : NO_VALUE);
-            
+
             add_line(_("Exposure date:"), (exposure_date != "" && exposure_date != null) ?
                 exposure_date : NO_VALUE);
-            
+
             add_line(_("Exposure time:"), (exposure_time != "" && exposure_time != null) ?
                 exposure_time : NO_VALUE);
 

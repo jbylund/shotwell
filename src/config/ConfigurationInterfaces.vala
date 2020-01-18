@@ -19,7 +19,7 @@ public enum FuzzyPropertyState {
     UNKNOWN
 }
 
-public enum ConfigurableProperty {   
+public enum ConfigurableProperty {
     AUTO_IMPORT_FROM_LIBRARY = 0,
     GTK_THEME_VARIANT,
     TRANSPARENT_BACKGROUND_TYPE,
@@ -92,15 +92,14 @@ public enum ConfigurableProperty {
     USE_24_HOUR_TIME,
     USE_LOWERCASE_FILENAMES,
     VIDEO_INTERPRETER_STATE_COOKIE,
-    
-    
+
     NUM_PROPERTIES;
 
     public string to_string() {
         switch (this) {
             case AUTO_IMPORT_FROM_LIBRARY:
                 return "AUTO_IMPORT_FROM_LIBRARY";
-                
+
             case GTK_THEME_VARIANT:
                 return "GTK_THEME_VARIANT";
 
@@ -109,43 +108,43 @@ public enum ConfigurableProperty {
 
             case TRANSPARENT_BACKGROUND_COLOR:
                 return "TRANSPARENT_BACKGROUND_COLOR";
-                
+
             case COMMIT_METADATA_TO_MASTERS:
                 return "COMMIT_METADATA_TO_MASTERS";
-                
+
             case DESKTOP_BACKGROUND_FILE:
                 return "DESKTOP_BACKGROUND_FILE";
-                
+
             case DESKTOP_BACKGROUND_MODE:
                 return "DESKTOP_BACKGROUND_MODE";
-                
+
             case SCREENSAVER_FILE:
                 return "SCREENSAVER_FILE";
-                
+
             case SCREENSAVER_MODE:
                 return "SCREENSAVER_MODE";
-                
+
             case DIRECTORY_PATTERN:
                 return "DIRECTORY_PATTERN";
-                
+
             case DIRECTORY_PATTERN_CUSTOM:
                 return "DIRECTORY_PATTERN_CUSTOM";
-                
+
             case DIRECT_WINDOW_HEIGHT:
                 return "DIRECT_WINDOW_HEIGHT";
-                
+
             case DIRECT_WINDOW_MAXIMIZE:
                 return "DIRECT_WINDOW_MAXIMIZE";
-                
+
             case DIRECT_WINDOW_WIDTH:
                 return "DIRECT_WINDOW_WIDTH";
-                
+
             case DISPLAY_BASIC_PROPERTIES:
                 return "DISPLAY_BASIC_PROPERTIES";
-                
+
             case DISPLAY_EXTENDED_PROPERTIES:
                 return "DISPLAY_EXTENDED_PROPERTIES";
-                
+
             case DISPLAY_SIDEBAR:
                 return "DISPLAY_SIDEBAR";
 
@@ -157,31 +156,31 @@ public enum ConfigurableProperty {
 
             case DISPLAY_SEARCH_BAR:
                 return "DISPLAY_SEARCH_BAR";
-                
+
             case DISPLAY_PHOTO_RATINGS:
                 return "DISPLAY_PHOTO_RATINGS";
-                
+
             case DISPLAY_PHOTO_TAGS:
                 return "DISPLAY_PHOTO_TAGS";
-                
+
             case DISPLAY_PHOTO_TITLES:
                 return "DISPLAY_PHOTO_TITLES";
-                
+
             case DISPLAY_PHOTO_COMMENTS:
                 return "DISPLAY_PHOTO_COMMENTS";
-                
+
             case DISPLAY_EVENT_COMMENTS:
                 return "DISPLAY_EVENT_COMMENTS";
-                
+
             case EVENT_PHOTOS_SORT_ASCENDING:
                 return "EVENT_PHOTOS_SORT_ASCENDING";
-                
+
             case EVENT_PHOTOS_SORT_BY:
                 return "EVENT_PHOTOS_SORT_BY";
-                
+
             case EVENTS_SORT_ASCENDING:
                 return "EVENTS_SORT_ASCENDING";
-                
+
             case EXPORT_CONSTRAINT:
                 return "EXPORT_CONSTRAINT";
 
@@ -202,16 +201,16 @@ public enum ConfigurableProperty {
 
             case EXTERNAL_PHOTO_APP:
                 return "EXTERNAL_PHOTO_APP";
-                
+
             case EXTERNAL_RAW_APP:
                 return "EXTERNAL_RAW_APP";
-            
+
             case HIDE_PHOTOS_ALREADY_IMPORTED:
                 return "HIDE_PHOTOS_ALREADY_IMPORTED";
-                
+
             case IMPORT_DIR:
                 return "IMPORT_DIR";
-                
+
             case KEEP_RELATIVITY:
                 return "KEEP_RELATIVITY";
 
@@ -226,34 +225,34 @@ public enum ConfigurableProperty {
 
             case LAST_USED_SERVICE:
                 return "LAST_USED_SERVICE";
-                
+
             case LAST_USED_DATAIMPORTS_SERVICE:
                 return "LAST_USED_DATAIMPORTS_SERVICE";
-                
+
             case LIBRARY_PHOTOS_SORT_ASCENDING:
                 return "LIBRARY_PHOTOS_SORT_ASCENDING";
-                
+
             case LIBRARY_PHOTOS_SORT_BY:
                 return "LIBRARY_PHOTOS_SORT_BY";
-                
+
             case LIBRARY_WINDOW_HEIGHT:
                 return "LIBRARY_WINDOW_HEIGHT";
-                
+
             case LIBRARY_WINDOW_MAXIMIZE:
                 return "LIBRARY_WINDOW_MAXIMIZE";
-                
+
             case LIBRARY_WINDOW_WIDTH:
                 return "LIBRARY_WINDOW_WIDTH";
-                
+
             case MODIFY_ORIGINALS:
                 return "MODIFY_ORIGINALS";
-                
+
             case PHOTO_THUMBNAIL_SCALE:
                 return "PHOTO_THUMBNAIL_SCALE";
-                
+
             case PIN_TOOLBAR_STATE:
                 return "PIN_TOOLBAR_STATE";
-                
+
             case PRINTING_CONTENT_HEIGHT:
                 return "PRINTING_CONTENT_HEIGHT";
 
@@ -262,55 +261,55 @@ public enum ConfigurableProperty {
 
             case PRINTING_CONTENT_PPI:
                 return "PRINTING_CONTENT_PPI";
-                
+
             case PRINTING_CONTENT_UNITS:
                 return "PRINTING_CONTENT_UNITS";
-                
+
             case PRINTING_CONTENT_WIDTH:
                 return "PRINTING_CONTENT_WIDTH";
-                
+
             case PRINTING_IMAGES_PER_PAGE:
                 return "PRINTING_IMAGES_PER_PAGE";
-                
+
             case PRINTING_MATCH_ASPECT_RATIO:
                 return "PRINTING_MATCH_ASPECT_RATIO";
-                
+
             case PRINTING_PRINT_TITLES:
                 return "PRINTING_PRINT_TITLES";
-                
+
             case PRINTING_SIZE_SELECTION:
                 return "PRINTING_SIZE_SELECTION";
-                
+
             case PRINTING_TITLES_FONT:
                 return "PRINTING_TITLES_FONT";
-                
+
             case RAW_DEVELOPER_DEFAULT:
                 return "RAW_DEVELOPER_DEFAULT";
-                
+
             case SHOW_WELCOME_DIALOG:
                 return "SHOW_WELCOME_DIALOG";
-                
+
             case SIDEBAR_POSITION:
                 return "SIDEBAR_POSITION";
-                
+
             case SLIDESHOW_DELAY:
                 return "SLIDESHOW_DELAY";
-                
+
             case SLIDESHOW_TRANSITION_DELAY:
                 return "SLIDESHOW_TRANSITION_DELAY";
-                
+
             case SLIDESHOW_TRANSITION_EFFECT_ID:
                 return "SLIDESHOW_TRANSITION_EFFECT_ID";
-            
+
             case SLIDESHOW_SHOW_TITLE:
                 return "SLIDESHOW_SHOW_TITLE";
-                
+
             case USE_24_HOUR_TIME:
                 return "USE_24_HOUR_TIME";
-                
+
             case USE_LOWERCASE_FILENAMES:
                 return "USE_LOWERCASE_FILENAMES";
-                
+
             case VIDEO_INTERPRETER_STATE_COOKIE:
                 return "VIDEO_INTERPRETER_STATE_COOKIE";
 
@@ -327,20 +326,20 @@ public interface ConfigurationEngine : GLib.Object {
 
     public abstract int get_int_property(ConfigurableProperty p) throws ConfigurationError;
     public abstract void set_int_property(ConfigurableProperty p, int val) throws ConfigurationError;
-    
+
     public abstract int get_enum_property(ConfigurableProperty p) throws ConfigurationError;
     public abstract void set_enum_property(ConfigurableProperty p, int val) throws ConfigurationError;
 
     public abstract string get_string_property(ConfigurableProperty p) throws ConfigurationError;
     public abstract void set_string_property(ConfigurableProperty p, string val) throws ConfigurationError;
-    
+
     public abstract bool get_bool_property(ConfigurableProperty p) throws ConfigurationError;
     public abstract void set_bool_property(ConfigurableProperty p, bool val) throws ConfigurationError;
-    
+
     public abstract double get_double_property(ConfigurableProperty p) throws ConfigurationError;
     public abstract void set_double_property(ConfigurableProperty p, double val) throws ConfigurationError;
-    
-    public abstract bool get_plugin_bool(string domain, string id, string key, bool def);   
+
+    public abstract bool get_plugin_bool(string domain, string id, string key, bool def);
     public abstract void set_plugin_bool(string domain, string id, string key, bool val);
     public abstract double get_plugin_double(string domain, string id, string key, double def);
     public abstract void set_plugin_double(string domain, string id, string key, double val);
@@ -349,7 +348,7 @@ public interface ConfigurationEngine : GLib.Object {
     public abstract string? get_plugin_string(string domain, string id, string key, string? def);
     public abstract void set_plugin_string(string domain, string id, string key, string? val);
     public abstract void unset_plugin_key(string domain, string id, string key);
-    
+
     public abstract FuzzyPropertyState is_plugin_enabled(string id);
     public abstract void set_plugin_enabled(string id, bool enabled);
 }
@@ -365,7 +364,7 @@ public abstract class ConfigurationFacade : Object {
     public signal void events_sort_ascending_changed();
     public signal void external_app_changed();
     public signal void import_directory_changed();
-    
+
     protected ConfigurationFacade(ConfigurationEngine engine) {
         this.engine = engine;
 
@@ -379,7 +378,7 @@ public abstract class ConfigurationFacade : Object {
             case ConfigurableProperty.AUTO_IMPORT_FROM_LIBRARY:
                 auto_import_from_library_changed();
             break;
-            
+
             case ConfigurableProperty.GTK_THEME_VARIANT:
                 bg_color_name_changed();
             break;
@@ -391,7 +390,7 @@ public abstract class ConfigurationFacade : Object {
             case ConfigurableProperty.TRANSPARENT_BACKGROUND_COLOR:
                 transparent_background_color_changed();
             break;
-            
+
             case ConfigurableProperty.COMMIT_METADATA_TO_MASTERS:
                 commit_metadata_to_masters_changed();
             break;
@@ -399,12 +398,12 @@ public abstract class ConfigurationFacade : Object {
             case ConfigurableProperty.EVENTS_SORT_ASCENDING:
                 events_sort_ascending_changed();
             break;
-            
+
             case ConfigurableProperty.EXTERNAL_PHOTO_APP:
             case ConfigurableProperty.EXTERNAL_RAW_APP:
                 external_app_changed();
             break;
-            
+
             case ConfigurableProperty.IMPORT_DIR:
                 import_directory_changed();
             break;
@@ -441,7 +440,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_auto_import_from_library(bool auto_import) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.AUTO_IMPORT_FROM_LIBRARY,
@@ -464,7 +463,7 @@ public abstract class ConfigurationFacade : Object {
             return true;
         }
     }
-    
+
     public virtual void set_gtk_theme_variant(bool dark) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.GTK_THEME_VARIANT, dark);
@@ -530,7 +529,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_commit_metadata_to_masters(bool commit_metadata) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.COMMIT_METADATA_TO_MASTERS,
@@ -602,7 +601,7 @@ public abstract class ConfigurationFacade : Object {
             return "";
         }
     }
-    
+
     public virtual void set_directory_pattern(string? s) {
         try {
             if (s == null)
@@ -626,7 +625,7 @@ public abstract class ConfigurationFacade : Object {
             return "";
         }
     }
-    
+
     public virtual void set_directory_pattern_custom(string s) {
         try {
             get_engine().set_string_property(ConfigurableProperty.DIRECTORY_PATTERN_CUSTOM, s);
@@ -650,7 +649,7 @@ public abstract class ConfigurationFacade : Object {
             on_configuration_error(err);
         }
     }
-    
+
     public virtual void set_direct_window_state(bool maximize, Dimensions dimensions) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.DIRECT_WINDOW_MAXIMIZE, maximize);
@@ -675,7 +674,7 @@ public abstract class ConfigurationFacade : Object {
             return true;
         }
     }
-      
+
     public virtual void set_display_basic_properties(bool display) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.DISPLAY_BASIC_PROPERTIES, display);
@@ -696,7 +695,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_display_extended_properties(bool display) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.DISPLAY_EXTENDED_PROPERTIES,
@@ -718,7 +717,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_display_sidebar(bool display) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.DISPLAY_SIDEBAR, display);
@@ -780,7 +779,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_display_search_bar(bool display) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.DISPLAY_SEARCH_BAR, display);
@@ -801,7 +800,7 @@ public abstract class ConfigurationFacade : Object {
             return true;
         }
     }
-    
+
     public virtual void set_display_photo_ratings(bool display) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.DISPLAY_PHOTO_RATINGS, display);
@@ -822,7 +821,7 @@ public abstract class ConfigurationFacade : Object {
             return true;
         }
     }
-    
+
     public virtual void set_display_photo_tags(bool display) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.DISPLAY_PHOTO_TAGS, display);
@@ -843,7 +842,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_display_photo_titles(bool display) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.DISPLAY_PHOTO_TITLES, display);
@@ -864,7 +863,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_display_photo_comments(bool display) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.DISPLAY_PHOTO_COMMENTS, display);
@@ -885,7 +884,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_display_event_comments(bool display) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.DISPLAY_EVENT_COMMENTS, display);
@@ -932,7 +931,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_events_sort_ascending(bool sort) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.EVENTS_SORT_ASCENDING, sort);
@@ -1114,11 +1113,11 @@ public abstract class ConfigurationFacade : Object {
                 ConfigurableProperty.RAW_DEVELOPER_DEFAULT));
         } catch (ConfigurationError err) {
             on_configuration_error(err);
-            
+
             return RawDeveloper.CAMERA;
         }
     }
-    
+
     public virtual void set_default_raw_developer(RawDeveloper d) {
         try {
             get_engine().set_string_property(ConfigurableProperty.RAW_DEVELOPER_DEFAULT,
@@ -1128,7 +1127,7 @@ public abstract class ConfigurationFacade : Object {
             return;
         }
     }
-    
+
     //
     // hide photos already imported
     //
@@ -1137,11 +1136,11 @@ public abstract class ConfigurationFacade : Object {
             return get_engine().get_bool_property(ConfigurableProperty.HIDE_PHOTOS_ALREADY_IMPORTED);
         } catch (ConfigurationError err) {
             on_configuration_error(err);
-            
+
             return true;
         }
     }
-    
+
     public virtual void set_hide_photos_already_imported(bool hide_imported) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.HIDE_PHOTOS_ALREADY_IMPORTED, hide_imported);
@@ -1149,7 +1148,7 @@ public abstract class ConfigurationFacade : Object {
             on_configuration_error(err);
         }
     }
-    
+
     //
     // import dir
     //
@@ -1170,7 +1169,7 @@ public abstract class ConfigurationFacade : Object {
             on_configuration_error(err);
         }
     }
-    
+
     //
     // keep relativity
     //
@@ -1191,7 +1190,7 @@ public abstract class ConfigurationFacade : Object {
             on_configuration_error(err);
         }
     }
-    
+
     //
     // pin toolbar state
     //
@@ -1211,7 +1210,7 @@ public abstract class ConfigurationFacade : Object {
             on_configuration_error(err);
         }
     }
-    
+
     //
     // last crop height
     //
@@ -1291,7 +1290,7 @@ public abstract class ConfigurationFacade : Object {
             return "";
         }
     }
-    
+
     public virtual void set_last_used_service(string service_name) {
         try {
             get_engine().set_string_property(ConfigurableProperty.LAST_USED_SERVICE, service_name);
@@ -1315,7 +1314,7 @@ public abstract class ConfigurationFacade : Object {
             return "";
         }
     }
-    
+
     public virtual void set_last_used_dataimports_service(string service_name) {
         try {
             get_engine().set_string_property(ConfigurableProperty.LAST_USED_DATAIMPORTS_SERVICE, service_name);
@@ -1391,7 +1390,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_modify_originals(bool modify_originals) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.MODIFY_ORIGINALS, modify_originals);
@@ -1476,7 +1475,7 @@ public abstract class ConfigurationFacade : Object {
             return 600;
         }
     }
-    
+
     public virtual void set_printing_content_ppi(int content_ppi) {
         try {
             get_engine().set_int_property(ConfigurableProperty.PRINTING_CONTENT_PPI, content_ppi);
@@ -1497,7 +1496,7 @@ public abstract class ConfigurationFacade : Object {
             return 0;
         }
     }
-    
+
     public virtual void set_printing_content_units(int units_code) {
         try {
             get_engine().set_int_property(ConfigurableProperty.PRINTING_CONTENT_UNITS,
@@ -1519,7 +1518,7 @@ public abstract class ConfigurationFacade : Object {
             return 7.0;
         }
     }
-    
+
     public virtual void set_printing_content_width(double content_width) {
         try {
             get_engine().set_double_property(ConfigurableProperty.PRINTING_CONTENT_WIDTH,
@@ -1528,7 +1527,7 @@ public abstract class ConfigurationFacade : Object {
             on_configuration_error(err);
         }
     }
-    
+
     //
     // printing images per page
     //
@@ -1541,7 +1540,7 @@ public abstract class ConfigurationFacade : Object {
             return 0;
         }
     }
-    
+
     public virtual void set_printing_images_per_page(int images_per_page_code) {
         try {
             get_engine().set_int_property(ConfigurableProperty.PRINTING_IMAGES_PER_PAGE,
@@ -1563,7 +1562,7 @@ public abstract class ConfigurationFacade : Object {
             return true;
         }
     }
-    
+
     public virtual void set_printing_match_aspect_ratio(bool match_aspect_ratio) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.PRINTING_MATCH_ASPECT_RATIO,
@@ -1585,7 +1584,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_printing_print_titles(bool print_titles) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.PRINTING_PRINT_TITLES,
@@ -1616,7 +1615,7 @@ public abstract class ConfigurationFacade : Object {
             return 0;
         }
     }
-    
+
     public virtual void set_printing_size_selection(int size_code) {
         try {
             get_engine().set_int_property(ConfigurableProperty.PRINTING_SIZE_SELECTION,
@@ -1640,7 +1639,7 @@ public abstract class ConfigurationFacade : Object {
             return "Sans Bold 12";
         }
     }
-    
+
     public virtual void set_printing_titles_font(string font_name) {
         try {
             get_engine().set_string_property(ConfigurableProperty.PRINTING_TITLES_FONT, font_name);
@@ -1683,7 +1682,7 @@ public abstract class ConfigurationFacade : Object {
             return 180;
         }
     }
-    
+
     public virtual void set_sidebar_position(int position) {
         try {
             get_engine().set_int_property(ConfigurableProperty.SIDEBAR_POSITION, position);
@@ -1704,7 +1703,7 @@ public abstract class ConfigurationFacade : Object {
             return 3.0;
         }
     }
-    
+
     public virtual void set_slideshow_delay(double delay) {
         try {
             get_engine().set_double_property(ConfigurableProperty.SLIDESHOW_DELAY, delay);
@@ -1726,7 +1725,7 @@ public abstract class ConfigurationFacade : Object {
             return 0.3;
         }
     }
-    
+
     public virtual void set_slideshow_transition_delay(double delay) {
         try {
             get_engine().set_double_property(ConfigurableProperty.SLIDESHOW_TRANSITION_DELAY,
@@ -1735,7 +1734,7 @@ public abstract class ConfigurationFacade : Object {
             on_configuration_error(err);
         }
     }
-    
+
     //
     // slideshow transition effect id
     //
@@ -1751,7 +1750,7 @@ public abstract class ConfigurationFacade : Object {
             return TransitionEffectsManager.NULL_EFFECT_ID;
         }
     }
-    
+
     public virtual void set_slideshow_transition_effect_id(string id) {
         try {
             get_engine().set_string_property(ConfigurableProperty.SLIDESHOW_TRANSITION_EFFECT_ID,
@@ -1760,7 +1759,7 @@ public abstract class ConfigurationFacade : Object {
             on_configuration_error(err);
         }
     }
-    
+
     //
     // Slideshow show title
     //
@@ -1773,7 +1772,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_slideshow_show_title(bool show_title) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.SLIDESHOW_SHOW_TITLE, show_title);
@@ -1781,7 +1780,7 @@ public abstract class ConfigurationFacade : Object {
             on_configuration_error(err);
         }
     }
-    
+
     //
     // use 24 hour time
     //
@@ -1796,7 +1795,7 @@ public abstract class ConfigurationFacade : Object {
             return is_string_empty(Time.local(0).format("%p"));
         }
     }
-    
+
     public virtual void set_use_24_hour_time(bool use_24_hour_time) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.USE_24_HOUR_TIME, use_24_hour_time);
@@ -1817,7 +1816,7 @@ public abstract class ConfigurationFacade : Object {
             return false;
         }
     }
-    
+
     public virtual void set_use_lowercase_filenames(bool b) {
         try {
             get_engine().set_bool_property(ConfigurableProperty.USE_LOWERCASE_FILENAMES, b);
@@ -1855,39 +1854,39 @@ public abstract class ConfigurationFacade : Object {
     public virtual bool get_plugin_bool(string domain, string id, string key, bool def) {
         return get_engine().get_plugin_bool(domain, id, key, def);
     }
-    
+
     public virtual void set_plugin_bool(string domain, string id, string key, bool val) {
         get_engine().set_plugin_bool(domain, id, key, val);
     }
-    
+
     public virtual double get_plugin_double(string domain, string id, string key, double def) {
         return get_engine().get_plugin_double(domain, id, key, def);
     }
-    
+
     public virtual void set_plugin_double(string domain, string id, string key, double val) {
         get_engine().set_plugin_double(domain, id, key, val);
     }
-    
+
     public virtual int get_plugin_int(string domain, string id, string key, int def) {
         return get_engine().get_plugin_int(domain, id, key, def);
     }
-    
+
     public virtual void set_plugin_int(string domain, string id, string key, int val) {
         get_engine().set_plugin_int(domain, id, key, val);
     }
-    
+
     public virtual string? get_plugin_string(string domain, string id, string key, string? def) {
         string? result = get_engine().get_plugin_string(domain, id, key, def);
         return (result == "") ? null : result;
     }
-    
+
     public virtual void set_plugin_string(string domain, string id, string key, string? val) {
         if (val == null)
             val = "";
 
         get_engine().set_plugin_string(domain, id, key, val);
     }
-    
+
     public virtual void unset_plugin_key(string domain, string id, string key) {
         get_engine().unset_plugin_key(domain, id, key);
     }
@@ -1898,7 +1897,7 @@ public abstract class ConfigurationFacade : Object {
     public virtual FuzzyPropertyState is_plugin_enabled(string id) {
         return get_engine().is_plugin_enabled(id);
     }
-    
+
     public virtual void set_plugin_enabled(string id, bool enabled) {
         get_engine().set_plugin_enabled(id, enabled);
     }

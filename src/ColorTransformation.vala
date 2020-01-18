@@ -68,7 +68,7 @@ public struct HSVAnalyticPixel {
     public float hue;
     public float saturation;
     public float light_value;
-    
+
     private const float INV_255 = 1.0f / 255.0f;
 
     public HSVAnalyticPixel() {
@@ -130,29 +130,29 @@ public enum PixelTransformationType {
 
 public class PixelTransformationBundle {
     private static PixelTransformationBundle? copied_color_adjustments = null;
-    
+
     private Gee.HashMap<int, PixelTransformation> map = new Gee.HashMap<int, PixelTransformation>(
         Gee.Functions.get_hash_func_for(typeof(int)), Gee.Functions.get_equal_func_for(typeof(int)));
-    
+
     public PixelTransformationBundle() {
     }
-    
+
     public static PixelTransformationBundle? get_copied_color_adjustments() {
         return copied_color_adjustments;
     }
-    
+
     public static void set_copied_color_adjustments(PixelTransformationBundle adjustments) {
         copied_color_adjustments = adjustments;
     }
-    
+
     public static bool has_copied_color_adjustments() {
         return copied_color_adjustments != null;
     }
-    
+
     public void set(PixelTransformation transformation) {
         map.set((int) transformation.get_transformation_type(), transformation);
     }
-    
+
     public void set_to_identity() {
         set(new ExpansionTransformation.from_extrema(0, 255));
         set(new ShadowDetailTransformation(0.0f));
@@ -163,14 +163,14 @@ public class PixelTransformationBundle {
         set(new ExposureTransformation(0.0f));
         set(new ContrastTransformation(0.0f));
     }
-    
+
     public void load(KeyValueMap store) {
         string expansion_params_encoded = store.get_string("expansion", "-");
         if (expansion_params_encoded == "-")
             set(new ExpansionTransformation.from_extrema(0, 255));
         else
             set(new ExpansionTransformation.from_string(expansion_params_encoded));
-        
+
         set(new ShadowDetailTransformation(store.get_float("shadows", 0.0f)));
         set(new HighlightDetailTransformation(store.get_float("highlights", 0.0f)));
         set(new TemperatureTransformation(store.get_float("temperature", 0.0f)));
@@ -179,15 +179,15 @@ public class PixelTransformationBundle {
         set(new ExposureTransformation(store.get_float("exposure", 0.0f)));
         set(new ContrastTransformation(store.get_float("contrast", 0.0f)));
     }
-    
+
     public KeyValueMap save(string group) {
         KeyValueMap store = new KeyValueMap(group);
-        
+
         ExpansionTransformation? new_expansion_trans =
             (ExpansionTransformation) get_transformation(PixelTransformationType.TONE_EXPANSION);
         assert(new_expansion_trans != null);
         store.set_string("expansion", new_expansion_trans.to_string());
-        
+
         ShadowDetailTransformation? new_shadows_trans =
             (ShadowDetailTransformation) get_transformation(PixelTransformationType.SHADOWS);
         assert(new_shadows_trans != null);
@@ -197,7 +197,7 @@ public class PixelTransformationBundle {
             (HighlightDetailTransformation) get_transformation(PixelTransformationType.HIGHLIGHTS);
         assert(new_highlight_trans != null);
         store.set_float("highlights", new_highlight_trans.get_parameter());
-        
+
         TemperatureTransformation? new_temp_trans =
             (TemperatureTransformation) get_transformation(PixelTransformationType.TEMPERATURE);
         assert(new_temp_trans != null);
@@ -217,7 +217,7 @@ public class PixelTransformationBundle {
             (ExposureTransformation) get_transformation(PixelTransformationType.EXPOSURE);
         assert(new_exposure_trans != null);
         store.set_float("exposure", new_exposure_trans.get_parameter());
-        
+
         ContrastTransformation? new_contrast_trans =
             (ContrastTransformation) get_transformation(PixelTransformationType.CONTRAST);
         assert(new_contrast_trans != null);
@@ -225,41 +225,41 @@ public class PixelTransformationBundle {
 
         return store;
     }
-    
+
     public int get_count() {
         return map.size;
     }
-    
+
     public PixelTransformation? get_transformation(PixelTransformationType type) {
         return map.get((int) type);
     }
-    
+
     public Gee.Iterable<PixelTransformation> get_transformations() {
         return map.values;
     }
-    
+
     public bool is_identity() {
         foreach (PixelTransformation adjustment in get_transformations()) {
             if (!adjustment.is_identity())
                 return false;
         }
-        
+
         return true;
     }
-    
+
     public PixelTransformer generate_transformer() {
         PixelTransformer transformer = new PixelTransformer();
         foreach (PixelTransformation transformation in get_transformations())
             transformer.attach_transformation(transformation);
-        
+
         return transformer;
     }
-    
+
     public PixelTransformationBundle copy() {
         PixelTransformationBundle bundle = new PixelTransformationBundle();
         foreach (PixelTransformation transformation in get_transformations())
             bundle.set(transformation);
-        
+
         return bundle;
     }
 }
@@ -267,17 +267,17 @@ public class PixelTransformationBundle {
 public abstract class PixelTransformation {
     private PixelTransformationType type;
     private PixelFormat preferred_format;
-    
+
     protected PixelTransformation(PixelTransformationType type,
                                   PixelFormat preferred_format) {
         this.type = type;
         this.preferred_format = preferred_format;
     }
-    
+
     public PixelTransformationType get_transformation_type() {
         return type;
     }
-    
+
     public PixelFormat get_preferred_format() {
         return this.preferred_format;
     }
@@ -306,7 +306,7 @@ public abstract class PixelTransformation {
     public virtual string to_string() {
         return "PixelTransformation";
     }
-    
+
     public abstract PixelTransformation copy();
 }
 
@@ -314,16 +314,16 @@ public class RGBTransformation : PixelTransformation {
     /* matrix entries are stored in row-major order; by default, the matrix formed
        by matrix_entries is the 4x4 identity matrix */
     protected float[] matrix_entries;
-    
+
     protected const int MATRIX_SIZE = 16;
 
     protected bool identity = true;
-    
+
     public RGBTransformation(PixelTransformationType type) {
         base(type, PixelFormat.RGB);
-        
+
         // Can't initialize these in their member declarations because of a valac bug that
-        // I've been unable to produce a minimal test case for to report (JN).  May be 
+        // I've been unable to produce a minimal test case for to report (JN).  May be
         // related to this bug:
         // https://bugzilla.gnome.org/show_bug.cgi?id=570821
         matrix_entries = {
@@ -461,7 +461,7 @@ public class RGBTransformation : PixelTransformation {
     public override bool is_identity() {
         return identity;
     }
-    
+
     public override PixelTransformation copy() {
         RGBTransformation result = new RGBTransformation(get_transformation_type());
 
@@ -520,22 +520,22 @@ public class TintTransformation : RGBTransformation {
     private const float INTENSITY_FACTOR = 0.25f;
     public const float MIN_PARAMETER = -16.0f;
     public const float MAX_PARAMETER = 16.0f;
-    
+
     private float parameter;
 
     public TintTransformation(float client_param) {
         base(PixelTransformationType.TINT);
-        
+
         parameter = client_param.clamp(MIN_PARAMETER, MAX_PARAMETER);
 
          if (parameter != 0.0f) {
              float adjusted_param = parameter / MAX_PARAMETER;
              adjusted_param *= INTENSITY_FACTOR;
-             
+
              matrix_entries[11] -= (adjusted_param / 2);
              matrix_entries[7] += adjusted_param;
              matrix_entries[3] -= (adjusted_param / 2);
- 
+
              identity = false;
          }
     }
@@ -549,18 +549,18 @@ public class TemperatureTransformation : RGBTransformation {
     private const float INTENSITY_FACTOR = 0.33f;
     public const float MIN_PARAMETER = -16.0f;
     public const float MAX_PARAMETER = 16.0f;
-    
+
     private float parameter;
 
     public TemperatureTransformation(float client_parameter) {
         base(PixelTransformationType.TEMPERATURE);
-        
+
         parameter = client_parameter.clamp(MIN_PARAMETER, MAX_PARAMETER);
-        
+
          if (parameter != 0.0f) {
              float adjusted_param = parameter / MAX_PARAMETER;
              adjusted_param *= INTENSITY_FACTOR;
-             
+
              matrix_entries[11] -= adjusted_param;
              matrix_entries[7] += (adjusted_param / 2);
              matrix_entries[3] += (adjusted_param / 2);
@@ -577,12 +577,12 @@ public class TemperatureTransformation : RGBTransformation {
 public class SaturationTransformation : RGBTransformation {
     public const float MIN_PARAMETER = -16.0f;
     public const float MAX_PARAMETER = 16.0f;
-    
+
     private float parameter;
 
     public SaturationTransformation(float client_parameter) {
         base(PixelTransformationType.SATURATION);
-        
+
         parameter = client_parameter.clamp(MIN_PARAMETER, MAX_PARAMETER);
 
         if (parameter != 0.0f) {
@@ -623,7 +623,7 @@ public class ExposureTransformation : RGBTransformation {
 
     public ExposureTransformation(float client_parameter) {
         base(PixelTransformationType.EXPOSURE);
-        
+
         parameter = client_parameter.clamp(MIN_PARAMETER, MAX_PARAMETER);
 
         if (parameter != 0.0f) {
@@ -687,16 +687,16 @@ public class PixelTransformer {
 
     public PixelTransformer() {
     }
-    
+
     public PixelTransformer copy() {
         PixelTransformer clone = new PixelTransformer();
-        
+
         foreach (PixelTransformation transformation in transformations)
             clone.transformations.add(transformation);
-        
+
         return clone;
     }
-    
+
     private void build_optimized_transformations() {
         optimized_transformations = new PixelTransformation[transformations.size];
 
@@ -723,7 +723,7 @@ public class PixelTransformer {
             }
         }
     }
-    
+
     private extern RGBAnalyticPixel apply_transformations(RGBAnalyticPixel p);
 
     /* NOTE: this method allows the same transformation to be added multiple
@@ -920,11 +920,11 @@ public class RGBHistogram {
             }
         }
     }
-    
+
     private int correct_snap_to_quantization(int[] buckets, int i) {
         assert(buckets.length == 256);
         assert((i >= 0) && (i <= 255));
-        
+
         if (i == 0) {
             if (buckets[i] > 0)
                 if (buckets[i + 1] > 0)
@@ -940,14 +940,14 @@ public class RGBHistogram {
                 if (buckets[i] > ((buckets[i - 1] + buckets[i + 1]) / 2))
                         return (buckets[i - 1] + buckets[i + 1]) / 2;
         }
-        
+
         return buckets[i];
     }
-    
+
     private int correct_snap_from_quantization(int[] buckets, int i) {
         assert(buckets.length == 256);
         assert((i >= 0) && (i <= 255));
-        
+
         if (i == 0) {
             return buckets[i];
         } else if (i == 255) {
@@ -958,13 +958,13 @@ public class RGBHistogram {
                     if (buckets[i + 1] > 0)
                         return (buckets[i - 1] + buckets[i + 1]) / 2;
         }
-        
+
         return buckets[i];
     }
 
     private void smooth_extrema(ref int[] count_data) {
         assert(count_data.length == 256);
-        
+
         /* the blocks of code below are unrolled loops that replace values at the extrema
            (buckets 0-4 and 251-255, inclusive) of the histogram with a weighted
            average of their neighbors. This mitigates quantization and pooling artifacts */
@@ -991,7 +991,7 @@ public class RGBHistogram {
         count_data[251] = (2 * count_data[253] + 3 * count_data[252] + 5 * count_data[251] +
             3 * count_data[250] + 2 * count_data[249]) / 15;
     }
-    
+
     private void prepare_qualitative_counts() {
         if ((qualitative_red_counts != null) && (qualitative_green_counts != null) &&
             (qualitative_blue_counts != null))
@@ -1017,7 +1017,7 @@ public class RGBHistogram {
             qualitative_blue_counts[i] =
                 correct_snap_from_quantization(blue_counts, i);
         }
-        
+
         for (int i = 0; i < 256; i++) {
             temp_red_counts[i] = qualitative_red_counts[i];
             temp_green_counts[i] = qualitative_green_counts[i];
@@ -1034,13 +1034,13 @@ public class RGBHistogram {
             qualitative_blue_counts[i] =
                 correct_snap_to_quantization(temp_blue_counts, i);
         }
-        
+
         /* constrain the peaks in the qualitative histogram so that no peak can be more
-           than 8 times higher than the mean height of the entire image */ 
+           than 8 times higher than the mean height of the entire image */
         int mean_qual_count = 0;
         for (int i = 0; i < 256; i++) {
             mean_qual_count += (qualitative_red_counts[i] + qualitative_green_counts[i] +
-                qualitative_blue_counts[i]);        
+                qualitative_blue_counts[i]);
         }
         mean_qual_count /= (256 * 3);
         int constrained_max_qual_count = 8 * mean_qual_count;
@@ -1054,7 +1054,7 @@ public class RGBHistogram {
             if (qualitative_blue_counts[i] > constrained_max_qual_count)
                 qualitative_blue_counts[i] = constrained_max_qual_count;
         }
-        
+
         smooth_extrema(ref qualitative_red_counts);
         smooth_extrema(ref qualitative_green_counts);
         smooth_extrema(ref qualitative_blue_counts);
@@ -1072,10 +1072,10 @@ public class RGBHistogram {
                 if (qualitative_blue_counts[i] > max_count)
                     max_count = qualitative_blue_counts[i];
             }
-            
+
             graphic = new Gdk.Pixbuf(Gdk.Colorspace.RGB, false, 8,
                 GRAPHIC_WIDTH, GRAPHIC_HEIGHT);
-            
+
             int rowstride = graphic.rowstride;
             int sample_bytes = graphic.get_bits_per_sample() / 8;
             int pixel_bytes = sample_bytes * graphic.get_n_channels();
@@ -1111,7 +1111,7 @@ public class RGBHistogram {
                     pixel_data[pixel_index] = MARKED_BACKGROUND;
                     pixel_data[pixel_index + 1] = MARKED_BACKGROUND;
                     pixel_data[pixel_index + 2] = MARKED_BACKGROUND;
-                    
+
                     if (y >= (GRAPHIC_HEIGHT - red_bar_height - 1))
                         pixel_data[pixel_index] = MARKED_FOREGROUND;
                     if (y >= (GRAPHIC_HEIGHT - green_bar_height - 1))
@@ -1158,7 +1158,7 @@ public class IntensityHistogram {
                 int quantized_light_value = (int)(pix_hsi.light_value * 255.0f);
                 counts[quantized_light_value] += 1;
             }
-        }    
+        }
 
         float pixel_count = (float)(pixbuf.width * pixbuf.height);
         float accumulator = 0.0f;
@@ -1170,7 +1170,7 @@ public class IntensityHistogram {
     }
 
     public float get_cumulative_probability(int level) {
-        // clamp out-of-range pixels to prevent crashing. 
+        // clamp out-of-range pixels to prevent crashing.
         level = level.clamp(0, 255);
         return cumulative_probabilities[level];
     }
@@ -1185,12 +1185,12 @@ public class ExpansionTransformation : HSVTransformation {
 
     public ExpansionTransformation(IntensityHistogram histogram) {
         base(PixelTransformationType.TONE_EXPANSION);
-        
+
         float LOW_KINK_MASS = LOW_DISCARD_MASS;
         low_kink = 0;
         while (histogram.get_cumulative_probability(low_kink) < LOW_KINK_MASS)
             low_kink++;
-        
+
         float HIGH_KINK_MASS = 1.0f - HIGH_DISCARD_MASS;
         high_kink = 255;
         while ((histogram.get_cumulative_probability(high_kink) > HIGH_KINK_MASS) && (high_kink > 0))
@@ -1198,7 +1198,7 @@ public class ExpansionTransformation : HSVTransformation {
 
         build_remap_table();
     }
-    
+
     public ExpansionTransformation.from_extrema(int black_point, int white_point) {
         base(PixelTransformationType.TONE_EXPANSION);
 
@@ -1217,12 +1217,12 @@ public class ExpansionTransformation : HSVTransformation {
         low_kink = black_point;
         high_kink = white_point;
 
-        build_remap_table();        
+        build_remap_table();
     }
 
     public ExpansionTransformation.from_string(string encoded_transformation) {
         base(PixelTransformationType.TONE_EXPANSION);
-        
+
         encoded_transformation.canon("0123456789. ", ' ');
         encoded_transformation.chug();
         encoded_transformation.chomp();
@@ -1231,7 +1231,7 @@ public class ExpansionTransformation : HSVTransformation {
             &high_kink);
 
         assert(num_captured == 2);
-        
+
         build_remap_table();
     }
 
@@ -1241,14 +1241,14 @@ public class ExpansionTransformation : HSVTransformation {
 
         float slope = 1.0f / (high_kink_f - low_kink_f);
         float intercept = -(low_kink_f / (high_kink_f - low_kink_f));
-        
+
         int i = 0;
         for ( ; i <= low_kink; i++)
             remap_table[i] = 0.0f;
-        
+
         for ( ; i < high_kink; i++)
             remap_table[i] = slope * (((float) i) / 255.0f) + intercept;
-        
+
         for ( ; i < 256; i++)
             remap_table[i] = 1.0f;
     }
@@ -1281,20 +1281,20 @@ public class ShadowDetailTransformation : HSVTransformation {
     private const float TONAL_WIDTH = 1.0f;
 
     private float intensity = 0.0f;
-    
+
     public const float MIN_PARAMETER = 0.0f;
     public const float MAX_PARAMETER = 32.0f;
 
     public ShadowDetailTransformation(float user_intensity) {
         base(PixelTransformationType.SHADOWS);
-        
+
         intensity = user_intensity;
         float intensity_adj = (intensity / MAX_PARAMETER).clamp(0.0f, 1.0f);
 
         float effect_shift = MAX_EFFECT_SHIFT * intensity_adj;
         HermiteGammaApproximationFunction func =
             new HermiteGammaApproximationFunction(TONAL_WIDTH);
-        
+
         for (int i = 0; i < 256; i++) {
             float x = ((float) i) / 255.0f;
             float weight = func.evaluate(x);
@@ -1305,7 +1305,7 @@ public class ShadowDetailTransformation : HSVTransformation {
     public override PixelTransformation copy() {
         return new ShadowDetailTransformation(intensity);
     }
-    
+
     public override bool is_identity() {
         return (intensity == 0.0f);
     }
@@ -1318,12 +1318,12 @@ public class ShadowDetailTransformation : HSVTransformation {
 public class HermiteGammaApproximationFunction {
     private float x_scale = 1.0f;
     private float nonzero_interval_upper = 1.0f;
-    
+
     public HermiteGammaApproximationFunction(float user_interval_upper) {
         nonzero_interval_upper = user_interval_upper.clamp(0.1f, 1.0f);
         x_scale = 1.0f / nonzero_interval_upper;
     }
-    
+
     public float evaluate(float x) {
         if (x < 0.0f)
             return 0.0f;
@@ -1331,10 +1331,10 @@ public class HermiteGammaApproximationFunction {
             return 0.0f;
         else {
             float indep_var = x_scale * x;
-            
+
             float dep_var =  6.0f * ((indep_var * indep_var * indep_var) -
                 (2.0f * (indep_var * indep_var)) + (indep_var));
-            
+
             return dep_var.clamp(0.0f, 1.0f);
         }
     }
@@ -1347,20 +1347,20 @@ public class HighlightDetailTransformation : HSVTransformation {
     private const float TONAL_WIDTH = 1.0f;
 
     private float intensity = 0.0f;
-    
+
     public const float MIN_PARAMETER = -32.0f;
     public const float MAX_PARAMETER = 0.0f;
 
     public HighlightDetailTransformation(float user_intensity) {
         base(PixelTransformationType.HIGHLIGHTS);
-        
+
         intensity = user_intensity;
         float intensity_adj = (intensity / MIN_PARAMETER).clamp(0.0f, 1.0f);
 
         float effect_shift = MAX_EFFECT_SHIFT * intensity_adj;
         HermiteGammaApproximationFunction func =
             new HermiteGammaApproximationFunction(TONAL_WIDTH);
-        
+
         for (int i = 0; i < 256; i++) {
             float x = ((float) i) / 255.0f;
             float weight = func.evaluate(1.0f - x);
@@ -1371,7 +1371,7 @@ public class HighlightDetailTransformation : HSVTransformation {
     public override PixelTransformation copy() {
         return new HighlightDetailTransformation(intensity);
     }
-    
+
     public override bool is_identity() {
         return (intensity == 0.0f);
     }
@@ -1424,7 +1424,7 @@ public PixelTransformationBundle create_auto_enhance_adjustments(Gdk.Pixbuf pixb
         shadow_trans_effect_size *= SHADOW_AGGRESSIVENESS_MUL;
 
         adjustments.set(new ShadowDetailTransformation(shadow_trans_effect_size));
-            
+
         /* if shadow detail expansion is being performed, we still perform contrast expansion,
            but only on the top end */
         int discard_point = 255;
@@ -1433,7 +1433,7 @@ public PixelTransformationBundle create_auto_enhance_adjustments(Gdk.Pixbuf pixb
                 SHADOW_MODE_HIGH_DISCARD_MASS)
                     break;
         }
-        
+
         adjustments.set(new ExpansionTransformation.from_extrema(0, discard_point));
     }
     else {
@@ -1448,7 +1448,7 @@ public PixelTransformationBundle create_auto_enhance_adjustments(Gdk.Pixbuf pixb
     adjustments.set(new ExposureTransformation(0.0f));
     adjustments.set(new ContrastTransformation(0.0f));
     adjustments.set(new SaturationTransformation(0.0f));
-    
+
     return adjustments;
 }
 }

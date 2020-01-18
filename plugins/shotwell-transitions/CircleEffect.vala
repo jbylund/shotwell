@@ -48,13 +48,13 @@ private class CircleEffect : Object, Transitions.Effect {
         int width, int height, int frame_number) {
         double alpha = motion.get_alpha(frame_number);
         int radius = (int)(alpha * Math.fmax(width,height));
-        
+
         if (visuals.from_pixbuf != null) {
             Gdk.cairo_set_source_pixbuf(ctx, visuals.from_pixbuf, visuals.from_pos.x,
                 visuals.from_pos.y);
             ctx.paint_with_alpha(1 - alpha);
         }
-        
+
         if (visuals.to_pixbuf != null) {
             Gdk.cairo_set_source_pixbuf(ctx, visuals.to_pixbuf,visuals.to_pos.x, visuals.to_pos.y);
             ctx.arc ((int) width / 2, (int) height / 2, radius, 0, 2 * Math.PI);

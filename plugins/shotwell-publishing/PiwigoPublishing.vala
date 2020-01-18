@@ -8,26 +8,26 @@ public class PiwigoService : Object, Spit.Pluggable, Spit.Publishing.Service {
     private const string ICON_FILENAME = "piwigo.png";
 
     private static Gdk.Pixbuf[] icon_pixbuf_set = null;
-    
+
     public PiwigoService(GLib.File resource_directory) {
         if (icon_pixbuf_set == null)
             icon_pixbuf_set = Resources.load_from_resource
                 (Resources.RESOURCE_PATH + "/" + ICON_FILENAME);
     }
-    
+
     public int get_pluggable_interface(int min_host_interface, int max_host_interface) {
         return Spit.negotiate_interfaces(min_host_interface, max_host_interface,
             Spit.Publishing.CURRENT_INTERFACE);
     }
-    
+
     public unowned string get_id() {
         return "org.yorba.shotwell.publishing.piwigo";
     }
-    
+
     public unowned string get_pluggable_name() {
         return "Piwigo";
     }
-    
+
     public void get_info(ref Spit.PluggableInfo info) {
         info.authors = "Bruno Girin";
         info.copyright = _("Copyright 2016 Software Freedom Conservancy Inc.");
@@ -46,7 +46,7 @@ public class PiwigoService : Object, Spit.Pluggable, Spit.Publishing.Service {
     public Spit.Publishing.Publisher create_publisher(Spit.Publishing.PluginHost host) {
         return new Publishing.Piwigo.PiwigoPublisher(this, host);
     }
-    
+
     public Spit.Publishing.Publisher.MediaType get_supported_media() {
         return (Spit.Publishing.Publisher.MediaType.PHOTO);
     }
@@ -72,7 +72,7 @@ internal class Category {
         this.uppercats = uppercats;
         this.comment = comment;
     }
-    
+
     public Category.local(string name, int parent_id, string? comment = "") {
         this.id = NO_ID;
         this.name = name;
@@ -142,11 +142,11 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
     }
 
     // Publisher interface implementation
-    
+
     public Spit.Publishing.Service get_service() {
         return service;
     }
-    
+
     public Spit.Publishing.PluginHost get_host() {
         return host;
     }
@@ -154,15 +154,15 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
     public bool is_running() {
         return running;
     }
-    
+
     public void start() {
         if (is_running())
             return;
-        
+
         debug("PiwigoPublisher: starting interaction.");
-        
+
         running = true;
-        
+
         if (session.is_authenticated()) {
             debug("PiwigoPublisher: session is authenticated.");
             do_fetch_categories();
@@ -178,85 +178,85 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
                 do_show_authentication_pane();
         }
     }
-    
+
     public void stop() {
         running = false;
     }
-    
+
     // Session and persistent data
-    
+
     public string? get_persistent_url() {
         return host.get_config_string("url", null);
     }
-    
+
     private void set_persistent_url(string url) {
         host.set_config_string("url", url);
     }
-    
+
     public string? get_persistent_username() {
         return host.get_config_string("username", null);
     }
-    
+
     private void set_persistent_username(string username) {
         host.set_config_string("username", username);
     }
-    
+
     public string? get_persistent_password() {
         return host.get_config_string("password", null);
     }
-    
+
     private void set_persistent_password(string? password) {
         host.set_config_string("password", password);
     }
-    
+
     public bool get_remember_password() {
         return host.get_config_bool("remember-password", false);
     }
-    
+
     private void set_remember_password(bool remember_password) {
         host.set_config_bool("remember-password", remember_password);
     }
-    
+
     public int get_last_category() {
         return host.get_config_int("last-category", -1);
     }
-    
+
     private void set_last_category(int last_category) {
         host.set_config_int("last-category", last_category);
     }
-    
+
     public int get_last_permission_level() {
         return host.get_config_int("last-permission-level", -1);
     }
-    
+
     private void set_last_permission_level(int last_permission_level) {
         host.set_config_int("last-permission-level", last_permission_level);
     }
-    
+
     public int get_last_photo_size() {
         return host.get_config_int("last-photo-size", -1);
     }
-    
+
     private void set_last_photo_size(int last_photo_size) {
         host.set_config_int("last-photo-size", last_photo_size);
     }
-    
+
     private bool get_last_title_as_comment() {
         return host.get_config_bool("last-title-as-comment", false);
     }
-    
+
     private void set_last_title_as_comment(bool title_as_comment) {
         host.set_config_bool("last-title-as-comment", title_as_comment);
     }
-    
+
     private bool get_last_no_upload_tags() {
         return host.get_config_bool("last-no-upload-tags", false);
     }
-    
+
     private void set_last_no_upload_tags(bool no_upload_tags) {
         host.set_config_bool("last-no-upload-tags", no_upload_tags);
     }
-    
+
     private bool get_last_no_upload_ratings() {
         return host.get_config_bool("last-no-upload-ratings", false);
     }
@@ -268,13 +268,13 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
     private bool get_metadata_removal_choice() {
         return host.get_config_bool("strip_metadata", false);
     }
-    
+
     private void set_metadata_removal_choice(bool strip_metadata) {
         host.set_config_bool("strip_metadata", strip_metadata);
     }
-    
+
     // Actions and events implementation
-    
+
     /**
      * Action that shows the authentication pane.
      *
@@ -341,7 +341,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         do_network_login(url, username, password, remember_password);
     }
-    
+
     /**
      * Action to perform a network login to a Piwigo service.
      *
@@ -357,7 +357,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         debug("ACTION: logging in");
         host.set_service_locked(true);
         host.install_login_wait_pane();
-        
+
         set_remember_password(remember_password);
         if (remember_password)
             set_persistent_password(password);
@@ -381,7 +381,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
             }
         }
     }
-    
+
     public static string normalise_url(string url) {
         string norm_url = url;
 
@@ -395,10 +395,10 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         if(!norm_url.has_prefix("http://") && !norm_url.has_prefix("https://")) {
             norm_url = "http://" + norm_url;
         }
-        
+
         return norm_url;
     }
-    
+
     /**
      * Event triggered when the network login action is complete and successful.
      *
@@ -416,7 +416,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         debug("EVENT: on_login_network_complete");
         txn.completed.disconnect(on_login_network_complete);
         txn.network_error.disconnect(on_login_network_error);
-        
+
         try {
             Publishing.RESTSupport.XmlDocument.parse_string(
                 txn.get_response(), Transaction.validate_xml);
@@ -438,7 +438,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
             return;
         }
         // Get session ID and authenticate the session
-        string endpoint_url = txn.get_endpoint_url(); 
+        string endpoint_url = txn.get_endpoint_url();
         debug("Setting endpoint URL to %s", endpoint_url);
         string pwg_id = get_pwg_id_from_transaction(txn);
         debug("Setting session pwg_id to %s", pwg_id);
@@ -446,7 +446,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         do_fetch_session_status(endpoint_url, pwg_id);
     }
-    
+
     /**
      * Event triggered when a network login action fails due to a network error.
      *
@@ -471,7 +471,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         do_show_authentication_pane(AuthenticationPane.Mode.FAILED_RETRY_URL);
     }
-    
+
     /**
      * Action to fetch the session status for a known Piwigo user.
      *
@@ -486,7 +486,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         debug("ACTION: fetching session status");
         host.set_service_locked(true);
         host.install_account_fetch_wait_pane();
-        
+
         if (!session.is_authenticated()) {
             SessionGetStatusTransaction status_txn = new SessionGetStatusTransaction.unauthenticated(session, url, pwg_id);
             status_txn.network_error.connect(on_session_get_status_error);
@@ -511,7 +511,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
             }
         }
     }
-    
+
     /**
      * Event triggered when the get session status action completes successfully.
      *
@@ -560,7 +560,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
             do_fetch_categories();
         }
     }
-    
+
     /**
      * Event triggered when the get session status fails due to a network error.
      */
@@ -588,7 +588,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         CategoriesGetListTransaction cat_trans = new CategoriesGetListTransaction(session);
         cat_trans.network_error.connect(on_category_fetch_error);
         cat_trans.completed.connect(on_category_fetch_complete);
-        
+
         try {
             cat_trans.execute();
         } catch (Spit.Publishing.PublishingError err) {
@@ -596,7 +596,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
             do_show_error(err);
         }
     }
-    
+
     /**
      * Event triggered when the fetch categories action completes successfully.
      *
@@ -661,7 +661,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         do_show_publishing_options_pane();
     }
-    
+
     /**
      * Event triggered when the fetch categories transaction fails due to a
      * network error.
@@ -675,7 +675,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         bad_txn.network_error.disconnect(on_category_fetch_error);
         on_network_error(bad_txn, err);
     }
-    
+
     /**
      * Action that shows the publishing options pane.
      *
@@ -693,7 +693,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         host.install_dialog_pane(opts_pane, Spit.Publishing.PluginHost.ButtonMode.CLOSE);
         host.set_dialog_default_widget(opts_pane.get_default_widget());
     }
-    
+
     /**
      * Event triggered when the user clicks logout in the publishing options pane.
      */
@@ -710,7 +710,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
             do_show_error(err);
         }
     }
-    
+
     /**
      * Event triggered when the logout action completes successfully.
      *
@@ -726,7 +726,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         do_show_authentication_pane(AuthenticationPane.Mode.INTRO);
     }
-    
+
     /**
      * Event triggered when the logout action fails due to a network error.
      */
@@ -739,7 +739,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         bad_txn.network_error.disconnect(on_logout_network_error);
         on_network_error(bad_txn, err);
     }
-    
+
     /**
      * Event triggered when the user clicks publish in the publishing options pane.
      *
@@ -762,7 +762,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
             do_upload(this.strip_metadata);
         }
     }
-    
+
     /**
      * Action that creates a new category in the Piwigo library.
      *
@@ -785,7 +785,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
             session, category.name.strip(), int.parse(category.uppercats), category.comment);
         creation_trans.network_error.connect(on_category_add_error);
         creation_trans.completed.connect(on_category_add_complete);
-        
+
         try {
             creation_trans.execute();
         } catch (Spit.Publishing.PublishingError err) {
@@ -793,7 +793,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
             do_show_error(err);
         }
     }
-    
+
     /**
      * Event triggered when the add category action completes successfully.
      *
@@ -823,7 +823,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
             do_show_error(err);
         }
     }
-    
+
     /**
      * Event triggered when the add category action fails due to a network error.
      */
@@ -836,14 +836,14 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         bad_txn.network_error.disconnect(on_category_add_error);
         on_network_error(bad_txn, err);
     }
-    
+
     /**
      * Upload action: the big one, the one we've been waiting for!
      */
     private void do_upload(bool strip_metadata) {
         this.strip_metadata = strip_metadata;
         debug("ACTION: uploading pictures");
-        
+
         host.set_service_locked(true);
         // Save last category, permission level and size for next use
         set_last_category(parameters.category.id);
@@ -856,13 +856,13 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         progress_reporter = host.serialize_publishables(parameters.photo_size.id, this.strip_metadata);
         Spit.Publishing.Publishable[] publishables = host.get_publishables();
-        
+
         Uploader uploader = new Uploader(session, publishables, parameters);
         uploader.upload_complete.connect(on_upload_complete);
         uploader.upload_error.connect(on_upload_error);
         uploader.upload(on_upload_status_updated);
     }
-    
+
     /**
      * Event triggered when the batch uploader reports that at least one of the
      * network transactions encapsulating uploads has completed successfully
@@ -871,7 +871,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         debug("EVENT: on_upload_complete");
         uploader.upload_complete.disconnect(on_upload_complete);
         uploader.upload_error.disconnect(on_upload_error);
-        
+
         // TODO: should a message be displayed to the user if num_published is zero?
 
         if (!is_running())
@@ -879,7 +879,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         do_show_success_pane();
     }
-    
+
     /**
      * Event triggered when the batch uploader reports that at least one of the
      * network transactions encapsulating uploads has caused a network error
@@ -894,7 +894,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         do_show_error(err);
     }
-    
+
     /**
      * Event triggered when upload progresses and the status needs to be updated.
      */
@@ -908,7 +908,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         progress_reporter(file_number, completed_fraction);
     }
-    
+
     /**
      * Action to display the success pane in the publishing dialog.
      */
@@ -918,7 +918,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         host.set_service_locked(false);
         host.install_success_pane();
     }
-    
+
     /**
      * Helper event to handle network errors.
      */
@@ -929,7 +929,7 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         debug("EVENT: on_network_error");
         do_show_error(err);
     }
-    
+
     /**
      * Action to display an error to the user.
      */
@@ -954,11 +954,11 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         } else if (e is Spit.Publishing.PublishingError.SSL_FAILED) {
             error_type = "SECURE_CONNECTION_FAILED";
         }
-        
+
         debug("Unhandled error: type=%s; message='%s'".printf(error_type, e.message));
         do_show_error_message(_("An error message occurred when publishing to Piwigo. Please try again."));
     }
-    
+
     /**
      * Action to display an error message to the user.
      */
@@ -967,9 +967,9 @@ public class PiwigoPublisher : Spit.Publishing.Publisher, GLib.Object {
         host.install_static_message_pane(message,
                 Spit.Publishing.PluginHost.ButtonMode.CLOSE);
     }
-    
+
     // Helper methods
-    
+
     /**
      * Retrieves session ID from a REST Transaction received
      *
@@ -1003,7 +1003,7 @@ internal class Uploader : Publishing.RESTSupport.BatchUploader {
     public Uploader(Session session, Spit.Publishing.Publishable[] publishables,
         PublishingParameters parameters) {
         base(session, publishables);
-        
+
         this.parameters = parameters;
     }
 
@@ -1181,13 +1181,13 @@ internal class AuthenticationPane : Shotwell.Plugins.Common.BuilderPane {
     private void on_password_changed() {
         update_login_button_sensitivity();
     }
-    
+
     private void update_login_button_sensitivity() {
         login_button.set_sensitive(url_entry.text_length != 0 &&
                                    username_entry.text_length != 0 &&
                                    password_entry.text_length != 0);
     }
-    
+
     public override void on_pane_installed() {
         base.on_pane_installed ();
 
@@ -1361,7 +1361,7 @@ internal class PublishingOptionsPane : Shotwell.Plugins.Common.BuilderPane {
         }
         publish(params, strip_metadata_check.get_active());
     }
-    
+
     // UI interaction
     private void on_use_existing_radio_clicked() {
         existing_categories_combo.set_sensitive(true);
@@ -1489,7 +1489,7 @@ internal class PublishingOptionsPane : Shotwell.Plugins.Common.BuilderPane {
         within_existing_combo.set_active(0);
         within_existing_combo.set_sensitive(false);
     }
-    
+
     private void create_permissions_combo() {
         foreach (PermissionLevel perm in perm_levels) {
             perms_combo.append_text(perm.name);
@@ -1501,7 +1501,7 @@ internal class PublishingOptionsPane : Shotwell.Plugins.Common.BuilderPane {
             perms_combo.set_active(last_permission_level_index);
         }
     }
-    
+
     private void create_size_combo() {
         foreach (SizeEntry size in photo_sizes) {
             size_combo.append_text(size.name);
@@ -1524,7 +1524,7 @@ internal class PublishingOptionsPane : Shotwell.Plugins.Common.BuilderPane {
         }
         return result;
     }
-    
+
     private int find_permission_level_index(int permission_level_id) {
         int result = -1;
         for(int i = 0; i < perm_levels.length; i++) {
@@ -1535,7 +1535,7 @@ internal class PublishingOptionsPane : Shotwell.Plugins.Common.BuilderPane {
         }
         return result;
     }
-    
+
     private int find_size_index(int size_id) {
         int result = -1;
         for(int i = 0; i < photo_sizes.length; i++) {
@@ -1546,7 +1546,7 @@ internal class PublishingOptionsPane : Shotwell.Plugins.Common.BuilderPane {
         }
         return result;
     }
-    
+
     private bool category_already_exists(string category_name) {
         bool result = false;
         foreach(Category category in existing_categories) {
@@ -1589,7 +1589,7 @@ internal class Session : Publishing.RESTSupport.Session {
         pwg_id = null;
         username = null;
     }
-    
+
     public string get_username() {
         return username;
     }
@@ -1631,21 +1631,21 @@ internal class Transaction : Publishing.RESTSupport.Transaction {
     public static string? validate_xml(Publishing.RESTSupport.XmlDocument doc) {
         Xml.Node* root = doc.get_root_node();
         string? status = root->get_prop("stat");
-        
+
         // treat malformed root as an error condition
         if (status == null)
             return "No status property in root node";
-        
+
         if (status == "ok")
             return null;
-        
+
         Xml.Node* errcode;
         try {
             errcode = doc.get_named_child(root, "err");
         } catch (Spit.Publishing.PublishingError err) {
             return "No error code specified";
         }
-        
+
         return "%s (error code %s)".printf(errcode->get_prop("msg"), errcode->get_prop("code"));
     }
 
@@ -1706,7 +1706,7 @@ internal class SessionGetStatusTransaction : Transaction {
 private class CategoriesGetListTransaction : Transaction {
     public CategoriesGetListTransaction(Session session) {
         base.authenticated(session);
-        
+
         add_argument("method", "pwg.categories.getList");
         add_argument("recursive", "true");
     }
@@ -1715,7 +1715,7 @@ private class CategoriesGetListTransaction : Transaction {
 private class SessionLogoutTransaction : Transaction {
     public SessionLogoutTransaction(Session session) {
         base.authenticated(session);
-      
+
         add_argument("method", "pwg.session.logout");
     }
 }
@@ -1754,7 +1754,7 @@ private class ImagesAddTransaction : Publishing.RESTSupport.UploadTransaction {
         if (keywords != null) {
             tags = string.joinv (",", keywords);
         }
-        
+
         debug("PiwigoConnector: Uploading photo %s to category id %d with perm level %d",
             publishable.get_serialized_file().get_basename(),
             parameters.category.id, parameters.perm_level.id);
@@ -1775,7 +1775,7 @@ private class ImagesAddTransaction : Publishing.RESTSupport.UploadTransaction {
                 add_argument("comment", comment);
             } else {
                 // name is set, comment is unset
-                // for backward compatibility with people having used 
+                // for backward compatibility with people having used
                 // the title as comment field, keep this option
                 if (parameters.title_as_comment) {
                     add_argument("comment", name);
@@ -1794,7 +1794,7 @@ private class ImagesAddTransaction : Publishing.RESTSupport.UploadTransaction {
         // the image's meta-data where the author (artist) is kept
         /*if (!is_string_empty(author))
             add_argument("author", author);*/
-        
+
         // TODO: implement description in APIGlue
         /*if (!is_string_empty(publishable.get_publishing_description()))
             add_argument("comment", publishable.get_publishing_description());*/

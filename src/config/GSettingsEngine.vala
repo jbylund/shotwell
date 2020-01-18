@@ -105,9 +105,9 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
         schema_names[ConfigurableProperty.USE_24_HOUR_TIME] = UI_PREFS_SCHEMA_NAME;
         schema_names[ConfigurableProperty.USE_LOWERCASE_FILENAMES] = FILES_PREFS_SCHEMA_NAME;
         schema_names[ConfigurableProperty.VIDEO_INTERPRETER_STATE_COOKIE] = VIDEO_SCHEMA_NAME;
-        
+
         key_names = new string[ConfigurableProperty.NUM_PROPERTIES];
-        
+
         key_names[ConfigurableProperty.AUTO_IMPORT_FROM_LIBRARY] = "auto-import";
         key_names[ConfigurableProperty.GTK_THEME_VARIANT] = "use-dark-theme";
         key_names[ConfigurableProperty.TRANSPARENT_BACKGROUND_TYPE] = "transparent-background-type";
@@ -216,7 +216,7 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
         return schema_object.get_boolean(key);
     }
-    
+
     private void set_gs_bool(string schema, string key, bool value) throws ConfigurationError {
         check_key_valid(schema, key);
 
@@ -246,7 +246,7 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
         return schema_object.get_int(key);
     }
-    
+
     private void set_gs_int(string schema, string key, int value) throws ConfigurationError {
         check_key_valid(schema, key);
 
@@ -262,7 +262,7 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
         return schema_object.get_double(key);
     }
-    
+
     private void set_gs_double(string schema, string key, double value) throws ConfigurationError {
         check_key_valid(schema, key);
 
@@ -278,7 +278,7 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
         return schema_object.get_string(key);
     }
-    
+
     private void set_gs_string(string schema, string key, string value) throws ConfigurationError {
         check_key_valid(schema, key);
 
@@ -286,7 +286,7 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
         schema_object.set_string(key, value);
     }
-    
+
     private void reset_gs_to_default(string schema, string key) throws ConfigurationError {
         check_key_valid(schema, key);
 
@@ -298,10 +298,10 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
     private static string? clean_plugin_id(string id) {
         string cleaned = id.replace("/", "-");
         cleaned = cleaned.strip();
-        
+
         return !is_string_empty(cleaned) ? cleaned : null;
     }
-    
+
     private static string get_plugin_enable_disable_name(string id) {
         string? cleaned_id = clean_plugin_id(id);
         if (cleaned_id == null)
@@ -309,19 +309,19 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
         cleaned_id = cleaned_id.replace("org.yorba.shotwell.", "");
         cleaned_id = cleaned_id.replace(".", "-");
-        
+
         return cleaned_id;
     }
-    
+
     private static string make_plugin_schema_name(string domain, string id) {
         string? cleaned_id = clean_plugin_id(id);
         if (cleaned_id == null)
             cleaned_id = "default";
         cleaned_id = cleaned_id.replace(".", "-");
-        
+
         return "org.yorba.shotwell.%s.%s".printf(domain, cleaned_id);
     }
-    
+
     private static string make_gsettings_key(string gconf_key) {
         return gconf_key.replace("_", "-");
     }
@@ -347,20 +347,20 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
         set_gs_int(schema_names[p], key_names[p], val);
         property_changed(p);
     }
-    
+
     public string get_string_property(ConfigurableProperty p) throws ConfigurationError {
         string gs_result = get_gs_string(schema_names[p], key_names[p]);
-        
+
         // if we're getting the desktop background file, convert the file uri we get back from
         // GSettings into a file path
         string result = gs_result;
         if (p == ConfigurableProperty.DESKTOP_BACKGROUND_FILE) {
             result = gs_result.substring(7);
         }
-        
+
         return result;
     }
-    
+
     public void set_string_property(ConfigurableProperty p, string val) throws ConfigurationError {
         // if we're setting the desktop background/screensaver file, convert the filename into a file URI
         string converted_val = val;
@@ -372,20 +372,20 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
         set_gs_string(schema_names[p], key_names[p], converted_val);
         property_changed(p);
     }
-    
+
     public bool get_bool_property(ConfigurableProperty p) throws ConfigurationError {
         return get_gs_bool(schema_names[p], key_names[p]);
     }
-    
+
     public void set_bool_property(ConfigurableProperty p, bool val) throws ConfigurationError {
         set_gs_bool(schema_names[p], key_names[p], val);
         property_changed(p);
     }
-    
+
     public double get_double_property(ConfigurableProperty p) throws ConfigurationError {
         return get_gs_double(schema_names[p], key_names[p]);
     }
-    
+
     public void set_double_property(ConfigurableProperty p, double val) throws ConfigurationError {
         set_gs_double(schema_names[p], key_names[p], val);
         property_changed(p);
@@ -393,7 +393,7 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
     public bool get_plugin_bool(string domain, string id, string key, bool def) {
         string schema_name = make_plugin_schema_name(domain, id);
-        
+
         try {
             return get_gs_bool(schema_name, make_gsettings_key(key));
         } catch (ConfigurationError err) {
@@ -401,10 +401,10 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
             return def;
         }
     }
-    
+
     public void set_plugin_bool(string domain, string id, string key, bool val) {
         string schema_name = make_plugin_schema_name(domain, id);
-        
+
         try {
             set_gs_bool(schema_name, make_gsettings_key(key), val);
         } catch (ConfigurationError err) {
@@ -414,7 +414,7 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
     public double get_plugin_double(string domain, string id, string key, double def) {
         string schema_name = make_plugin_schema_name(domain, id);
-        
+
         try {
             return get_gs_double(schema_name, make_gsettings_key(key));
         } catch (ConfigurationError err) {
@@ -425,7 +425,7 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
     public void set_plugin_double(string domain, string id, string key, double val) {
         string schema_name = make_plugin_schema_name(domain, id);
-        
+
         try {
             set_gs_double(schema_name, make_gsettings_key(key), val);
         } catch (ConfigurationError err) {
@@ -435,7 +435,7 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
     public int get_plugin_int(string domain, string id, string key, int def) {
         string schema_name = make_plugin_schema_name(domain, id);
-        
+
         try {
             return get_gs_int(schema_name, make_gsettings_key(key));
         } catch (ConfigurationError err) {
@@ -443,20 +443,20 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
             return def;
         }
     }
-    
+
     public void set_plugin_int(string domain, string id, string key, int val) {
         string schema_name = make_plugin_schema_name(domain, id);
-        
+
         try {
             set_gs_int(schema_name, make_gsettings_key(key), val);
         } catch (ConfigurationError err) {
             critical("GSettingsConfigurationEngine: error: %s", err.message);
         }
     }
-    
+
     public string? get_plugin_string(string domain, string id, string key, string? def) {
         string schema_name = make_plugin_schema_name(domain, id);
-        
+
         try {
             return get_gs_string(schema_name, make_gsettings_key(key));
         } catch (ConfigurationError err) {
@@ -464,10 +464,10 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
             return def;
         }
     }
-    
+
     public void set_plugin_string(string domain, string id, string key, string? val) {
         string schema_name = make_plugin_schema_name(domain, id);
-        
+
         try {
             set_gs_string(schema_name, make_gsettings_key(key), val);
         } catch (ConfigurationError err) {
@@ -477,17 +477,17 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
     public void unset_plugin_key(string domain, string id, string key) {
         string schema_name = make_plugin_schema_name(domain, id);
-        
+
         try {
             reset_gs_to_default(schema_name, make_gsettings_key(key));
         } catch (ConfigurationError err) {
             critical("GSettingsConfigurationEngine: error: %s", err.message);
         }
     }
-    
+
     public FuzzyPropertyState is_plugin_enabled(string id) {
         string enable_disable_name = get_plugin_enable_disable_name(id);
-        
+
         try {
             return (get_gs_bool(PLUGINS_ENABLE_DISABLE_SCHEMA_NAME, enable_disable_name)) ?
                 FuzzyPropertyState.ENABLED : FuzzyPropertyState.DISABLED;
@@ -499,14 +499,14 @@ public class GSettingsConfigurationEngine : ConfigurationEngine, GLib.Object {
 
     public void set_plugin_enabled(string id, bool enabled) {
         string enable_disable_name = get_plugin_enable_disable_name(id);
-        
+
         try {
             set_gs_bool(PLUGINS_ENABLE_DISABLE_SCHEMA_NAME, enable_disable_name, enabled);
         } catch (ConfigurationError err) {
             critical("GSettingsConfigurationEngine: error: %s", err.message);
         }
     }
-    
+
     /*! @brief Migrates settings data over from old-style /apps/ paths to /org/yorba/ ones.
      *  Should only be called ONCE, during DB upgrading; otherwise, stale data may be copied
      *  over newer data by accident.

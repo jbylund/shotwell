@@ -11,14 +11,14 @@ public uint int64_hash(int64? n) {
     for (int ctr = 0; ctr < (sizeof(int64) / sizeof(uint8)); ctr++) {
         hash = (hash << 4) ^ (hash >> 28) ^ (*u8++);
     }
-    
+
     return hash;
 }
 
 public bool int64_equal(int64? a, int64? b) {
     int64 *bia = (int64 *) a;
     int64 *bib = (int64 *) b;
-    
+
     return (*bia) == (*bib);
 }
 
@@ -35,7 +35,7 @@ public int int64_compare(int64? a, int64? b) {
 public int uint64_compare(uint64? a, uint64? b) {
     uint64 a64 = *((uint64 *) a);
     uint64 b64 = *((uint64 *) b);
-    
+
     if (a64 < b64)
         return -1;
     else if (a64 > b64)
@@ -69,22 +69,22 @@ public inline time_t now_time_t() {
 public string md5_file(File file) throws Error {
     Checksum md5 = new Checksum(ChecksumType.MD5);
     uint8[] buffer = new uint8[64 * 1024];
-    
+
     FileInputStream fins = file.read(null);
     for (;;) {
         size_t bytes_read = fins.read(buffer, null);
         if (bytes_read <= 0)
             break;
-        
+
         md5.update((uchar[]) buffer, bytes_read);
     }
-    
+
     try {
         fins.close(null);
     } catch (Error err) {
         warning("Unable to close MD5 input stream for %s: %s", file.get_path(), err.message);
     }
-    
+
     return md5.get_string();
 }
 
@@ -92,26 +92,26 @@ public string md5_file(File file) throws Error {
 public bool equal_sets(Gee.Set<string>? a, Gee.Set<string>? b) {
     if ((a != null && a.size == 0) && (b == null))
         return true;
-    
+
     if ((a == null) && (b != null && b.size == 0))
         return true;
-    
+
     if ((a == null && b != null) || (a != null && b == null))
         return false;
-    
+
     if (a == null && b == null)
         return true;
-    
+
     if (a.size != b.size)
         return false;
-    
+
     // because they're sets and the same size, only need to iterate over one set to know
     // it is equal to the other
     foreach (string element in a) {
         if (!b.contains(element))
             return false;
     }
-    
+
     return true;
 }
 
@@ -121,33 +121,33 @@ public Gee.Set<string>? intersection_of_sets(Gee.Set<string>? a, Gee.Set<string>
     if (a != null && b == null) {
         if (excluded != null)
             excluded.add_all(a);
-        
+
         return null;
     }
-    
+
     if (a == null && b != null) {
         if (excluded != null)
             excluded.add_all(b);
-        
+
         return null;
     }
-    
+
     Gee.Set<string> intersection = new Gee.HashSet<string>();
-    
+
     foreach (string element in a) {
         if (b.contains(element))
             intersection.add(element);
         else if (excluded != null)
             excluded.add(element);
     }
-    
+
     foreach (string element in b) {
         if (a.contains(element))
             intersection.add(element);
         else if (excluded != null)
             excluded.add(element);
     }
-    
+
     return intersection.size > 0 ? intersection : null;
 }
 
@@ -156,11 +156,11 @@ public uchar[] serialize_photo_ids(Gee.Collection<Photo> photos) {
     int ctr = 0;
     foreach (Photo photo in photos)
         ids[ctr++] = photo.get_photo_id().id;
-    
+
     size_t bytes = photos.size * sizeof(int64);
     uchar[] serialized = new uchar[bytes];
     Memory.copy(serialized, ids, bytes);
-    
+
     return serialized;
 }
 
@@ -168,14 +168,14 @@ public Gee.List<PhotoID?>? unserialize_photo_ids(uchar* serialized, int size) {
     size_t count = (size / sizeof(int64));
     if (count <= 0 || serialized == null)
         return null;
-    
+
     int64[] ids = new int64[count];
     Memory.copy(ids, serialized, size);
-    
+
     Gee.ArrayList<PhotoID?> list = new Gee.ArrayList<PhotoID?>();
     foreach (int64 id in ids)
         list.add(PhotoID(id));
-    
+
     return list;
 }
 
@@ -184,11 +184,11 @@ public uchar[] serialize_media_sources(Gee.Collection<MediaSource> media) {
     int ctr = 0;
     foreach (MediaSource current_media in media)
         atoms[ctr++] = Gdk.Atom.intern(current_media.get_source_id(), false);
-    
+
     size_t bytes = media.size * sizeof(Gdk.Atom);
     uchar[] serialized = new uchar[bytes];
     Memory.copy(serialized, atoms, bytes);
-    
+
     return serialized;
 }
 
@@ -196,10 +196,10 @@ public Gee.List<MediaSource>? unserialize_media_sources(uchar* serialized, int s
     size_t count = (size / sizeof(Gdk.Atom));
     if (count <= 0 || serialized == null)
         return null;
-    
+
     Gdk.Atom[] atoms = new Gdk.Atom[count];
     Memory.copy(atoms, serialized, size);
-    
+
     Gee.ArrayList<MediaSource> list = new Gee.ArrayList<MediaSource>();
     foreach (Gdk.Atom current_atom in atoms) {
         MediaSource media = MediaCollectionRegistry.get_instance().fetch_media(current_atom.name());
@@ -212,9 +212,9 @@ public Gee.List<MediaSource>? unserialize_media_sources(uchar* serialized, int s
 
 public string format_local_datespan(Time from_date, Time to_date) {
     string from_format, to_format;
-   
+
     // Ticket #3240 - Change the way date ranges are pretty-
-    // printed if the start and end date occur on consecutive days.    
+    // printed if the start and end date occur on consecutive days.
     if (from_date.year == to_date.year) {
         // are these consecutive dates?
         if ((from_date.month == to_date.month) && (from_date.day == (to_date.day - 1))) {
@@ -233,7 +233,7 @@ public string format_local_datespan(Time from_date, Time to_date) {
         from_format = Resources.get_long_date_format_string();
         to_format = Resources.get_long_date_format_string();
     }
-     
+
     return String.strip_leading_zeroes("%s - %s".printf(from_date.format(from_format),
         to_date.format(to_format)));
 }
@@ -248,61 +248,61 @@ public class OneShotScheduler {
     private string name;
     private unowned OneShotCallback callback;
     private uint scheduled = 0;
-    
+
     public OneShotScheduler(string name, OneShotCallback callback) {
         this.name = name;
         this.callback = callback;
     }
-    
+
     ~OneShotScheduler() {
 #if TRACE_DTORS
         debug("DTOR: OneShotScheduler for %s", name);
 #endif
-        
+
         cancel();
     }
-    
+
     public bool is_scheduled() {
         return scheduled != 0;
     }
-    
+
     public void at_idle() {
         // needs to be lower (higher priority) than Clutter.PRIORITY_REDRAW which is
         // set at Priority.HIGH_IDLE + 50
         at_priority_idle(Priority.HIGH_IDLE + 40);
     }
-    
+
     public void at_priority_idle(int priority) {
         if (scheduled == 0)
             scheduled = Idle.add_full(priority, callback_wrapper);
     }
-    
+
     public void after_timeout(uint msec, bool reschedule) {
         priority_after_timeout(Priority.DEFAULT, msec, reschedule);
     }
-    
+
     public void priority_after_timeout(int priority, uint msec, bool reschedule) {
         if (scheduled != 0 && !reschedule)
             return;
-        
+
         if (scheduled != 0)
             Source.remove(scheduled);
-        
+
         scheduled = Timeout.add_full(priority, msec, callback_wrapper);
     }
-    
+
     public void cancel() {
         if (scheduled == 0)
             return;
-        
+
         Source.remove(scheduled);
         scheduled = 0;
     }
-    
+
     private bool callback_wrapper() {
         scheduled = 0;
         callback();
-        
+
         return false;
     }
 }
@@ -314,32 +314,32 @@ public class OpTimer {
     private double elapsed = 0;
     private double shortest = double.MAX;
     private double longest = double.MIN;
-    
+
     public OpTimer(string name) {
         this.name = name;
     }
-    
+
     public void start() {
         timer.start();
     }
-    
+
     public void stop() {
         double time = timer.elapsed();
-        
+
         elapsed += time;
-        
+
         if (time < shortest)
             shortest = time;
-        
+
         if (time > longest)
             longest = time;
-        
+
         count++;
     }
-    
+
     public string to_string() {
         if (count > 0) {
-            return "%s: count=%ld elapsed=%.03lfs min/avg/max=%.03lf/%.03lf/%.03lf".printf(name, 
+            return "%s: count=%ld elapsed=%.03lfs min/avg/max=%.03lf/%.03lf/%.03lf".printf(name,
                 count, elapsed, shortest, elapsed / (double) count, longest);
         } else {
             return "%s: no operations".printf(name);

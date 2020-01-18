@@ -50,7 +50,7 @@ public class FaceDetect {
     public static bool connected = false;
     public static string net_file;
     public const string ERROR_MESSAGE = "Unable to connect to facedetect service";
-    
+
     public static FaceDetectInterface interface;
 
 #if FACEDETECT_BUS_PRIVATE
@@ -97,7 +97,7 @@ public class FaceDetect {
             return false;
         }
     }
-    
+
     public static void init(string net_file) {
         FaceDetect.net_file = net_file;
 #if FACEDETECT_BUS_PRIVATE

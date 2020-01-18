@@ -127,7 +127,7 @@ public class FacesTool : EditingTools.EditingTool {
 
         public FacesToolWindow(Gtk.Window container) {
             base(container);
-            
+
             ok_button = new Gtk.Button.with_label(Resources.OK_LABEL);
             ok_button.set_use_underline(true);
 
@@ -942,10 +942,10 @@ public class FacesTool : EditingTools.EditingTool {
         }
         return face;
     }
-    
+
     private void on_faces_detected() {
         face_detection_cancellable.reset();
-        
+
         if (face_detection.spawnError != null){
             string spawnErrorMessage = _("Error trying to spawn face detection program:\n");
             AppWindow.error_message(spawnErrorMessage + face_detection.spawnError + "\n");

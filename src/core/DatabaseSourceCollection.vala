@@ -14,12 +14,12 @@ public delegate int64 GetSourceDatabaseKey(DataSource source);
 // force subclasses to provide a fetch_by_key() method.
 public abstract class DatabaseSourceCollection : SourceCollection {
     private unowned GetSourceDatabaseKey source_key_func;
-    private Gee.HashMap<int64?, DataSource> map = new Gee.HashMap<int64?, DataSource>(int64_hash, 
+    private Gee.HashMap<int64?, DataSource> map = new Gee.HashMap<int64?, DataSource>(int64_hash,
         int64_equal);
-        
+
     protected DatabaseSourceCollection(string name, GetSourceDatabaseKey source_key_func) {
         base (name);
-        
+
         this.source_key_func = source_key_func;
     }
 
@@ -27,15 +27,15 @@ public abstract class DatabaseSourceCollection : SourceCollection {
         foreach (DataObject object in added) {
             DataSource source = (DataSource) object;
             int64 key = source_key_func(source);
-            
+
             assert(!map.has_key(key));
-            
+
             map.set(key, source);
         }
-        
+
         base.notify_items_added(added);
     }
-    
+
     public override void notify_items_removed(Gee.Iterable<DataObject> removed) {
         foreach (DataObject object in removed) {
             int64 key = source_key_func((DataSource) object);
@@ -43,10 +43,10 @@ public abstract class DatabaseSourceCollection : SourceCollection {
             bool is_removed = map.unset(key);
             assert(is_removed);
         }
-        
+
         base.notify_items_removed(removed);
     }
-    
+
     protected DataSource fetch_by_key(int64 key) {
         return map.get(key);
     }
@@ -56,30 +56,30 @@ public class DatabaseSourceHoldingTank : SourceHoldingTank {
     private unowned GetSourceDatabaseKey get_key;
     private Gee.HashMap<int64?, DataSource> map = new Gee.HashMap<int64?, DataSource>(int64_hash,
         int64_equal);
-    
+
     public DatabaseSourceHoldingTank(SourceCollection sources,
         SourceHoldingTank.CheckToKeep check_to_keep, GetSourceDatabaseKey get_key) {
         base (sources, check_to_keep);
-        
+
         this.get_key = get_key;
     }
-    
+
     public DataSource? get_by_id(int64 id) {
         return map.get(id);
     }
-    
+
     protected override void notify_contents_altered(Gee.Collection<DataSource>? added,
         Gee.Collection<DataSource>? removed) {
         if (added != null) {
             foreach (DataSource source in added)
                 map.set(get_key(source), source);
         }
-        
+
         if (removed != null) {
             foreach (DataSource source in removed)
                 map.unset(get_key(source));
         }
-        
+
         base.notify_contents_altered(added, removed);
     }
 }
