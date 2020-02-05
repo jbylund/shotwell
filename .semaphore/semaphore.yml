@@ -44,6 +44,7 @@ blocks:
             - ls
             - meson build
             - ninja -C build
+            - ninja -C build test
             - sudo -H ninja -C build install
             - sudo -H mkdir -p /usr/lib/x86_64-linux-gnu/
             - sudo -H cp build/src/plugins/libshotwell-plugin-dev-1.0.so.0 /usr/lib/x86_64-linux-gnu/libshotwell-plugin-dev-1.0.so.0
