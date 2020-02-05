@@ -14,8 +14,6 @@ public void init_entry() throws Error {
     if (_unit_init_count++ != 0)
         return;
 
-
-
     Unit.init();
 }
 
@@ -24,7 +22,6 @@ public void terminate_entry() {
         return;
 
     Unit.terminate();
-
 
 }
 

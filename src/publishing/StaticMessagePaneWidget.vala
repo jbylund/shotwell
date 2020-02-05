@@ -51,5 +51,4 @@ public class LoginWaitPane : StaticMessagePane {
     }
 }
 
-
 } // namespace PublishingUI

@@ -15,12 +15,12 @@ public class Application {
 
     public virtual signal void exiting(bool panicked) {
     }
-    
+
     public virtual signal void init_done() {
     }
 
     private bool fixup_raw_thumbs = false;
-    
+
     public void set_raw_thumbs_fix_required(bool should_fixup) {
         fixup_raw_thumbs = should_fixup;
     }
@@ -58,7 +58,7 @@ public class Application {
         } catch (Error e) {
             panic();
         }
-        
+
         direct = is_direct;
 
         if (!direct) {
@@ -77,7 +77,7 @@ public class Application {
     public static void send_to_primary_instance(string[]? argv) {
         get_instance().system_app.run(argv);
     }
-    
+
     /**
      * @brief A helper for library mode that tells the primary
      * instance to bring its window to the foreground.  This
@@ -90,7 +90,7 @@ public class Application {
     public static bool get_is_remote() {
         return get_instance().system_app.get_is_remote();
     }
-    
+
     public static bool get_is_direct() {
         return get_instance().direct;
     }
@@ -220,7 +220,7 @@ public class Application {
      *
      * @note The return value is a 'cookie' that needs to be passed to 'uninhibit' to turn
      * off a requested inhibition and should be saved by the caller.
-     */ 
+     */
     public uint inhibit(Gtk.ApplicationInhibitFlags what, string? reason="none given") {
         return system_app.inhibit(AppWindow.get_instance(), what, reason);
     }

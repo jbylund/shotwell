@@ -1,0 +1,56 @@
+version: v1.0
+name: Initial Pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: 'Block #1'
+    task:
+      prologue:
+        commands:
+          - cache restore
+      jobs:
+        - name: 'All the Stuff'
+          commands:
+            - echo 'alias ls="ls --color=auto --group-directories-first --classify"' > ~/.bash_aliases
+            - sudo -H apt-get update > /dev/null
+            - sudo -H apt-get build-dep -y shotwell > /dev/null
+            - sudo -H apt-get install -y libchamplain-0.12-dev libchamplain-gtk-0.12-dev libwebp-dev > /dev/null
+            - sudo -H apt-get purge -y gir1.2-gexiv2-0.10 libexiv2-14 libexiv2-dev libgexiv2-2 libgexiv2-dev > /dev/null
+            - cache restore exiv2-0.27.3-Source.tar.gz
+            - cache restore gexiv2-0.12.2.tar.xz
+            - sudo -H mkdir -p /usr/share/vala/vapi/
+            - sudo -H wget --quiet -O /usr/share/vala/vapi/gexiv2.vapi  https://gist.githubusercontent.com/jbylund/fc0de78b08f22fa0ed3eebd848407498/raw/f2d34f94f3b0b8ca8fc1e1c53648dbf9c625d206/gexiv2.vapi
+            - ls exiv2-0.27.3-Source.tar.gz || (wget https://ftp.osuosl.org/pub/blfs/conglomeration/exiv2/exiv2-0.27.3-Source.tar.gz; cache store exiv2-0.27.3-Source.tar.gz exiv2-0.27.3-Source.tar.gz)
+            - ls gexiv2-0.12.2.tar.xz || (wget https://download.gnome.org/sources/gexiv2/0.12/gexiv2-0.12.2.tar.xz; cache store gexiv2-0.12.2.tar.xz gexiv2-0.12.2.tar.xz)
+            - tar -xf exiv2-0.27.3-Source.tar.gz
+            - tar -xf gexiv2-0.12.2.tar.xz
+            - rm gexiv2-0.12.2.tar.xz exiv2-0.27.3-Source.tar.gz
+            - mv exiv2-0.27.3-Source exiv2
+            - mv gexiv2-0.12.2 gexiv2
+            - mkdir -p exiv2/build/
+            - cd exiv2/build/
+            - cmake .. -G "Unix Makefiles" > /dev/null
+            - make -j 3 > /dev/null 2>/dev/null
+            - sudo -H make install > /dev/null 2>/dev/null || sudo -H make install > /dev/null
+            - cd ../..
+            - cd gexiv2/
+            - meson build
+            - ninja -C build > /dev/null
+            - sudo -H ninja -C build install > /dev/null
+            - cd ..
+            - checkout
+            - meson build
+            - ninja -C build
+            - ninja -C build test
+            - cat /home/semaphore/shotwell/build/meson-logs/testlog.txt
+            - sudo -H ninja -C build install > /dev/null
+            - sudo -H mkdir -p /usr/lib/x86_64-linux-gnu/
+            - sudo -H cp build/src/plugins/libshotwell-plugin-dev-1.0.so.0 /usr/lib/x86_64-linux-gnu/libshotwell-plugin-dev-1.0.so.0
+            - sudo -H ldconfig -v > /dev/null
+            - shotwell --version
+      epilogue:
+        commands:
+          - cache store
+

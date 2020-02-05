@@ -77,7 +77,6 @@ namespace Publishing.Authenticator.Shotwell.OAuth1 {
             host.set_config_string("access_phase_token_secret", secret);
         }
 
-
         protected void on_session_authenticated() {
             params.insert("AuthToken", session.get_access_phase_token());
             params.insert("AuthTokenSecret", session.get_access_phase_token_secret());
@@ -86,7 +85,6 @@ namespace Publishing.Authenticator.Shotwell.OAuth1 {
             set_persistent_access_phase_token(session.get_access_phase_token());
             set_persistent_access_phase_token_secret(session.get_access_phase_token_secret());
             set_persistent_access_phase_username(session.get_username());
-
 
             this.authenticated();
         }

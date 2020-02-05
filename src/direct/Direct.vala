@@ -23,7 +23,7 @@ public void preconfigure(File initial_file) {
 
 public void init() throws Error {
     assert(initial_file != null);
-    
+
     DirectPhoto.init(initial_file);
 }
 

@@ -15,11 +15,11 @@ private class FadeEffectDescriptor : ShotwellTransitionDescriptor {
     public override unowned string get_id() {
         return "org.yorba.shotwell.transitions.fade";
     }
-    
+
     public override unowned string get_pluggable_name() {
         return _("Fade");
     }
-    
+
     public override Transitions.Effect create(Spit.HostInterface host) {
         return new FadeEffect();
     }
@@ -28,26 +28,26 @@ private class FadeEffectDescriptor : ShotwellTransitionDescriptor {
 private class FadeEffect : Object, Transitions.Effect {
     private const int DESIRED_FPS = 30;
     private const int MIN_FPS = 20;
-    
+
     public FadeEffect() {
     }
-    
+
     public void get_fps(out int desired_fps, out int min_fps) {
         desired_fps = FadeEffect.DESIRED_FPS;
         min_fps = FadeEffect.MIN_FPS;
     }
-    
+
     public void start(Transitions.Visuals visuals, Transitions.Motion motion) {
     }
-    
+
     public bool needs_clear_background() {
         return true;
     }
-    
+
     public void paint(Transitions.Visuals visuals, Transitions.Motion motion, Cairo.Context ctx,
         int width, int height, int frame_number) {
         double alpha = motion.get_alpha(frame_number);
-        
+
         // blend the two pixbufs using an alpha of the appropriate level depending on how far
         // the cycle has progressed
         if (visuals.from_pixbuf != null) {
@@ -60,10 +60,10 @@ private class FadeEffect : Object, Transitions.Effect {
             ctx.paint_with_alpha(alpha);
         }
     }
-    
+
     public void advance(Transitions.Visuals visuals, Transitions.Motion motion, int frame_number) {
     }
-    
+
     public void cancel() {
     }
 }

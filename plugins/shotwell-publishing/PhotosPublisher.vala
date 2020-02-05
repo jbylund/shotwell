@@ -75,7 +75,6 @@ internal class PublishingParameters {
         this.albums = albums;
     }
 
-
     public void set_major_axis_size_pixels(int pixels) {
         this.major_axis_size_pixels = pixels;
     }

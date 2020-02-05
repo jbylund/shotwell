@@ -28,7 +28,7 @@
 // TransactionController
 //
 // Because many operations in Shotwell need to be performed on collections of objects all at once,
-// and that most of these objects are backed by a database, the TransactionController object gives 
+// and that most of these objects are backed by a database, the TransactionController object gives
 // a way to generically group a series of operations on one or more similar objects into a single
 // transaction. This class is listed here because it's used by the various media interfaces to offer
 // multiple operations.
@@ -50,24 +50,24 @@
 // however.
 public abstract class TransactionController {
     private int count = 0;
-    
+
     ~TransactionController() {
         lock (count) {
             assert(count == 0);
         }
     }
-    
+
     public void begin() {
         lock (count) {
             if (count++ != 0)
                 return;
-            
+
             try {
                 begin_impl();
             } catch (Error err) {
                 // unwind
                 count--;
-                
+
                 if (err is DatabaseError)
                     AppWindow.database_error((DatabaseError) err);
                 else
@@ -75,16 +75,16 @@ public abstract class TransactionController {
             }
         }
     }
-    
+
     // For thread safety, this method will only be called under the protection of a mutex.
     public abstract void begin_impl() throws Error;
-    
+
     public void commit() {
         lock (count) {
             assert(count > 0);
             if (--count != 0)
                 return;
-            
+
             // no need to unwind the count here; it's already unwound.
             try {
                 commit_impl();
@@ -96,7 +96,7 @@ public abstract class TransactionController {
             }
         }
     }
-    
+
     // For thread safety, this method will only be called under the protection of a mutex.
     public abstract void commit_impl() throws Error;
 }
@@ -110,25 +110,25 @@ public abstract class TransactionController {
 // alterations if the flag has changed.
 public interface Flaggable : MediaSource {
     public abstract bool is_flagged();
-    
+
     public abstract void mark_flagged();
-    
+
     public abstract void mark_unflagged();
-    
+
     public static void mark_many_flagged_unflagged(Gee.Collection<Flaggable>? flag,
         Gee.Collection<Flaggable>? unflag, TransactionController controller) throws Error {
         controller.begin();
-        
+
         if (flag != null) {
             foreach (Flaggable flaggable in flag)
                 flaggable.mark_flagged();
         }
-        
+
         if (unflag != null) {
             foreach (Flaggable flaggable in unflag)
                 flaggable.mark_unflagged();
         }
-        
+
         controller.commit();
     }
 }
@@ -148,51 +148,51 @@ public interface Flaggable : MediaSource {
 // The set_master_timestamp() method should fire "metadata:master-timestamp" alteration.
 public interface Monitorable : MediaSource {
     public abstract bool is_offline();
-    
+
     public abstract void mark_online();
-    
+
     public abstract void mark_offline();
-    
+
     public static void mark_many_online_offline(Gee.Collection<Monitorable>? online,
         Gee.Collection<Monitorable>? offline, TransactionController controller) throws Error {
         controller.begin();
-        
+
         if (online != null) {
             foreach (Monitorable monitorable in online)
                 monitorable.mark_online();
         }
-        
+
         if (offline != null) {
             foreach (Monitorable monitorable in offline)
                 monitorable.mark_offline();
         }
-        
+
         controller.commit();
     }
-    
+
     public abstract void set_master_file(File file);
-    
+
     public static void set_many_master_file(Gee.Map<Monitorable, File> map,
         TransactionController controller) throws Error {
         controller.begin();
-        
+
         Gee.MapIterator<Monitorable, File> map_iter = map.map_iterator();
         while (map_iter.next())
             map_iter.get_key().set_master_file(map_iter.get_value());
-        
+
         controller.commit();
     }
-    
+
     public abstract void set_master_timestamp(FileInfo info);
-    
+
     public static void set_many_master_timestamp(Gee.Map<Monitorable, FileInfo> map,
         TransactionController controller) throws Error {
         controller.begin();
-        
+
         Gee.MapIterator<Monitorable, FileInfo> map_iter = map.map_iterator();
         while (map_iter.next())
             map_iter.get_key().set_master_timestamp(map_iter.get_value());
-        
+
         controller.commit();
     }
 }
@@ -200,13 +200,13 @@ public interface Monitorable : MediaSource {
 //
 // Dateable
 //
-// Dateable media may have their exposure date and time set arbitrarily. 
+// Dateable media may have their exposure date and time set arbitrarily.
 //
 // The set_exposure_time() method refactors the existing set_exposure_time()
-// from Photo to here in order to add this capability to videos. It should 
+// from Photo to here in order to add this capability to videos. It should
 // fire a "metadata:exposure-time" alteration when called.
 public interface Dateable : MediaSource {
-    public abstract void set_exposure_time(time_t target_time);    
-    
+    public abstract void set_exposure_time(time_t target_time);
+
     public abstract time_t get_exposure_time();
 }

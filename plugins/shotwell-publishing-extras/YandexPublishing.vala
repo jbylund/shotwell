@@ -8,15 +8,15 @@ public class YandexService : Object, Spit.Pluggable, Spit.Publishing.Service {
     public int get_pluggable_interface(int min_host_interface, int max_host_interface) {
         return Spit.negotiate_interfaces(min_host_interface, max_host_interface, Spit.Publishing.CURRENT_INTERFACE);
     }
-    
+
     public unowned string get_id() {
         return "org.yorba.shotwell.publishing.yandex-fotki";
     }
-    
+
     public unowned string get_pluggable_name() {
         return "Yandex.Fotki";
     }
-    
+
     public void get_info(ref Spit.PluggableInfo info) {
         info.authors = "Evgeniy Polyakov <zbr@ioremap.net>";
         info.copyright = _("Copyright 2010+ Evgeniy Polyakov <zbr@ioremap.net>");
@@ -27,7 +27,7 @@ public class YandexService : Object, Spit.Pluggable, Spit.Publishing.Service {
         info.is_license_wordwrapped = false;
         info.license = Resources.LICENSE;
     }
-    
+
     public Spit.Publishing.Publisher create_publisher(Spit.Publishing.PluginHost host) {
         return new Publishing.Yandex.YandexPublisher(this, host);
     }
@@ -35,7 +35,7 @@ public class YandexService : Object, Spit.Pluggable, Spit.Publishing.Service {
     public Spit.Publishing.Publisher.MediaType get_supported_media() {
         return (Spit.Publishing.Publisher.MediaType.PHOTO);
     }
-    
+
     public void activation(bool enabled) {
     }
 }
@@ -51,14 +51,14 @@ internal class Transaction: Publishing.RESTSupport.Transaction {
         base.with_endpoint_url(session, url, method);
         add_headers();
     }
-    
+
     private void add_headers() {
         if (((Session) get_parent_session()).is_authenticated()) {
             add_header("Authorization", "OAuth %s".printf(((Session) get_parent_session()).get_auth_token()));
             add_header("Connection", "close");
         }
     }
-    
+
      public Transaction(Session session, Publishing.RESTSupport.HttpMethod method = Publishing.RESTSupport.HttpMethod.GET) {
         base(session, method);
         add_headers();
@@ -82,7 +82,7 @@ internal class Session : Publishing.RESTSupport.Session {
     public void deauthenticate() {
         auth_token = null;
     }
-    
+
     public void set_auth_token(string token) {
         this.auth_token = token;
     }
@@ -188,7 +188,7 @@ internal class PublishingOptionsPane: Spit.Publishing.DialogPane, GLib.Object {
         this.options = options;
 
         box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
-        
+
         try {
             builder = new Gtk.Builder();
             builder.add_from_resource (Resources.RESOURCE_PATH + "/yandex_publish_model.ui");
@@ -199,7 +199,7 @@ internal class PublishingOptionsPane: Spit.Publishing.DialogPane, GLib.Object {
             album_list = builder.get_object ("album_list") as Gtk.ComboBoxText;
             foreach (string key in list.keys)
                 album_list.append_text(key);
-            
+
             album_list.set_active(0);
 
             publish_button = builder.get_object("publish_button") as Gtk.Button;
@@ -214,7 +214,7 @@ internal class PublishingOptionsPane: Spit.Publishing.DialogPane, GLib.Object {
             warning("Could not load UI: %s", e.message);
         }
     }
-    
+
     private void on_logout_clicked() {
         logout();
     }
@@ -240,7 +240,7 @@ private class Uploader: Publishing.RESTSupport.BatchUploader {
 
     public Uploader(Session session, PublishOptions options, Spit.Publishing.Publishable[] photos) {
         base(session, photos);
-        
+
         this.options = options;
     }
 
@@ -253,7 +253,7 @@ private class Uploader: Publishing.RESTSupport.BatchUploader {
 private class UploadTransaction: Transaction {
     public UploadTransaction(Session session, PublishOptions options, Spit.Publishing.Publishable photo) {
         base.with_url(session, options.destination_album_url, Publishing.RESTSupport.HttpMethod.POST);
-        
+
         set_custom_payload("qwe", "image/jpeg", 1);
 
         debug("Uploading '%s' -> %s : %s", photo.get_publishing_name(), options.destination_album, options.destination_album_url);
@@ -322,7 +322,7 @@ public class YandexPublisher : Spit.Publishing.Publisher, GLib.Object {
     internal string? get_persistent_auth_token() {
         return host.get_config_string("auth_token", null);
     }
-    
+
     internal void set_persistent_auth_token(string auth_token) {
         host.set_config_string("auth_token", auth_token);
     }
@@ -330,7 +330,7 @@ public class YandexPublisher : Spit.Publishing.Publisher, GLib.Object {
     internal void invalidate_persistent_session() {
         host.unset_config_key("auth_token");
     }
-    
+
     internal bool is_persistent_session_available() {
         return (get_persistent_auth_token() != null);
     }
@@ -338,7 +338,7 @@ public class YandexPublisher : Spit.Publishing.Publisher, GLib.Object {
     public bool is_running() {
         return running;
     }
-    
+
     public Spit.Publishing.Service get_service() {
         return service;
     }
@@ -367,7 +367,7 @@ public class YandexPublisher : Spit.Publishing.Publisher, GLib.Object {
             }
         }
     }
-    
+
     public void parse_album_creation(string data) throws Spit.Publishing.PublishingError {
         Publishing.RESTSupport.XmlDocument doc = Publishing.RESTSupport.XmlDocument.parse_string(data, check_response);
         Xml.Node *root = doc.get_root_node();
@@ -421,7 +421,7 @@ public class YandexPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         t.completed.connect(album_creation_complete);
         t.network_error.connect(album_creation_error);
-        
+
         try {
             t.execute();
         } catch (Spit.Publishing.PublishingError err) {
@@ -440,7 +440,7 @@ public class YandexPublisher : Spit.Publishing.Publisher, GLib.Object {
 
         host.install_success_pane();
     }
-    
+
     private void on_upload_error(Publishing.RESTSupport.BatchUploader uploader, Spit.Publishing.PublishingError err) {
         uploader.upload_complete.disconnect(on_upload_complete);
         uploader.upload_error.disconnect(on_upload_error);
@@ -618,7 +618,7 @@ public class YandexPublisher : Spit.Publishing.Publisher, GLib.Object {
             error("YandexPublisher: start( ): can't start; this publisher is not restartable.");
 
         debug("YandexPublisher: starting interaction.");
-        
+
         running = true;
 
         if (is_persistent_session_available()) {

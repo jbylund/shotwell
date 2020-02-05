@@ -13,15 +13,15 @@ class PngFileFormatProperties : PhotoFileFormatProperties {
     public static void init() {
         instance = new PngFileFormatProperties();
     }
-    
+
     public static PngFileFormatProperties get_instance() {
         return instance;
     }
-    
+
     public override PhotoFileFormat get_file_format() {
         return PhotoFileFormat.PNG;
     }
-    
+
     public override PhotoFileFormatFlags get_flags() {
         return PhotoFileFormatFlags.NONE;
     }
@@ -33,15 +33,15 @@ class PngFileFormatProperties : PhotoFileFormatProperties {
     public override string get_default_extension() {
         return KNOWN_EXTENSIONS[0];
     }
-    
+
     public override string[] get_known_extensions() {
         return KNOWN_EXTENSIONS;
     }
-    
+
     public override string get_default_mime_type() {
         return KNOWN_MIME_TYPES[0];
     }
-    
+
     public override string[] get_mime_types() {
         return KNOWN_MIME_TYPES;
     }
@@ -72,14 +72,14 @@ public class PngSniffer : GdkSniffer {
     public override DetectedPhotoInformation? sniff(out bool is_corrupted) throws Error {
         // Rely on GdkSniffer to detect corruption
         is_corrupted = false;
-        
+
         if (!is_png_file(file))
             return null;
-        
+
         DetectedPhotoInformation? detected = base.sniff(out is_corrupted);
         if (detected == null)
             return null;
-        
+
         return (detected.file_format == PhotoFileFormat.PNG) ? detected : null;
     }
 }
@@ -88,7 +88,7 @@ public class PngReader : GdkReader {
     public PngReader(string filepath) {
         base (filepath, PhotoFileFormat.PNG);
     }
-    
+
     public override Gdk.Pixbuf scaled_read(Dimensions full, Dimensions scaled) throws Error {
         Gdk.Pixbuf result = null;
         /* if we encounter a situation where there are two orders of magnitude or more of
@@ -103,7 +103,7 @@ public class PngReader : GdkReader {
              (scaled.height < 100))) {
             Dimensions prefetch_dimensions = full.get_scaled_by_constraint(1000,
                 ScaleConstraint.DIMENSIONS);
-                                  
+
             result = new Gdk.Pixbuf.from_file_at_scale(get_filepath(), prefetch_dimensions.width,
                 prefetch_dimensions.height, false);
 
@@ -121,7 +121,7 @@ public class PngWriter : PhotoFileWriter {
     public PngWriter(string filepath) {
         base (filepath, PhotoFileFormat.PNG);
     }
-    
+
     public override void write(Gdk.Pixbuf pixbuf, Jpeg.Quality quality) throws Error {
         pixbuf.save(get_filepath(), "png", "compression", "9", null);
     }
@@ -131,7 +131,7 @@ public class PngMetadataWriter : PhotoFileMetadataWriter {
     public PngMetadataWriter(string filepath) {
         base (filepath, PhotoFileFormat.PNG);
     }
-    
+
     public override void write_metadata(PhotoMetadata metadata) throws Error {
         metadata.write_to_file(get_file());
     }
@@ -139,44 +139,44 @@ public class PngMetadataWriter : PhotoFileMetadataWriter {
 
 public class PngFileFormatDriver : PhotoFileFormatDriver {
     private static PngFileFormatDriver instance = null;
-    
+
     public static void init() {
         instance = new PngFileFormatDriver();
         PngFileFormatProperties.init();
     }
-    
+
     public static PngFileFormatDriver get_instance() {
         return instance;
     }
-    
+
     public override PhotoFileFormatProperties get_properties() {
         return PngFileFormatProperties.get_instance();
     }
-    
+
     public override PhotoFileReader create_reader(string filepath) {
         return new PngReader(filepath);
     }
-    
+
     public override bool can_write_image() {
         return true;
     }
-    
+
     public override bool can_write_metadata() {
         return true;
     }
-    
+
     public override PhotoFileWriter? create_writer(string filepath) {
         return new PngWriter(filepath);
     }
-    
+
     public override PhotoFileMetadataWriter? create_metadata_writer(string filepath) {
         return new PngMetadataWriter(filepath);
     }
-    
+
     public override PhotoFileSniffer create_sniffer(File file, PhotoFileSniffer.Options options) {
         return new PngSniffer(file, options);
     }
-    
+
     public override PhotoMetadata create_metadata() {
         return new PhotoMetadata();
     }

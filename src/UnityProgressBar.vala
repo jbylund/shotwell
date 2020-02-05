@@ -29,11 +29,11 @@ public class UnityProgressBar : Object {
     ~UnityProgressBar () {
         reset_progress_bar();
     }
-    
+
     public double get_progress () {
         return progress;
     }
-    
+
     public void set_progress (double percent) {
         progress = percent;
         update_visibility();
@@ -42,11 +42,11 @@ public class UnityProgressBar : Object {
     private void update_visibility () {
         set_progress_bar(this, progress);
     }
-    
+
     public bool get_visible () {
         return visible;
     }
-    
+
     public void set_visible (bool visible) {
         this.visible = visible;
 
@@ -55,7 +55,7 @@ public class UnityProgressBar : Object {
             reset_progress_bar();
         } else {
             //update_visibility if this progress bar wants to be drawn
-            update_visibility();            
+            update_visibility();
         }
     }
 
@@ -63,7 +63,7 @@ public class UnityProgressBar : Object {
         set_visible(false);
         progress = 0.0;
     }
-    
+
     private static void set_progress_bar (UnityProgressBar uniprobar, double percent) {
         //set new visible ProgressBar
         visible_uniprobar = uniprobar;
@@ -71,7 +71,7 @@ public class UnityProgressBar : Object {
             l.progress_visible = true;
         l.progress = percent;
     }
-    
+
     private static void reset_progress_bar () {
         //reset to default values
         visible_uniprobar = null;

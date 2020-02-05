@@ -49,7 +49,7 @@ private class ClockEffect : Object, Transitions.Effect {
         int width, int height, int frame_number) {
         double alpha = motion.get_alpha(frame_number);
         double start_angle = -TOP_RADIANT, stop_angle = -TOP_RADIANT;
-        
+
         if (motion.direction == Transitions.Direction.FORWARD)
             stop_angle = alpha*Math.PI * 2 - TOP_RADIANT;
         else
@@ -62,7 +62,7 @@ private class ClockEffect : Object, Transitions.Effect {
                 visuals.from_pos.y);
             ctx.paint_with_alpha(1 - alpha);
         }
-        
+
         if (visuals.to_pixbuf != null) {
             Gdk.cairo_set_source_pixbuf(ctx, visuals.to_pixbuf,visuals.to_pos.x, visuals.to_pos.y);
 

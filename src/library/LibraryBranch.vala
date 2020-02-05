@@ -13,7 +13,7 @@ public class Library.Branch : Sidebar.Branch {
     public Library.ImportQueueSidebarEntry import_queue_entry { get; private set; }
     public Library.OfflineSidebarEntry offline_entry { get; private set; }
     public Library.TrashSidebarEntry trash_entry { get; private set; }
-    
+
     // This lists the order of the library items in the sidebar. To re-order, simply move
     // the item in this list to a new position. These numbers should *not* persist anywhere
     // outside the app.
@@ -25,7 +25,7 @@ public class Library.Branch : Sidebar.Branch {
         OFFLINE,
         TRASH
     }
-    
+
     public Branch() {
         base(new Sidebar.Header(_("Library"), _("Organize and browse your photos")),
             Sidebar.Branch.Options.STARTUP_OPEN_GROUPING, comparator);
@@ -52,7 +52,7 @@ public class Library.Branch : Sidebar.Branch {
         offline_entry.visibility_changed.connect(on_offline_visibility_changed);
         on_offline_visibility_changed();
     }
-    
+
     private void insert(Sidebar.Entry entry, int position) {
         entry.set_data<int>(POSITION_DATA, position);
         graft(get_root(), entry);
@@ -89,18 +89,18 @@ public class Library.Branch : Sidebar.Branch {
 }
 
 public class Library.PhotosEntry : Sidebar.SimplePageEntry {
-    
+
     public PhotosEntry() {
     }
-    
+
     public override string get_sidebar_name() {
         return _("Photos");
     }
-    
+
     public override string? get_sidebar_icon() {
         return Resources.ICON_PHOTOS;
     }
-    
+
     protected override Page create_page() {
         return new Library.MainPage();
     }
@@ -125,14 +125,14 @@ public abstract class Library.HideablePageEntry : Sidebar.SimplePageEntry {
 
 public class Library.MainPage : CollectionPage {
     public const string NAME = _("Library");
-    
+
     public MainPage(ProgressMonitor? monitor = null) {
         base (NAME);
-        
+
         foreach (MediaSourceCollection sources in MediaCollectionRegistry.get_instance().get_all())
             get_view().monitor_source_collection(sources, new CollectionViewManager(this), null, null, monitor);
     }
-    
+
     protected override void get_config_photos_sort(out bool sort_order, out int sort_by) {
         Config.Facade.get_instance().get_library_photos_sort(out sort_order, out sort_by);
     }

@@ -20,7 +20,7 @@ public class PublishingDialog : Gtk.Dialog {
     public const int STANDARD_ACTION_BUTTON_WIDTH = 128;
 
     private static PublishingDialog active_instance = null;
-    
+
     private Gtk.ListStore service_selector_box_model;
     private Gtk.ComboBox service_selector_box;
     private Gtk.Box central_area_layouter;
@@ -64,7 +64,7 @@ public class PublishingDialog : Gtk.Dialog {
 
         string title = null;
         string label = null;
-        
+
         if (has_photos && !has_videos) {
             title = _("Publish Photos");
             label = _("Publish photos _to:");
@@ -108,7 +108,7 @@ public class PublishingDialog : Gtk.Dialog {
                 // check if the icons object is set -- if set use that icon
                 service_selector_box_model.set(iter, 0, info.icons[0], 1,
                     service.get_pluggable_name());
-                
+
                 // in case the icons object is not set on the next iteration
                 info.icons[0] = Resources.get_icon(Resources.ICON_GENERIC_PLUGIN);
             } else {
@@ -116,7 +116,7 @@ public class PublishingDialog : Gtk.Dialog {
                 service_selector_box_model.set(iter, 0, Resources.get_icon(
                     Resources.ICON_GENERIC_PLUGIN), 1, service.get_pluggable_name());
             }
-            
+
             if (last_used_service == null) {
                 service_selector_box.set_active_iter(iter);
                 last_used_service = service.get_id();
@@ -126,7 +126,7 @@ public class PublishingDialog : Gtk.Dialog {
         }
 
         service_selector_box.changed.connect(on_service_changed);
-        
+
         if (!use_header)
         {
             var service_selector_box_label = new Gtk.Label.with_mnemonic(label);
@@ -165,7 +165,7 @@ public class PublishingDialog : Gtk.Dialog {
         central_area_layouter = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
 
         get_content_area().pack_start(central_area_layouter, true, true, 0);
-        
+
         if (use_header) {
             close_cancel_button = new Gtk.Button.with_mnemonic("_Cancel");
             close_cancel_button.set_can_default(true);
@@ -180,17 +180,17 @@ public class PublishingDialog : Gtk.Dialog {
         close_cancel_button.clicked.connect(on_close_cancel_clicked);
 
         set_standard_window_mode();
-        
+
         show_all();
     }
-    
+
     private static Spit.Publishing.Service[] load_all_services() {
         Spit.Publishing.Service[] loaded_services = new Spit.Publishing.Service[0];
-        
+
         // load publishing services from plug-ins
         Gee.Collection<Spit.Pluggable> pluggables = Plugins.get_pluggables_for_type(
             typeof(Spit.Publishing.Service));
-            
+
         debug("PublisingDialog: discovered %d pluggable publishing services.", pluggables.size);
 
         foreach (Spit.Pluggable pluggable in pluggables) {
@@ -199,36 +199,36 @@ public class PublishingDialog : Gtk.Dialog {
             if (pluggable_interface != Spit.Publishing.CURRENT_INTERFACE) {
                 warning("Unable to load publisher %s: reported interface %d.",
                     Plugins.get_pluggable_module_id(pluggable), pluggable_interface);
-                
+
                 continue;
             }
-            
+
             Spit.Publishing.Service service =
                 (Spit.Publishing.Service) pluggable;
 
             debug("PublishingDialog: discovered pluggable publishing service '%s'.",
                 service.get_pluggable_name());
-            
+
             loaded_services += service;
         }
-        
+
         // Sort publishing services by name.
-        Posix.qsort(loaded_services, loaded_services.length, sizeof(Spit.Publishing.Service), 
-            (a, b) => {return utf8_cs_compare((*((Spit.Publishing.Service**) a))->get_pluggable_name(), 
+        Posix.qsort(loaded_services, loaded_services.length, sizeof(Spit.Publishing.Service),
+            (a, b) => {return utf8_cs_compare((*((Spit.Publishing.Service**) a))->get_pluggable_name(),
                 (*((Spit.Publishing.Service**) b))->get_pluggable_name());
         });
-        
+
         return loaded_services;
     }
-    
+
     private static Spit.Publishing.Service[] load_services(bool has_photos, bool has_videos) {
         assert (has_photos || has_videos);
-        
-        Spit.Publishing.Service[] filtered_services = new Spit.Publishing.Service[0];        
+
+        Spit.Publishing.Service[] filtered_services = new Spit.Publishing.Service[0];
         Spit.Publishing.Service[] all_services = load_all_services();
 
         foreach (Spit.Publishing.Service service in all_services) {
-            
+
             if (has_photos && !has_videos) {
                 if ((service.get_supported_media() & Spit.Publishing.Publisher.MediaType.PHOTO) != 0)
                     filtered_services += service;
@@ -241,12 +241,12 @@ public class PublishingDialog : Gtk.Dialog {
                     filtered_services += service;
             }
         }
-        
+
         return filtered_services;
     }
 
     // Because of this bug: http://trac.yorba.org/ticket/3623, we use some extreme measures. The
-    // bug occurs because, in some cases, when publishing is started asynchronous network 
+    // bug occurs because, in some cases, when publishing is started asynchronous network
     // transactions are performed. The mechanism inside libsoup that we use to perform asynchronous
     // network transactions isn't based on threads but is instead based on the GLib event loop. So
     // whenever we run a network transaction, the GLib event loop gets spun. One consequence of
@@ -262,7 +262,7 @@ public class PublishingDialog : Gtk.Dialog {
 
         if (since_last_start == null) {
             // GLib.Timers start themselves automatically when they're created, so stop our
-            // new timer and reset it to zero 'til were ready to start timing. 
+            // new timer and reset it to zero 'til were ready to start timing.
             since_last_start = new Timer();
             since_last_start.stop();
             since_last_start.reset();
@@ -276,10 +276,10 @@ public class PublishingDialog : Gtk.Dialog {
         Gee.ArrayList<LibraryPhoto> photos = new Gee.ArrayList<LibraryPhoto>();
         Gee.ArrayList<Video> videos = new Gee.ArrayList<Video>();
         MediaSourceCollection.filter_media(to_publish, photos, videos);
-        
+
         Spit.Publishing.Service[] avail_services =
             load_services((photos.size > 0), (videos.size > 0));
-        
+
         if (avail_services.length == 0) {
             // There are no enabled publishing services that accept this media type,
             // warn the user.
@@ -289,14 +289,14 @@ public class PublishingDialog : Gtk.Dialog {
 
             return;
         }
-        
-        // If we get down here, it means that at least one publishing service 
+
+        // If we get down here, it means that at least one publishing service
         // was found that could accept this type of media, so continue normally.
 
         debug("PublishingDialog.go( )");
 
         active_instance = new PublishingDialog(to_publish);
-        
+
         active_instance.run();
 
         active_instance = null;
@@ -305,13 +305,13 @@ public class PublishingDialog : Gtk.Dialog {
         since_last_start.start();
         elapsed_is_valid = true;
     }
-    
+
     private bool on_window_close(Gdk.EventAny evt) {
         host.stop_publishing();
         host = null;
         hide();
         destroy();
-        
+
         return true;
     }
 
@@ -319,21 +319,21 @@ public class PublishingDialog : Gtk.Dialog {
         Gtk.TreeIter iter;
         bool have_active_iter = false;
         have_active_iter = service_selector_box.get_active_iter(out iter);
-        
+
         // this occurs when the user removes the last active publisher
         if (!have_active_iter) {
             // default to the first in the list (as good as any)
             service_selector_box.set_active(0);
-            
+
             // and get active again
             service_selector_box.get_active_iter(out iter);
         }
-        
+
         Value service_name_val;
         service_selector_box_model.get_value(iter, 1, out service_name_val);
-        
+
         string service_name = (string) service_name_val;
-        
+
         Spit.Publishing.Service? selected_service = null;
         Spit.Publishing.Service[] services = load_all_services();
         foreach (Spit.Publishing.Service service in services) {
@@ -349,23 +349,23 @@ public class PublishingDialog : Gtk.Dialog {
         host = new Spit.Publishing.ConcretePublishingHost(selected_service, this, publishables);
         host.start_publishing();
     }
-    
+
     private void on_close_cancel_clicked() {
         debug("PublishingDialog: on_close_cancel_clicked( ): invoked.");
-        
+
         host.stop_publishing();
         host = null;
         hide();
         destroy();
     }
-    
+
     private void set_large_window_mode() {
         set_size_request(LARGE_WINDOW_WIDTH, LARGE_WINDOW_HEIGHT);
         central_area_layouter.set_size_request(LARGE_WINDOW_WIDTH - BORDER_REGION_WIDTH,
             LARGE_WINDOW_HEIGHT - BORDER_REGION_HEIGHT);
         resizable = false;
     }
-    
+
     private void set_colossal_window_mode() {
         set_size_request(COLOSSAL_WINDOW_WIDTH, COLOSSAL_WINDOW_HEIGHT);
         central_area_layouter.set_size_request(COLOSSAL_WINDOW_WIDTH - BORDER_REGION_WIDTH,
@@ -409,7 +409,7 @@ public class PublishingDialog : Gtk.Dialog {
     public void unlock_service() {
         service_selector_box.set_sensitive(true);
     }
-    
+
     public void install_pane(Spit.Publishing.DialogPane pane) {
         debug("PublishingDialog: install_pane( ): invoked.");
 
@@ -440,14 +440,14 @@ public class PublishingDialog : Gtk.Dialog {
         active_pane = pane;
         pane.on_pane_installed();
     }
-    
+
     public new int run() {
         on_service_changed();
 
         int result = base.run();
-        
+
         host = null;
-        
+
         return result;
     }
 }

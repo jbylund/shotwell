@@ -52,16 +52,16 @@ private class CirclesEffect : Object, Transitions.Effect {
         int circleCountX = width / (2 * distance);
         int circleCountY = height / distance;
         double maxRadius = SPEED * distance;
-        
+
         if (visuals.from_pixbuf != null) {
             Gdk.cairo_set_source_pixbuf(ctx, visuals.from_pixbuf, visuals.from_pos.x,
                 visuals.from_pos.y);
             ctx.paint_with_alpha(1 - alpha);
         }
-        
+
         if (visuals.to_pixbuf != null) {
             Gdk.cairo_set_source_pixbuf(ctx, visuals.to_pixbuf,visuals.to_pos.x, visuals.to_pos.y);
-            
+
             for(int y = 0; y <= circleCountY; y++){
                 for(int x = 0; x <= circleCountX; x++){
                     radius = (int) (Math.fmax(0,Math.fmin(1, alpha-((double) (x + y)/(double)
@@ -70,11 +70,10 @@ private class CirclesEffect : Object, Transitions.Effect {
                     ctx.fill();
                 }
             }
-            
+
             ctx.clip();
             ctx.paint_with_alpha(alpha);
         }
-
 
     }
 

@@ -31,7 +31,7 @@ public class PrintSettings {
         Config.Facade config = Config.Facade.get_instance();
 
         MeasurementUnit units = (MeasurementUnit) config.get_printing_content_units();
-        
+
         content_width = Measurement(config.get_printing_content_width(), units);
         content_height = Measurement(config.get_printing_content_height(), units);
         size_selection = config.get_printing_size_selection();
@@ -57,7 +57,6 @@ public class PrintSettings {
         config.set_printing_images_per_page(image_per_page_selection);
         config.set_printing_content_ppi(content_ppi);
     }
-
 
     public Measurement get_content_width() {
         switch (get_content_layout()) {
@@ -219,7 +218,7 @@ private enum PrintLayout {
     EIGHT_PER_PAGE,
     SIXTEEN_PER_PAGE,
     THIRTY_TWO_PER_PAGE;
-    
+
     public static PrintLayout[] get_all() {
         return {
             ENTIRE_PAGE,
@@ -231,25 +230,25 @@ private enum PrintLayout {
             THIRTY_TWO_PER_PAGE
         };
     }
-    
+
     public int get_per_page() {
         int[] per_page = { 1, 2, 4, 6, 8, 16, 32 };
-        
+
         return per_page[this];
     }
-    
+
     public int get_x() {
         int[] x = { 1, 1, 2, 2, 2, 4, 4 };
-        
+
         return x[this];
      }
-    
+
     public int get_y() {
         int[] y = { 1, 2, 2, 3, 4, 4, 8 };
-        
+
         return y[this];
     }
-    
+
     public string to_string() {
         string[] labels = {
             _("Fill the entire page"),
@@ -260,7 +259,7 @@ private enum PrintLayout {
             _("16 images per page"),
             _("32 images per page")
         };
-        
+
         return labels[this];
     }
 }
@@ -394,12 +393,12 @@ public class CustomPrintTab : Gtk.Box {
     private void on_ppi_entry_insert_text(Gtk.Editable editable, string text, int length,
         ref int position) {
         Gtk.Entry sender = (Gtk.Entry) editable;
-        
+
         if (is_text_insertion_in_progress)
             return;
 
         is_text_insertion_in_progress = true;
-        
+
         if (length == -1)
             length = (int) text.length;
 
@@ -474,14 +473,14 @@ public class CustomPrintTab : Gtk.Box {
 
     private void on_entry_insert_text(Gtk.Editable editable, string text, int length,
         ref int position) {
-        
+
         Gtk.Entry sender = (Gtk.Entry) editable;
-        
+
         if (is_text_insertion_in_progress)
             return;
 
         is_text_insertion_in_progress = true;
-        
+
         if (length == -1)
             length = (int) text.length;
 
@@ -509,7 +508,7 @@ public class CustomPrintTab : Gtk.Box {
     private void sync_state_from_job(PrintJob job) {
         assert(job.get_local_settings().get_content_width().unit ==
             job.get_local_settings().get_content_height().unit);
-        
+
         Measurement constrained_width = job.get_local_settings().get_content_width();
         if (job.get_local_settings().is_match_aspect_ratio_enabled())
             constrained_width = Measurement(job.get_local_settings().get_content_height().value *
@@ -527,7 +526,7 @@ public class CustomPrintTab : Gtk.Box {
 
     private void on_radio_group_click(Gtk.Button b) {
         Gtk.RadioButton sender = (Gtk.RadioButton) b;
-        
+
         if (sender == standard_size_radio) {
             set_content_layout_control_state(ContentLayout.STANDARD_SIZE);
             standard_sizes_combo.grab_focus();
@@ -686,7 +685,6 @@ public class CustomPrintTab : Gtk.Box {
         (title_print_font as Gtk.FontChooser).set_font(fontname);
     }
 
-
     private bool is_match_aspect_ratio_enabled() {
         return aspect_ratio_check.get_active();
     }
@@ -723,11 +721,11 @@ public class CustomPrintTab : Gtk.Box {
 public class PrintJob : Gtk.PrintOperation {
     private PrintSettings settings;
     private Gee.ArrayList<Photo> photos = new Gee.ArrayList<Photo>();
-    
+
     public PrintJob(Gee.Collection<Photo> to_print) {
         this.settings = PrintManager.get_instance().get_global_settings();
         photos.add_all(to_print);
-        
+
         set_embed_page_setup (true);
         double photo_aspect_ratio =  photos[0].get_dimensions().get_aspect_ratio();
         if (photo_aspect_ratio < 1.0)
@@ -770,16 +768,16 @@ public class StandardPrintSize {
 
 public class PrintManager {
     private const double IMAGE_DISTANCE = 0.24;
-    
+
     private static PrintManager instance = null;
-    
+
     private PrintSettings settings;
     private Gtk.PageSetup user_page_setup;
     private CustomPrintTab custom_tab;
     private ProgressDialog? progress_dialog = null;
     private Cancellable? cancellable = null;
     private StandardPrintSize[] standard_sizes = null;
-    
+
     private PrintManager() {
         user_page_setup = new Gtk.PageSetup();
         settings = new PrintSettings();
@@ -857,12 +855,12 @@ public class PrintManager {
         job.draw_page.connect(on_draw_page);
         job.create_custom_widget.connect(on_create_custom_widget);
         job.status_changed.connect(on_status_changed);
-        
+
         AppWindow.get_instance().set_busy_cursor();
-        
+
         cancellable = new Cancellable();
         progress_dialog = new ProgressDialog(AppWindow.get_instance(), _("Printing…"), cancellable);
-        
+
         string? err_msg = null;
         try {
             Gtk.PrintOperationResult result = job.run(Gtk.PrintOperationAction.PRINT_DIALOG,
@@ -873,29 +871,29 @@ public class PrintManager {
             job.cancel();
             err_msg = e.message;
         }
-        
+
         progress_dialog.close();
         progress_dialog = null;
         cancellable = null;
-        
+
         AppWindow.get_instance().set_normal_cursor();
-        
+
         if (err_msg != null)
             AppWindow.error_message(_("Unable to print photo:\n\n%s").printf(err_msg));
     }
 
     private void on_begin_print(Gtk.PrintOperation emitting_object, Gtk.PrintContext job_context) {
         debug("on_begin_print");
-        
+
         PrintJob job = (PrintJob) emitting_object;
-        
+
         // cancel() can only be called from "begin-print", "paginate", or "draw-page"
         if (cancellable != null && cancellable.is_cancelled()) {
             job.cancel();
-            
+
             return;
         }
-        
+
         Gee.List<Photo> photos = job.get_photos();
         if (job.get_local_settings().get_content_layout() == ContentLayout.IMAGE_PER_PAGE){
             PrintLayout layout = (PrintLayout) job.get_local_settings().get_image_per_page_selection();
@@ -903,34 +901,34 @@ public class PrintManager {
         } else {
             job.set_n_pages(photos.size);
         }
-        
+
         spin_event_loop();
     }
-    
+
     private void on_status_changed(Gtk.PrintOperation job) {
         debug("on_status_changed: %s", job.get_status_string());
-        
+
         if (progress_dialog != null) {
             progress_dialog.set_status(job.get_status_string());
             spin_event_loop();
         }
     }
-    
+
     private void on_draw_page(Gtk.PrintOperation emitting_object, Gtk.PrintContext job_context,
         int page_num) {
         debug("on_draw_page");
-        
+
         PrintJob job = (PrintJob) emitting_object;
-        
+
         // cancel() can only be called from "begin-print", "paginate", or "draw-page"
         if (cancellable != null && cancellable.is_cancelled()) {
             job.cancel();
-            
+
             return;
         }
-        
+
         spin_event_loop();
-        
+
         Gtk.PageSetup page_setup = job_context.get_page_setup();
         double page_width = page_setup.get_page_width(Gtk.Unit.INCH);
         double page_height = page_setup.get_page_height(Gtk.Unit.INCH);
@@ -940,7 +938,7 @@ public class PrintManager {
         Cairo.Context dc = job_context.get_cairo_context();
         dc.scale(inv_dpi, inv_dpi);
         Gee.List<Photo> photos = job.get_photos();
-        
+
         ContentLayout content_layout = job.get_local_settings().get_content_layout();
         switch (content_layout) {
             case ContentLayout.STANDARD_SIZE:
@@ -958,7 +956,7 @@ public class PrintManager {
                     canvas_height = job.get_local_settings().get_content_height().convert_to(
                         MeasurementUnit.INCHES).value;
                 }
-                
+
                 if (page_num < photos.size) {
                     Dimensions photo_dimensions = photos[page_num].get_dimensions();
                     double photo_aspect_ratio = photo_dimensions.get_aspect_ratio();
@@ -968,7 +966,7 @@ public class PrintManager {
                         canvas_width = canvas_height;
                         canvas_height = canvas_tmp;
                     }
-                    
+
                     double dx = (page_width - canvas_width) / 2.0;
                     double dy = (page_height - canvas_height) / 2.0;
                     fit_image_to_canvas(photos[page_num], dx, dy, canvas_width, canvas_height, true,
@@ -978,11 +976,11 @@ public class PrintManager {
                             job, job_context);
                     }
                 }
-                
+
                 if (progress_dialog != null)
                     progress_dialog.monitor(page_num, photos.size);
             break;
-            
+
             case ContentLayout.IMAGE_PER_PAGE:
                 PrintLayout layout = (PrintLayout) job.get_local_settings().get_image_per_page_selection();
                 int nx = layout.get_x();
@@ -999,17 +997,17 @@ public class PrintManager {
                             fit_image_to_canvas(photos[i], dx, dy, canvas_width, canvas_height, false,
                                 job, job_context);
                             if (job.get_local_settings().is_print_titles_enabled()) {
-                                add_title_to_canvas(dx + canvas_width / 2, dy + canvas_height, 
+                                add_title_to_canvas(dx + canvas_width / 2, dy + canvas_height,
                                     photos[i].get_name(), job, job_context);
                             }
                         }
-                        
+
                         if (progress_dialog != null)
                             progress_dialog.monitor(i, photos.size);
                     }
                 }
             break;
-            
+
             default:
                 error("unknown or unsupported layout mode");
         }
@@ -1048,7 +1046,7 @@ public class PrintManager {
             x += (canvas_width - target_width) / 2.0;
             y += (canvas_height - target_height) / 2.0;
         }
-        
+
         double x_offset = dpi * x;
         double y_offset = dpi * y;
         dc.save();
@@ -1088,7 +1086,7 @@ public class PrintManager {
         }
         dc.restore();
     }
-    
+
     private void add_title_to_canvas(double x, double y, string title, PrintJob job, Gtk.PrintContext job_context) {
         Cairo.Context dc = job_context.get_cairo_context();
         double dpi = job.get_local_settings().get_content_ppi();
@@ -1115,7 +1113,7 @@ public class PrintManager {
         dc.move_to(tx, ty + 2);
         Pango.cairo_show_layout(dc, title_layout);
     }
-    
+
     private bool are_approximately_equal(double val1, double val2) {
         double accept_err = 0.005;
         return (Math.fabs(val1 - val2) <= accept_err);

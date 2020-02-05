@@ -58,7 +58,7 @@ private class ChessEffect : Object, Transitions.Effect {
                 visuals.from_pos.y);
             ctx.paint_with_alpha(1 - alpha);
         }
-        
+
         if (visuals.to_pixbuf != null) {
             Gdk.cairo_set_source_pixbuf(ctx, visuals.to_pixbuf,visuals.to_pos.x, visuals.to_pos.y);
             for (double y = 0; y <= square_count_y; y++) {

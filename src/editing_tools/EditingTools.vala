@@ -57,7 +57,7 @@ public abstract class EditingToolWindow : Gtk.Window {
     }
 
     ~EditingToolWindow() {
-        Log.set_handler("Gdk", LogLevelFlags.LEVEL_WARNING, Log.default_handler);   
+        Log.set_handler("Gdk", LogLevelFlags.LEVEL_WARNING, Log.default_handler);
     }
 
     public override void add(Gtk.Widget widget) {
@@ -88,7 +88,7 @@ public abstract class EditingToolWindow : Gtk.Window {
 
     public override void realize() {
         (this as Gtk.Widget).set_opacity(Resources.TRANSIENT_WINDOW_OPACITY);
-        
+
         base.realize();
     }
 
@@ -322,15 +322,15 @@ public abstract class PhotoCanvas {
         Cairo.TextExtents extents;
         ctx.text_extents(text, out extents);
         x -= (int) extents.width / 2;
-        
+
         set_source_color_from_string(ctx, Resources.ONIMAGE_FONT_BACKGROUND);
-        
+
         int pane_border = 5; // border around edge of pane in pixels
-        ctx.rectangle(x - pane_border, y - pane_border - extents.height, 
-            extents.width + 2 * pane_border, 
+        ctx.rectangle(x - pane_border, y - pane_border - extents.height,
+            extents.width + 2 * pane_border,
             extents.height + 2 * pane_border);
         ctx.fill();
-        
+
         ctx.move_to(x, y);
         set_source_color_from_string(ctx, Resources.ONIMAGE_FONT_COLOR);
         ctx.show_text(text);
@@ -344,7 +344,7 @@ public abstract class PhotoCanvas {
      * @param x The horizontal position to place the line at.
      * @param y The vertical position to place the line at.
      * @param width The length of the line.
-     * @param use_scaled_pos Whether to use absolute window positioning or take into account the 
+     * @param use_scaled_pos Whether to use absolute window positioning or take into account the
      *      position of the scaled image.
      */
     public void draw_horizontal_line(Cairo.Context ctx, int x, int y, int width, bool use_scaled_pos = true) {
@@ -366,7 +366,7 @@ public abstract class PhotoCanvas {
      * @param x The horizontal position to place the line at.
      * @param y The vertical position to place the line at.
      * @param width The length of the line.
-     * @param use_scaled_pos Whether to use absolute window positioning or take into account the 
+     * @param use_scaled_pos Whether to use absolute window positioning or take into account the
      *      position of the scaled image.
      */
     public void draw_vertical_line(Cairo.Context ctx, int x, int y, int height, bool use_scaled_pos = true) {
@@ -607,7 +607,7 @@ public class CropTool : EditingTool {
                 aspect_ratio = new_aspect_ratio;
             is_pivotable = new_pivotable;
         }
-        
+
         public bool is_separator() {
             return !is_pivotable && aspect_ratio == SEPARATOR;
         }
@@ -912,10 +912,10 @@ public class CropTool : EditingTool {
 
         return result;
     }
-    
+
     private float get_constraint_aspect_ratio_for_constraint(ConstraintDescription constraint, Photo photo) {
         float result = constraint.aspect_ratio;
-        
+
         if (result == ORIGINAL_ASPECT_RATIO) {
             Dimensions orig_dim = photo.get_original_dimensions();
             result = ((float) orig_dim.width) / ((float) orig_dim.height);
@@ -929,7 +929,7 @@ public class CropTool : EditingTool {
             result = 1.0f / result;
 
         return result;
-        
+
     }
 
     private void constraint_changed() {
@@ -1031,7 +1031,7 @@ public class CropTool : EditingTool {
         float old_area = (float) (crop.get_width() * crop.get_height());
         crop.adjust_height((int) Math.sqrt(old_area / user_aspect_ratio));
         crop.adjust_width((int) Math.sqrt(old_area * user_aspect_ratio));
-        
+
         // PHASE 2: Crop to the image boundary.
         Dimensions image_size = get_photo_dimensions();
         double angle;
@@ -1043,16 +1043,16 @@ public class CropTool : EditingTool {
             crop.adjust_width((int) (crop.get_height() * user_aspect_ratio));
         else    // possibly too tall
             crop.adjust_height((int) (crop.get_width() / user_aspect_ratio));
-        
+
         return crop;
     }
-    
+
     private ConstraintDescription? get_last_constraint(out int index) {
         index = Config.Facade.get_instance().get_last_crop_menu_choice();
-        
+
         return (index < constraints.length) ? constraints[index] : null;
     }
-    
+
     public override void activate(PhotoCanvas canvas) {
         bind_canvas_handlers(canvas);
 
@@ -1090,7 +1090,7 @@ public class CropTool : EditingTool {
                     crop_tool_window.constraint_combo.set_active(index);
                 }
         }
-        
+
         // set up the pivot reticle button
         update_pivot_button_state();
         reticle_orientation = ReticleOrientation.LANDSCAPE;
@@ -1646,7 +1646,7 @@ public class CropTool : EditingTool {
         Dimensions photo_dims = get_photo_dimensions();
         double angle;
         canvas.get_photo().get_straighten(out angle);
-        
+
         Box new_crop;
         if (get_constraint_aspect_ratio() == ANY_ASPECT_RATIO) {
             width = right - left + 1;
@@ -1697,7 +1697,7 @@ public class CropTool : EditingTool {
                 Box(left, top, right, bottom),
                 photo_dims.width, photo_dims.height, angle,
                 in_manipulation == BoxLocation.INSIDE);
-                
+
         } else {
             // one of the constrained modes is active; revert instead of clamping so
             // that aspect ratio stays intact
@@ -1706,7 +1706,7 @@ public class CropTool : EditingTool {
             Box adjusted = clamp_inside_rotated_image(new_crop,
                 photo_dims.width, photo_dims.height, angle,
                 in_manipulation == BoxLocation.INSIDE);
-            
+
             if (adjusted != new_crop || width < CROP_MIN_SIZE || height < CROP_MIN_SIZE) {
                 new_crop = scaled_crop;     // revert crop move
             }
@@ -1767,7 +1767,6 @@ public class CropTool : EditingTool {
 
         set_area_alpha(scaled_crop, 0.5);
         set_area_alpha(new_crop, 0.0);
-
 
         // paint crop in new location
         paint_crop_tool(new_crop);
@@ -2720,7 +2719,6 @@ public class AdjustTool : EditingTool {
         slider_updated(new_exp_trans, _("Contrast"));
     }
 
-
     private void on_saturation_adjustment() {
         if (saturation_scheduler == null)
             saturation_scheduler = new OneShotScheduler("saturation", on_delayed_saturation_adjustment);
@@ -2968,7 +2966,6 @@ public class AdjustTool : EditingTool {
         return base.on_keypress(event);
     }
 }
-
 
 }
 

@@ -14,7 +14,7 @@ private bool was_already_running = false;
 
 void library_exec(string[] mounts) {
     was_already_running = Application.get_is_remote();
-    
+
     if (was_already_running) {
         // Send attached cameras out to the primary instance.
         // The primary instance will get a 'command-line' signal with mounts[]
@@ -26,19 +26,19 @@ void library_exec(string[] mounts) {
         Application.send_to_primary_instance(mounts);
         return;
     }
-    
+
     // preconfigure units
     Db.preconfigure(AppDirs.get_data_subdir("data").get_child("photo.db"));
-    
+
     // initialize units
     try {
         Library.app_init();
     } catch (Error err) {
         AppWindow.panic(err.message);
-        
+
         return;
     }
-    
+
     // validate the databases prior to using them
     message("Verifying database…");
     string errormsg = null;
@@ -49,48 +49,48 @@ void library_exec(string[] mounts) {
         case Db.VerifyResult.OK:
             // do nothing; no problems
         break;
-        
+
         case Db.VerifyResult.FUTURE_VERSION:
             errormsg = _("Your photo library is not compatible with this version of Shotwell. It appears it was created by Shotwell %s (schema %d). This version is %s (schema %d). Please use the latest version of Shotwell.").printf(
                 app_version, schema_version, Resources.APP_VERSION, DatabaseTable.SCHEMA_VERSION);
         break;
-        
+
         case Db.VerifyResult.UPGRADE_ERROR:
             errormsg = _("Shotwell was unable to upgrade your photo library from version %s (schema %d) to %s (schema %d). For more information please check the Shotwell Wiki at %s").printf(
                 app_version, schema_version, Resources.APP_VERSION, DatabaseTable.SCHEMA_VERSION,
                 Resources.HOME_URL);
         break;
-        
+
         case Db.VerifyResult.NO_UPGRADE_AVAILABLE:
             errormsg = _("Your photo library is not compatible with this version of Shotwell. It appears it was created by Shotwell %s (schema %d). This version is %s (schema %d). Please clear your library by deleting %s and re-import your photos.").printf(
                 app_version, schema_version, Resources.APP_VERSION, DatabaseTable.SCHEMA_VERSION,
                 AppDirs.get_data_dir().get_path());
         break;
-        
+
         default:
             errormsg = _("Unknown error attempting to verify Shotwell’s database: %s").printf(
                 result.to_string());
         break;
     }
-    
+
     if (errormsg != null) {
-        Gtk.MessageDialog dialog = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL, 
+        Gtk.MessageDialog dialog = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL,
             Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, "%s", errormsg);
         dialog.title = Resources.APP_TITLE;
         dialog.run();
         dialog.destroy();
-        
+
         DatabaseTable.terminate();
-        
+
         return;
     }
-    
+
     Upgrades.init();
-    
+
     ProgressDialog progress_dialog = null;
     AggregateProgressMonitor aggregate_monitor = null;
     ProgressMonitor monitor = null;
-    
+
     if (!CommandlineOptions.no_startup_progress) {
         // only throw up a startup progress dialog if over a reasonable amount of objects ... multiplying
         // photos by two because there's two heavy-duty operations on them: creating the LibraryPhoto
@@ -99,7 +99,7 @@ void library_exec(string[] mounts) {
             + EventTable.get_instance().get_row_count()
             + TagTable.get_instance().get_row_count()
             + VideoTable.get_instance().get_row_count()
-#if ENABLE_FACES               
+#if ENABLE_FACES
             + FaceTable.get_instance().get_row_count()
             + FaceLocationTable.get_instance().get_row_count()
 #endif
@@ -113,17 +113,17 @@ void library_exec(string[] mounts) {
             } catch (Error err) {
                 debug("Warning - could not load application icon for loading window: %s", err.message);
             }
-            
+
             aggregate_monitor = new AggregateProgressMonitor(grand_total, progress_dialog.monitor);
             monitor = aggregate_monitor.monitor;
         }
     }
-    
+
     ThumbnailCache.init();
     Tombstone.init();
 
     LibraryFiles.select_copy_function();
-    
+
     if (aggregate_monitor != null)
         aggregate_monitor.next_step("LibraryPhoto.init");
     LibraryPhoto.init(monitor);
@@ -133,20 +133,20 @@ void library_exec(string[] mounts) {
     if (aggregate_monitor != null)
         aggregate_monitor.next_step("Upgrades.execute");
     Upgrades.get_instance().execute();
-    
+
     LibraryMonitorPool.init();
     MediaCollectionRegistry.init();
     MediaCollectionRegistry registry = MediaCollectionRegistry.get_instance();
     registry.register_collection(LibraryPhoto.global);
     registry.register_collection(Video.global);
-    
+
     if (aggregate_monitor != null)
         aggregate_monitor.next_step("Event.init");
     Event.init(monitor);
     if (aggregate_monitor != null)
         aggregate_monitor.next_step("Tag.init");
     Tag.init(monitor);
-#if ENABLE_FACES       
+#if ENABLE_FACES
     if (aggregate_monitor != null)
         aggregate_monitor.next_step("FaceLocation.init");
     FaceLocation.init(monitor);
@@ -154,23 +154,23 @@ void library_exec(string[] mounts) {
         aggregate_monitor.next_step("Face.init");
     Face.init(monitor);
 #endif
-    
+
     MetadataWriter.init();
     DesktopIntegration.init();
-    
+
     Application.get_instance().init_done();
-    
+
     // create main library application window
     if (aggregate_monitor != null)
         aggregate_monitor.next_step("LibraryWindow");
     LibraryWindow library_window = new LibraryWindow(monitor);
-    
+
     if (aggregate_monitor != null)
         aggregate_monitor.next_step("done");
-    
+
     // destroy and tear down everything ... no need for them to stick around the lifetime of the
     // application
-    
+
     monitor = null;
     aggregate_monitor = null;
     if (progress_dialog != null)
@@ -192,23 +192,23 @@ void library_exec(string[] mounts) {
     } else {
         Config.Facade.get_instance().set_show_welcome_dialog(false);
     }
-    
+
     if (selected_import_entries.length > 0) {
         do_external_import = true;
         foreach (WelcomeServiceEntry entry in selected_import_entries)
             entry.execute();
-    } 
+    }
     if (do_system_pictures_import) {
         /*  Do the system import even if other plugins have run as some plugins may not
             as some plugins may not import pictures from the system folder.
          */
         run_system_pictures_import();
     }
-    
+
     debug("%lf seconds to Gtk.main()", startup_timer.elapsed());
-    
+
     Application.get_instance().start();
-    
+
     DesktopIntegration.terminate();
     MetadataWriter.terminate();
     Tag.terminate();
@@ -219,7 +219,7 @@ void library_exec(string[] mounts) {
     Tombstone.terminate();
     ThumbnailCache.terminate();
     Video.terminate();
-#if ENABLE_FACES       
+#if ENABLE_FACES
     Face.terminate();
     FaceLocation.terminate();
 #endif
@@ -236,9 +236,9 @@ public void run_system_pictures_import(ImportManifest? external_exclusion_manife
 
     Gee.ArrayList<FileImportJob> jobs = new Gee.ArrayList<FileImportJob>();
     jobs.add(new FileImportJob(AppDirs.get_import_dir(), false, true));
-    
+
     LibraryWindow library_window = (LibraryWindow) AppWindow.get_instance();
-    
+
     BatchImport batch_import = new BatchImport(jobs, "startup_import",
         report_system_pictures_import, null, null, null, null, external_exclusion_manifest);
     library_window.enqueue_batch_import(batch_import, true);
@@ -283,30 +283,30 @@ void dump_metadata (string filename) {
 
 void editing_exec(string filename, bool fullscreen) {
     File initial_file = File.new_for_commandline_arg(filename);
-    
+
     // preconfigure units
     Direct.preconfigure(initial_file);
     Db.preconfigure(null);
-    
+
     // initialize units for direct-edit mode
     try {
         Direct.app_init();
     } catch (Error err) {
         AppWindow.panic(err.message);
-        
+
         return;
     }
-    
+
     // init modules direct-editing relies on
     DesktopIntegration.init();
-    
+
     // TODO: At some point in the future, to support mixed-media in direct-edit mode, we will
     //       refactor DirectPhotoSourceCollection to be a MediaSourceCollection. At that point,
     //       we'll need to register DirectPhoto.global with the MediaCollectionRegistry
-    
+
     DirectWindow direct_window = new DirectWindow(initial_file);
     direct_window.show_all();
-    
+
     debug("%lf seconds to Gtk.main()", startup_timer.elapsed());
 
     if (fullscreen) {
@@ -315,11 +315,11 @@ void editing_exec(string filename, bool fullscreen) {
             action.activate(null);
         }
     }
-    
+
     Application.get_instance().start();
 
     DesktopIntegration.terminate();
-    
+
     // terminate units for direct-edit mode
     Direct.app_terminate();
 }
@@ -354,7 +354,7 @@ void main(string[] args) {
     AppDirs.init(args[0]);
 
     // This has to be done before the AppWindow is created in order to ensure the XMP
-    // parser is initialized in a thread-safe fashion; please see 
+    // parser is initialized in a thread-safe fashion; please see
     // http://redmine.yorba.org/issues/4120 for details.
     GExiv2.initialize();
     GExiv2.log_use_glib_logging();
@@ -364,7 +364,7 @@ void main(string[] args) {
     GExiv2.log_set_level(GExiv2.LogLevel.DEBUG);
 
     // following the GIO programming guidelines at http://developer.gnome.org/gio/2.26/ch03.html,
-    // set the GSETTINGS_SCHEMA_DIR environment variable to allow us to load GSettings schemas from 
+    // set the GSETTINGS_SCHEMA_DIR environment variable to allow us to load GSettings schemas from
     // the build directory. this allows us to access local GSettings schemas without having to
     // muck with the user's XDG_... directories, which is seriously frowned upon
     if (AppDirs.get_install_dir() == null) {
@@ -402,7 +402,7 @@ void main(string[] args) {
             print("%s %s\n", Resources.APP_TITLE, Resources.APP_VERSION);
 
         AppDirs.terminate();
-        
+
         return;
     }
 
@@ -418,7 +418,7 @@ void main(string[] args) {
     // init debug prior to anything else (except Gtk, which it relies on, and AppDirs, which needs
     // to be set ASAP) ... since we need to know what mode we're in, examine the command-line
     // first
-    
+
     // walk command-line arguments for camera mounts or filename for direct editing ... only one
     // filename supported for now, so take the first one and drop the rest ... note that URIs for
     // filenames are currently not permitted, to differentiate between mount points
@@ -440,7 +440,7 @@ void main(string[] args) {
 
         return;
     }
-    
+
     Debug.init(is_string_empty(filename) ? Debug.LIBRARY_PREFIX : Debug.VIEWER_PREFIX);
 
     if (Resources.GIT_VERSION != "")
@@ -453,34 +453,34 @@ void main(string[] args) {
             Resources.APP_VERSION);
     debug ("Shotwell is running in timezone %s", new
            DateTime.now_local().get_timezone_abbreviation ());
-        
+
     // Have a filename here?  If so, configure ourselves for direct
     // mode, otherwise, default to library mode.
     Application.init(!is_string_empty(filename));
-    
+
     // set custom data directory if it's been supplied
     if (CommandlineOptions.data_dir != null)
         AppDirs.set_data_dir(CommandlineOptions.data_dir);
     else
         AppDirs.try_migrate_data();
-    
+
     // Verify the private data directory before continuing
     AppDirs.verify_data_dir();
     AppDirs.verify_cache_dir();
-    
+
     // init internationalization with the default system locale
     InternationalSupport.init(Resources.APP_GETTEXT_PACKAGE, args);
-    
+
     startup_timer = new Timer();
     startup_timer.start();
-    
+
     // set up GLib environment
     GLib.Environment.set_application_name(Resources.APP_TITLE);
-    
+
     // in both the case of running as the library or an editor, Resources is always
     // initialized
     Resources.init();
-    
+
     // since it's possible for a mount name to be passed that's not supported (and hence an empty
     // mount list), or for nothing to be on the command-line at all, only go to direct editing if a
     // filename is spec'd
@@ -488,7 +488,7 @@ void main(string[] args) {
         library_exec(mounts);
     else
         editing_exec(filename, CommandlineOptions.fullscreen);
-    
+
     // terminate mode-inspecific modules
     Resources.terminate();
     Application.terminate();

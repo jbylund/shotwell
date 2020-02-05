@@ -138,7 +138,7 @@ public abstract class CheckerboardPage : Page {
         return _("No photos/videos found which match the current filter");
     }
 
-    protected virtual void on_item_activated(CheckerboardItem item, Activator activator, 
+    protected virtual void on_item_activated(CheckerboardItem item, Activator activator,
         KeyboardModifiers modifiers) {
     }
 
@@ -157,7 +157,7 @@ public abstract class CheckerboardPage : Page {
         layout.set_in_view(false);
         get_search_view_filter().refresh.disconnect(on_view_filter_refresh);
 
-        // unselect everything so selection won't persist after page loses focus 
+        // unselect everything so selection won't persist after page loses focus
         get_view().unselect_all();
 
         base.switching_from();
@@ -567,7 +567,7 @@ public abstract class CheckerboardPage : Page {
         updated_selection_band();
 
         // if out of bounds, schedule a check to auto-scroll the viewport
-        if (!autoscroll_scheduled 
+        if (!autoscroll_scheduled
             && get_adjustment_relation(get_vadjustment(), y) != AdjustmentRelation.IN_RANGE) {
             Timeout.add(AUTOSCROLL_TICKS_MSEC, selection_autoscroll);
             autoscroll_scheduled = true;
@@ -593,8 +593,8 @@ public abstract class CheckerboardPage : Page {
 
         // except for the items that were selected before the drag began
         assert(previously_selected != null);
-        to_unselect.unmark_many(previously_selected);        
-        to_select.mark_many(previously_selected);   
+        to_unselect.unmark_many(previously_selected);
+        to_select.mark_many(previously_selected);
 
         // toggle selection on everything in the intersection and update the cursor
         cursor = null;
@@ -614,7 +614,7 @@ public abstract class CheckerboardPage : Page {
     }
 
     private bool selection_autoscroll() {
-        if (!layout.is_drag_select_active()) { 
+        if (!layout.is_drag_select_active()) {
             autoscroll_scheduled = false;
 
             return false;
@@ -654,7 +654,7 @@ public abstract class CheckerboardPage : Page {
         // It appears that in GTK+ 2.18, the adjustment is not clamped the way it was in 2.16.
         // This may have to do with how adjustments are different w/ scrollbars, that they're upper
         // clamp is upper - page_size ... either way, enforce these limits here
-        vadj.set_value(new_value.clamp((int) vadj.get_lower(), 
+        vadj.set_value(new_value.clamp((int) vadj.get_lower(),
             (int) vadj.get_upper() - (int) vadj.get_page_size()));
 
         updated_selection_band();
@@ -759,5 +759,4 @@ public abstract class CheckerboardPage : Page {
         get_view().thaw_notifications();
     }
 }
-
 

@@ -14,19 +14,19 @@ public class ImportRoll.SidebarEntry : Library.HideablePageEntry {
         this.id = id;
         this.name = new DateTime.from_unix_local(id.id).format("%c");
     }
-    
+
     public ImportID get_id() {
         return id;
     }
-    
+
     public override string get_sidebar_name() {
         return this.name;
     }
-    
+
     public override string? get_sidebar_icon() {
         return Resources.ICON_LAST_IMPORT;
     }
-    
+
     protected override Page create_page() {
         return new LastImportPage.for_id(this.id);
     }
