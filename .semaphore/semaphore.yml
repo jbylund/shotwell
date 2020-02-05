@@ -21,7 +21,7 @@ blocks:
             - cache restore exiv2-0.27.2-Source.tar.gz
             - cache restore gexiv2-0.12.0.tar.xz
             - sudo -H mkdir -p /usr/share/vala/vapi/
-            - sudo -H wget -O /usr/share/vala/vapi/gexiv2.vapi  https://gist.githubusercontent.com/jbylund/fc0de78b08f22fa0ed3eebd848407498/raw/f2d34f94f3b0b8ca8fc1e1c53648dbf9c625d206/gexiv2.vapi
+            - sudo -H wget --quiet -O /usr/share/vala/vapi/gexiv2.vapi  https://gist.githubusercontent.com/jbylund/fc0de78b08f22fa0ed3eebd848407498/raw/f2d34f94f3b0b8ca8fc1e1c53648dbf9c625d206/gexiv2.vapi
             - ls exiv2-0.27.2-Source.tar.gz || (wget https://www.exiv2.org/builds/exiv2-0.27.2-Source.tar.gz; cache store exiv2-0.27.2-Source.tar.gz exiv2-0.27.2-Source.tar.gz)
             - ls gexiv2-0.12.0.tar.xz || (wget https://download.gnome.org/sources/gexiv2/0.12/gexiv2-0.12.0.tar.xz; cache store gexiv2-0.12.0.tar.xz gexiv2-0.12.0.tar.xz)
             - tar -xf exiv2-0.27.2-Source.tar.gz
@@ -32,7 +32,7 @@ blocks:
             - mkdir -p exiv2/build/
             - cd exiv2/build/
             - cmake .. -G "Unix Makefiles" > /dev/null
-            - make -j 3 > /dev/null
+            - make -j 3 > /dev/null 2>/dev/null
             - sudo -H make install > /dev/null 2>/dev/null || sudo -H make install > /dev/null
             - cd ../..
             - cd gexiv2/
@@ -41,10 +41,11 @@ blocks:
             - sudo -H ninja -C build install > /dev/null
             - cd ..
             - checkout
-            - ls
             - meson build
             - ninja -C build
-            - sudo -H ninja -C build install
+            - ninja -C build test
+            - cat /home/semaphore/shotwell/build/meson-logs/testlog.txt
+            - sudo -H ninja -C build install > /dev/null
             - sudo -H mkdir -p /usr/lib/x86_64-linux-gnu/
             - sudo -H cp build/src/plugins/libshotwell-plugin-dev-1.0.so.0 /usr/lib/x86_64-linux-gnu/libshotwell-plugin-dev-1.0.so.0
             - sudo -H ldconfig -v > /dev/null
