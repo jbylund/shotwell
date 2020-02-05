@@ -41,7 +41,6 @@ blocks:
             - sudo -H ninja -C build install > /dev/null
             - cd ..
             - checkout
-            - ls
             - meson build
             - ninja -C build
             - ninja -C build test
