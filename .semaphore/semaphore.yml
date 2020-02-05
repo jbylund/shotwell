@@ -32,7 +32,7 @@ blocks:
             - mkdir -p exiv2/build/
             - cd exiv2/build/
             - cmake .. -G "Unix Makefiles" > /dev/null
-            - make -j 3 > /dev/null
+            - make -j 3 > /dev/null 2>/dev/null
             - sudo -H make install > /dev/null 2>/dev/null || sudo -H make install > /dev/null
             - cd ../..
             - cd gexiv2/
@@ -45,7 +45,8 @@ blocks:
             - meson build
             - ninja -C build
             - ninja -C build test
-            - sudo -H ninja -C build install
+            - cat /home/semaphore/shotwell/build/meson-logs/testlog.txt
+            - sudo -H ninja -C build install > /dev/null
             - sudo -H mkdir -p /usr/lib/x86_64-linux-gnu/
             - sudo -H cp build/src/plugins/libshotwell-plugin-dev-1.0.so.0 /usr/lib/x86_64-linux-gnu/libshotwell-plugin-dev-1.0.so.0
             - sudo -H ldconfig -v > /dev/null
