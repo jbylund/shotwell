@@ -18,7 +18,7 @@
 //
 
 public abstract class PhotoFileAdapter {
-    private string filepath;
+    protected string filepath;
     private PhotoFileFormat file_format;
     private File file = null;
 

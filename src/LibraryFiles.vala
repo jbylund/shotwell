@@ -4,7 +4,7 @@
  * (version 2.1 or later).  See the COPYING file in this distribution.
  */
 
-namespace LibraryFiles {
+    namespace LibraryFiles {
 
     static bool use_fallback_copy_func = false;
 

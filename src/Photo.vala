@@ -1163,8 +1163,7 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
 
         FileInfo info = null;
         try {
-            info = file.query_info(DirectoryMonitor.SUPPLIED_ATTRIBUTES,
-                FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+            info = file.query_info(DirectoryMonitor.SUPPLIED_ATTRIBUTES, FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
         } catch (Error err) {
             return ImportResult.FILE_ERROR;
         }
@@ -1174,13 +1173,11 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
 
         if (!is_file_image(file)) {
             message("Not importing %s: Not an image file", file.get_path());
-
             return ImportResult.NOT_AN_IMAGE;
         }
 
         if (!PhotoFileFormat.is_file_supported(file)) {
             message("Not importing %s: Unsupported extension", file.get_path());
-
             return ImportResult.UNSUPPORTED_FORMAT;
         }
 
@@ -1193,10 +1190,11 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
         // interrogate file for photo information
         PhotoFileInterrogator interrogator = new PhotoFileInterrogator(file, params.sniffer_options);
         try {
+            stderr.printf("pre interrogate\n");
             interrogator.interrogate();
+            stderr.printf("post interrogate\n");
         } catch (Error err) {
             warning("Unable to interrogate photo file %s: %s", file.get_path(), err.message);
-
             return ImportResult.DECODE_ERROR;
         }
 
@@ -1232,12 +1230,12 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
             if (date_time != null)
                 exposure_time = date_time.get_timestamp();
 
-            orientation = detected.metadata.get_orientation();
-            title = detected.metadata.get_title();
-            gps_coords = detected.metadata.get_gps_coords();
             comment = detected.metadata.get_comment();
+            gps_coords = detected.metadata.get_gps_coords();
+            orientation = detected.metadata.get_orientation();
             params.keywords = detected.metadata.get_keywords();
             rating = detected.metadata.get_rating();
+            title = detected.metadata.get_title();
         }
 
         // verify basic mechanics of photo: RGB 8-bit encoding
@@ -1248,6 +1246,9 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
 
             return ImportResult.UNSUPPORTED_FORMAT;
         }
+
+        // move to the final resting place...
+        file = LibraryFiles.move_to_datedir(file, detected.metadata);
 
         // photo information is initially stored in database in raw, non-modified format ... this is
         // especially important dealing with dimensions and orientation ... Don't trust EXIF
@@ -1335,11 +1336,9 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
         // get basic file information
         FileInfo info = null;
         try {
-            info = file.query_info(DirectoryMonitor.SUPPLIED_ATTRIBUTES,
-                FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+            info = file.query_info(DirectoryMonitor.SUPPLIED_ATTRIBUTES, FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
         } catch (Error err) {
             critical("Unable to read file information for %s: %s", file.get_path(), err.message);
-
             return null;
         }
 
@@ -1349,7 +1348,6 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
         detected = interrogator.get_detected_photo_information();
         if (detected == null || interrogator.get_is_photo_corrupted()) {
             critical("Photo update: %s no longer a recognized image", to_string());
-
             return null;
         }
 

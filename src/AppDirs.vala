@@ -168,7 +168,7 @@ class AppDirs {
     }
 
     // Library folder + photo folder, based on user's preferred directory pattern.
-    public static File get_baked_import_dir(time_t tm) {
+    public static File get_baked_import_dir(time_t tm) throws Error {
         string? pattern = Config.Facade.get_instance().get_directory_pattern();
         if (is_string_empty(pattern))
             pattern = Config.Facade.get_instance().get_directory_pattern_custom();
@@ -176,7 +176,15 @@ class AppDirs {
             pattern = "%Y" + Path.DIR_SEPARATOR_S + "%m" + Path.DIR_SEPARATOR_S + "%d"; // default
 
         DateTime date = new DateTime.from_unix_local(tm);
-        return File.new_for_path(get_import_dir().get_path() + Path.DIR_SEPARATOR_S + date.format(pattern));
+        File dir = File.new_for_path(get_import_dir().get_path() + Path.DIR_SEPARATOR_S + date.format(pattern));
+        try {
+            dir.make_directory_with_parents(null);
+        } catch (Error err) {
+            if (!(err is IOError.EXISTS))
+                throw err;
+            // silently ignore not creating a directory that already exists
+        }
+        return dir;
     }
 
     // Returns true if the File is in or is equal to the library/import directory.
