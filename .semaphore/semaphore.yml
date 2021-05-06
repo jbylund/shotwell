@@ -23,24 +23,13 @@ blocks:
             - sudo -H mkdir -p /usr/share/vala/vapi/
             - sudo -H wget --quiet -O /usr/share/vala/vapi/gexiv2.vapi  https://gist.githubusercontent.com/jbylund/fc0de78b08f22fa0ed3eebd848407498/raw/f2d34f94f3b0b8ca8fc1e1c53648dbf9c625d206/gexiv2.vapi
             - ls exiv2-0.27.3-Source.tar.gz || (wget https://ftp.osuosl.org/pub/blfs/conglomeration/exiv2/exiv2-0.27.3-Source.tar.gz; cache store exiv2-0.27.3-Source.tar.gz exiv2-0.27.3-Source.tar.gz)
-            - ls gexiv2-0.12.2.tar.xz || (wget https://download.gnome.org/sources/gexiv2/0.12/gexiv2-0.12.2.tar.xz; cache store gexiv2-0.12.2.tar.xz gexiv2-0.12.2.tar.xz)
             - tar -xf exiv2-0.27.3-Source.tar.gz
+            - ( cd exiv2-0.27.3-Source && mkdir build && cd build && cmake .. -G "Unix Makefiles" > /dev/null && make -j 3 > /dev/null 2>/dev/null && { sudo -H make install > /dev/null 2>/dev/null || sudo -H make install ; }  > /dev/null
+            - ls gexiv2-0.12.2.tar.xz || (wget https://download.gnome.org/sources/gexiv2/0.12/gexiv2-0.12.2.tar.xz; cache store gexiv2-0.12.2.tar.xz gexiv2-0.12.2.tar.xz)
             - tar -xf gexiv2-0.12.2.tar.xz
-            - rm gexiv2-0.12.2.tar.xz exiv2-0.27.3-Source.tar.gz
-            - mv exiv2-0.27.3-Source exiv2
-            - mv gexiv2-0.12.2 gexiv2
-            - mkdir -p exiv2/build/
-            - cd exiv2/build/
-            - cmake .. -G "Unix Makefiles" > /dev/null
-            - make -j 3 > /dev/null 2>/dev/null
-            - sudo -H make install > /dev/null 2>/dev/null || sudo -H make install > /dev/null
-            - cd ../..
-            - cd gexiv2/
-            - meson build
-            - ninja -C build > /dev/null
-            - sudo -H ninja -C build install > /dev/null
-            - cd ..
+            - ( cd gexiv2-0.12.2/ && meson build && ninja -C build && sudo -H ninja -C build install ) > /dev/null
             - checkout
+            - meson --version
             - meson build
             - ninja -C build
             - ninja -C build test
