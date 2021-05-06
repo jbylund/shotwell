@@ -24,17 +24,17 @@ blocks:
             - sudo -H wget --quiet -O /usr/share/vala/vapi/gexiv2.vapi  https://gist.githubusercontent.com/jbylund/fc0de78b08f22fa0ed3eebd848407498/raw/f2d34f94f3b0b8ca8fc1e1c53648dbf9c625d206/gexiv2.vapi
             - ls exiv2-0.27.3-Source.tar.gz || (wget https://ftp.osuosl.org/pub/blfs/conglomeration/exiv2/exiv2-0.27.3-Source.tar.gz; cache store exiv2-0.27.3-Source.tar.gz exiv2-0.27.3-Source.tar.gz)
             - tar -xf exiv2-0.27.3-Source.tar.gz
-            - ( cd exiv2-0.27.3-Source && mkdir build && cd build && cmake .. -G "Unix Makefiles" > /dev/null && make -j 3 > /dev/null 2>/dev/null && { sudo -H make install > /dev/null 2>/dev/null || sudo -H make install ; }  > /dev/null
+            - ( cd exiv2-0.27.3-Source && mkdir build && cd build && cmake .. -G "Unix Makefiles" && make -j 3 && { sudo -H make install || sudo -H make install ; } )
             - ls gexiv2-0.12.2.tar.xz || (wget https://download.gnome.org/sources/gexiv2/0.12/gexiv2-0.12.2.tar.xz; cache store gexiv2-0.12.2.tar.xz gexiv2-0.12.2.tar.xz)
             - tar -xf gexiv2-0.12.2.tar.xz
-            - ( cd gexiv2-0.12.2/ && meson build && ninja -C build && sudo -H ninja -C build install ) > /dev/null
+            - ( cd gexiv2-0.12.2/ && meson build && ninja -C build && sudo -H ninja -C build install )
             - checkout
             - meson --version
             - meson build
             - ninja -C build
             - ninja -C build test
             - cat /home/semaphore/shotwell/build/meson-logs/testlog.txt
-            - sudo -H ninja -C build install > /dev/null
+            - sudo -H ninja -C build install
             - sudo -H mkdir -p /usr/lib/x86_64-linux-gnu/
             - sudo -H cp build/src/plugins/libshotwell-plugin-dev-1.0.so.0 /usr/lib/x86_64-linux-gnu/libshotwell-plugin-dev-1.0.so.0
             - sudo -H ldconfig -v > /dev/null
