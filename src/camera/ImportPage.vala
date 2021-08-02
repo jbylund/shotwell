@@ -4,11 +4,16 @@
  * See the COPYING file in this distribution.
  */
 
+double get_timestamp() {
+    DateTime now = new DateTime.now();
+    return now.to_unix() + now.get_microsecond() / 1000000.0;
+}
+
 private class ImportSourceCollection : SourceCollection {
     public ImportSourceCollection(string name) {
         base (name);
     }
-    
+
     public override bool holds_type_of_source(DataSource source) {
         return source is ImportSource;
     }
@@ -24,7 +29,7 @@ abstract class ImportSource : ThumbnailSource, Indexable {
     private time_t modification_time;
     private Gdk.Pixbuf? preview = null;
     private string? indexable_keywords = null;
-    
+
     protected ImportSource(string camera_name, GPhoto.Camera camera, int fsid, string folder,
         string filename, ulong file_size, time_t modification_time) {
         this.camera_name =camera_name;
@@ -36,39 +41,39 @@ abstract class ImportSource : ThumbnailSource, Indexable {
         this.modification_time = modification_time;
         indexable_keywords = prepare_indexable_string(filename);
     }
-    
+
     protected void set_preview(Gdk.Pixbuf? preview) {
         this.preview = preview;
     }
-    
+
     public string get_camera_name() {
         return camera_name;
     }
-    
+
     public GPhoto.Camera get_camera() {
         return camera;
     }
-    
+
     public int get_fsid() {
         return fsid;
     }
-    
+
     public string get_folder() {
         return folder;
     }
-    
+
     public string get_filename() {
         return filename;
     }
-    
+
     public ulong get_filesize() {
         return file_size;
     }
-    
+
     public time_t get_modification_time() {
         return modification_time;
     }
-    
+
     public virtual Gdk.Pixbuf? get_preview() {
         return preview;
     }
@@ -84,58 +89,58 @@ abstract class ImportSource : ThumbnailSource, Indexable {
     public override string to_string() {
         return "%s %s/%s".printf(get_camera_name(), get_folder(), get_filename());
     }
-    
+
     public override bool internal_delete_backing() throws Error {
         debug("Deleting %s from %s", to_string(), camera_name);
-        
+
         string? fulldir = get_fulldir();
         if (fulldir == null) {
             warning("Skipping deleting %s from %s: invalid folder name", to_string(), camera_name);
-            
+
             return base.internal_delete_backing();
         }
-        
+
         GPhoto.Result result = get_camera().delete_file(fulldir, get_filename(),
             ImportPage.spin_idle_context.context);
         if (result != GPhoto.Result.OK)
             warning("Error deleting %s from %s: %s", to_string(), camera_name, result.to_full_string());
-        
+
         return base.internal_delete_backing() && (result == GPhoto.Result.OK);
     }
-    
+
     public unowned string? get_indexable_keywords() {
         return indexable_keywords;
     }
 }
 
 class VideoImportSource : ImportSource {
-    public VideoImportSource(string camera_name, GPhoto.Camera camera, int fsid, string folder, 
+    public VideoImportSource(string camera_name, GPhoto.Camera camera, int fsid, string folder,
         string filename, ulong file_size, time_t modification_time) {
         base(camera_name, camera, fsid, folder, filename, file_size, modification_time);
     }
-    
+
     public override Gdk.Pixbuf? get_thumbnail(int scale) throws Error {
         return create_thumbnail(scale);
     }
-    
+
     public override Gdk.Pixbuf? create_thumbnail(int scale) throws Error {
         if (get_preview() == null)
             return null;
-        
+
         // this satifies the return-a-new-instance requirement of create_thumbnail( ) because
         // scale_pixbuf( ) allocates a new pixbuf
         return (scale > 0) ? scale_pixbuf(get_preview(), scale, Gdk.InterpType.BILINEAR, true) :
             get_preview();
     }
-    
+
     public override string get_typename() {
         return "videoimport";
     }
-    
+
     public override int64 get_instance_id() {
         return get_object_id();
     }
-    
+
     public override PhotoFileFormat get_preferred_thumbnail_format() {
         return PhotoFileFormat.get_system_default_format();
     }
@@ -143,7 +148,7 @@ class VideoImportSource : ImportSource {
     public override string get_name() {
         return get_filename();
     }
-    
+
     public void update(Gdk.Pixbuf? preview) {
         set_preview((preview != null) ? preview : Resources.get_noninterpretable_badge_pixbuf());
     }
@@ -157,27 +162,27 @@ class PhotoImportSource : ImportSource {
     private PhotoMetadata? metadata = null;
     private string? exif_md5 = null;
     private PhotoImportSource? associated = null; // JPEG source for RAW+JPEG
-    
-    public PhotoImportSource(string camera_name, GPhoto.Camera camera, int fsid, string folder, 
+
+    public PhotoImportSource(string camera_name, GPhoto.Camera camera, int fsid, string folder,
         string filename, ulong file_size, time_t modification_time, PhotoFileFormat file_format) {
         base(camera_name, camera, fsid, folder, filename, file_size, modification_time);
         this.file_format = file_format;
     }
-    
+
     public override string get_name() {
         string? title = get_title();
-        
+
         return !is_string_empty(title) ? title : get_filename();
     }
-    
+
     public override string get_typename() {
         return "photoimport";
     }
-    
+
     public override int64 get_instance_id() {
         return get_object_id();
     }
-    
+
     public override PhotoFileFormat get_preferred_thumbnail_format() {
         return (file_format.can_write()) ? file_format :
             PhotoFileFormat.get_system_default_format();
@@ -186,7 +191,7 @@ class PhotoImportSource : ImportSource {
     public override Gdk.Pixbuf? create_thumbnail(int scale) throws Error {
         if (get_preview() == null)
             return null;
-        
+
         // this satifies the return-a-new-instance requirement of create_thumbnail( ) because
         // scale_pixbuf( ) allocates a new pixbuf
         return (scale > 0) ? scale_pixbuf(get_preview(), scale, INTERP, true) : get_preview();
@@ -203,56 +208,56 @@ class PhotoImportSource : ImportSource {
     public override time_t get_exposure_time() {
         if (metadata == null)
             return get_modification_time();
-        
+
         MetadataDateTime? date_time = metadata.get_exposure_date_time();
-        
+
         return (date_time != null) ? date_time.get_timestamp() : get_modification_time();
     }
-    
+
     public string? get_title() {
         return (metadata != null) ? metadata.get_title() : null;
     }
-    
+
     public PhotoMetadata? get_metadata() {
         if (associated != null)
             return associated.get_metadata();
-        
+
         return metadata;
     }
-    
+
     public override Gdk.Pixbuf? get_preview() {
         if (associated != null)
             return associated.get_preview();
-            
-        if (base.get_preview() != null) 
+
+        if (base.get_preview() != null)
             return base.get_preview();
-        
+
         return null;
     }
-    
+
     public override Gdk.Pixbuf? get_thumbnail(int scale) throws Error {
         if (get_preview() == null)
             return null;
-        
+
         return (scale > 0) ? scale_pixbuf(get_preview(), scale, INTERP, true) : get_preview();
     }
-    
+
     public PhotoFileFormat get_file_format() {
         return file_format;
     }
-    
+
     public string? get_preview_md5() {
         return preview_md5;
     }
-    
+
     public void set_associated(PhotoImportSource? associated) {
         this.associated = associated;
     }
-    
+
     public PhotoImportSource? get_associated() {
         return associated;
     }
-    
+
     public override bool internal_delete_backing() throws Error {
         bool ret = base.internal_delete_backing();
         if (associated != null)
@@ -263,14 +268,14 @@ class PhotoImportSource : ImportSource {
 
 class ImportPreview : MediaSourceItem {
     public const int MAX_SCALE = 128;
-    
+
     private static Gdk.Pixbuf placeholder_preview = null;
-    
+
     private DuplicatedFile? duplicated_file;
-    
+
     public ImportPreview(ImportSource source) {
         base(source, Dimensions(), source.get_name(), null);
-        
+
         this.duplicated_file = null;
 
         // scale down pixbuf if necessary
@@ -280,7 +285,7 @@ class ImportPreview : MediaSourceItem {
         } catch (Error err) {
             warning("Unable to fetch loaded import preview for %s: %s", to_string(), err.message);
         }
-        
+
         // use placeholder if no preview available
         bool using_placeholder = (pixbuf == null);
         if (pixbuf == null) {
@@ -289,44 +294,44 @@ class ImportPreview : MediaSourceItem {
                 placeholder_preview = scale_pixbuf(placeholder_preview, MAX_SCALE,
                     Gdk.InterpType.BILINEAR, true);
             }
-            
+
             pixbuf = placeholder_preview;
         }
-        
+
         // scale down if too large
         if (pixbuf.get_width() > MAX_SCALE || pixbuf.get_height() > MAX_SCALE)
             pixbuf = scale_pixbuf(pixbuf, MAX_SCALE, PhotoImportSource.INTERP, false);
-        
+
         if (source is PhotoImportSource) {
             // honor rotation for photos -- we don't care about videos since they can't be rotated
             PhotoImportSource photo_import_source = source as PhotoImportSource;
             if (!using_placeholder && photo_import_source.get_metadata() != null)
                 pixbuf = photo_import_source.get_metadata().get_orientation().rotate_pixbuf(pixbuf);
-            
+
             if (photo_import_source.get_associated() != null) {
                 set_subtitle("<small>%s</small>".printf(_("RAW+JPEG")), true);
             }
         }
-        
+
         set_image(pixbuf);
     }
-    
+
     public bool is_already_imported() {
         PhotoImportSource photo_import_source = get_import_source() as PhotoImportSource;
         if (photo_import_source != null) {
             string? preview_md5 = photo_import_source.get_preview_md5();
             PhotoFileFormat file_format = photo_import_source.get_file_format();
-            
+
             // ignore trashed duplicates
             if (!is_string_empty(preview_md5)
                 && LibraryPhoto.has_nontrash_duplicate(null, preview_md5, null, file_format)) {
-                
+
                 duplicated_file = DuplicatedFile.create_from_photo_id(
                     LibraryPhoto.get_nontrash_duplicate(null, preview_md5, null, file_format));
-                
+
                 return true;
             }
-            
+
             // Because gPhoto doesn't reliably return thumbnails for RAW files, and because we want
             // to avoid downloading huge RAW files during an "import all" only to determine they're
             // duplicates, use the image's basename and filesize to do duplicate detection
@@ -342,7 +347,7 @@ class ImportPreview : MediaSourceItem {
                         LibraryPhoto duplicated_photo = LibraryPhoto.global.fetch(duplicated_photo_id);
                         time_t photo_exposure_time = photo_import_source.get_exposure_time();
                         time_t duplicated_photo_exposure_time = duplicated_photo.get_exposure_time();
-                        
+
                         if (photo_exposure_time == duplicated_photo_exposure_time) {
                             duplicated_file = DuplicatedFile.create_from_photo_id(
                                 LibraryPhoto.global.get_basename_filesize_duplicate(
@@ -353,10 +358,10 @@ class ImportPreview : MediaSourceItem {
                     }
                 }
             }
-            
+
             return false;
         }
-        
+
         VideoImportSource video_import_source = get_import_source() as VideoImportSource;
         if (video_import_source != null) {
             // Unlike photos, if a video does have a thumbnail (i.e. gphoto2 can retrieve one from
@@ -365,28 +370,28 @@ class ImportPreview : MediaSourceItem {
             // do a less-reliable but better-than-nothing comparison
             if (Video.global.has_basename_filesize_duplicate(video_import_source.get_filename(),
                 video_import_source.get_filesize())) {
-                
+
                 duplicated_file = DuplicatedFile.create_from_video_id(
                     Video.global.get_basename_filesize_duplicate(
                     video_import_source.get_filename(),
                     video_import_source.get_filesize()));
-                
+
                 return true;
             }
-            
+
             return false;
         }
-        
+
         return false;
     }
-    
+
     public DuplicatedFile? get_duplicated_file() {
         if (!is_already_imported())
             return null;
-        
+
         return duplicated_file;
     }
-    
+
     public ImportSource get_import_source() {
         return (ImportSource) get_source();
     }
@@ -400,10 +405,10 @@ public class CameraViewTracker : Core.ViewTracker {
     public CameraAccumulator all = new CameraAccumulator();
     public CameraAccumulator visible = new CameraAccumulator();
     public CameraAccumulator selected = new CameraAccumulator();
-    
+
     public CameraViewTracker(ViewCollection collection) {
         base (collection);
-        
+
         start(all, visible, selected);
     }
 }
@@ -413,12 +418,12 @@ public class CameraAccumulator : Object, Core.TrackerAccumulator {
     public int photos { get; private set; default = 0; }
     public int videos { get; private set; default = 0; }
     public int raw { get; private set; default = 0; }
-    
+
     public bool include(DataObject object) {
         ImportSource source = (ImportSource) ((DataView) object).get_source();
-        
+
         total++;
-        
+
         PhotoImportSource? photo = source as PhotoImportSource;
         if (photo != null && photo.get_file_format() != PhotoFileFormat.RAW)
             photos++;
@@ -426,16 +431,16 @@ public class CameraAccumulator : Object, Core.TrackerAccumulator {
             raw++;
         else if (source is VideoImportSource)
             videos++;
-        
+
         // because of total, always fire "updated"
         return true;
     }
-    
+
     public bool uninclude(DataObject object) {
         ImportSource source = (ImportSource) ((DataView) object).get_source();
-        
+
         total++;
-        
+
         PhotoImportSource? photo = source as PhotoImportSource;
         if (photo != null && photo.get_file_format() != PhotoFileFormat.RAW) {
             assert(photos > 0);
@@ -447,16 +452,16 @@ public class CameraAccumulator : Object, Core.TrackerAccumulator {
             assert(videos > 0);
             videos--;
         }
-        
+
         // because of total, always fire "updated"
         return true;
     }
-    
+
     public bool altered(DataObject object, Alteration alteration) {
         // no alteration affects accumulated data
         return false;
     }
-    
+
     public string to_string() {
         return "%d total/%d photos/%d videos/%d raw".printf(total, photos, videos, raw);
     }
@@ -464,19 +469,19 @@ public class CameraAccumulator : Object, Core.TrackerAccumulator {
 
 public class ImportPage : CheckerboardPage {
     private const string UNMOUNT_FAILED_MSG = _("Unable to unmount camera. Try unmounting the camera from the file manager.");
-    
+
     private class ImportViewManager : ViewManager {
         private ImportPage owner;
-        
+
         public ImportViewManager(ImportPage owner) {
             this.owner = owner;
         }
-        
+
         public override DataView create_view(DataSource source) {
             return new ImportPreview((ImportSource) source);
         }
     }
-    
+
     private class CameraImportJob : BatchImportJob {
         private GPhoto.ContextWrapper context;
         private ImportSource import_file;
@@ -489,13 +494,13 @@ public class ImportPage : CheckerboardPage {
         private CameraImportJob? associated = null;
         private BackingPhotoRow? associated_file = null;
         private DuplicatedFile? duplicated_file;
-        
+
         public CameraImportJob(GPhoto.ContextWrapper context, ImportSource import_file,
             DuplicatedFile? duplicated_file = null) {
             this.context = context;
             this.import_file = import_file;
             this.duplicated_file = duplicated_file;
-            
+
             // stash everything called in prepare(), as it may/will be called from a separate thread
             camera = import_file.get_camera();
             fulldir = import_file.get_fulldir();
@@ -508,11 +513,11 @@ public class ImportPage : CheckerboardPage {
                 photo_import_source.get_metadata() : null;
             exposure_time = import_file.get_exposure_time();
         }
-        
+
         public time_t get_exposure_time() {
             return exposure_time;
         }
-        
+
         public override DuplicatedFile? get_duplicated_file() {
             return duplicated_file;
         }
@@ -520,46 +525,46 @@ public class ImportPage : CheckerboardPage {
         public override time_t get_exposure_time_override() {
             return (import_file is VideoImportSource) ? get_exposure_time() : 0;
         }
-        
+
         public override string get_dest_identifier() {
             return filename;
         }
-        
+
         public override string get_source_identifier() {
             return import_file.get_filename();
         }
-        
+
         public override string get_basename() {
             return filename;
         }
-    
+
         public override string get_path() {
             return fulldir;
         }
-        
+
         public override void set_associated(BatchImportJob associated) {
             this.associated = associated as CameraImportJob;
         }
-        
+
         public ImportSource get_source() {
             return import_file;
         }
-        
+
         public override bool is_directory() {
             return false;
         }
-        
+
         public override bool determine_file_size(out uint64 filesize, out File file) {
             file = null;
             filesize = this.filesize;
-            
+
             return true;
         }
-        
+
         public override bool prepare(out File file_to_import, out bool copy_to_library) throws Error {
             file_to_import = null;
             copy_to_library = false;
-            
+
             File dest_file = null;
             try {
                 bool collision;
@@ -569,13 +574,13 @@ public class ImportPage : CheckerboardPage {
                 warning("Unable to generate local file for %s: %s", import_file.get_filename(),
                     err.message);
             }
-            
+
             if (dest_file == null) {
                 message("Unable to generate local file for %s", import_file.get_filename());
-                
+
                 return false;
             }
-            
+
             // always blacklist the copied images from the LibraryMonitor, otherwise it'll think
             // they should be auto-imported
             LibraryMonitor.blacklist_file(dest_file, "CameraImportJob.prepare");
@@ -584,36 +589,36 @@ public class ImportPage : CheckerboardPage {
             } finally {
                 LibraryMonitor.unblacklist_file(dest_file);
             }
-            
+
             // Copy over associated file, if it exists.
             if (associated != null) {
                 try {
-                    associated_file = 
+                    associated_file =
                         RawDeveloper.CAMERA.create_backing_row_for_development(dest_file.get_path(),
                             associated.get_basename());
                 } catch (Error err) {
                     warning("Unable to generate backing associated file for %s: %s", associated.filename,
                         err.message);
                 }
-                
+
                 if (associated_file == null) {
                     message("Unable to generate backing associated file for %s", associated.filename);
                     return false;
                 }
-                
+
                 File assoc_dest = File.new_for_path(associated_file.filepath);
                 LibraryMonitor.blacklist_file(assoc_dest, "CameraImportJob.prepare");
                 try {
-                    GPhoto.save_image(context.context, camera, associated.fulldir, associated.filename, 
+                    GPhoto.save_image(context.context, camera, associated.fulldir, associated.filename,
                         assoc_dest);
                 } finally {
                     LibraryMonitor.unblacklist_file(assoc_dest);
                 }
             }
-            
+
             file_to_import = dest_file;
             copy_to_library = false;
-            
+
             return true;
         }
 
@@ -625,15 +630,15 @@ public class ImportPage : CheckerboardPage {
             return File.new_for_path(associated_file.filepath);
         }
     }
-    
+
     private class ImportPageSearchViewFilter : SearchViewFilter {
         public override uint get_criteria() {
             return SearchFilterCriteria.TEXT | SearchFilterCriteria.MEDIA;
         }
-        
+
         public override bool predicate(DataView view) {
             ImportSource source = ((ImportPreview) view).get_import_source();
-            
+
             // Media type.
             if ((bool) (SearchFilterCriteria.MEDIA & get_criteria()) && filter_by_media_type()) {
                 if (source is VideoImportSource) {
@@ -652,30 +657,30 @@ public class ImportPage : CheckerboardPage {
                         return false;
                 }
             }
-            
+
             if ((bool) (SearchFilterCriteria.TEXT & get_criteria())) {
                 unowned string? keywords = source.get_indexable_keywords();
                 if (is_string_empty(keywords))
                     return false;
-                
+
                 // Return false if the word isn't found, true otherwise.
                 foreach (unowned string word in get_search_filter_words()) {
                     if (!keywords.contains(word))
                         return false;
                 }
             }
-            
+
             return true;
         }
     }
-    
+
     // View filter for already imported filter.
     private class HideImportedViewFilter : ViewFilter {
         public override bool predicate(DataView view) {
             return !((ImportPreview) view).is_already_imported();
         }
     }
-    
+
     public static GPhoto.ContextWrapper null_context = null;
     public static GPhoto.SpinIdleWrapper spin_idle_context = null;
 
@@ -697,62 +702,62 @@ public class ImportPage : CheckerboardPage {
 #if UNITY_SUPPORT
     UnityProgressBar uniprobar = UnityProgressBar.get_instance();
 #endif
-    
+
     public enum RefreshResult {
         OK,
         BUSY,
         LOCKED,
         LIBRARY_ERROR
     }
-    
+
     public ImportPage(DiscoveredCamera dcamera) {
         base(_("Camera"));
         this.dcamera = dcamera;
         this.import_sources = new ImportSourceCollection("ImportSources for %s".printf(dcamera.uri));
-        
+
         tracker = new CameraViewTracker(get_view());
-        
+
         camera_label.set_text(dcamera.display_name);
         set_page_name(dcamera.display_name);
-        
+
         // Mount.unmounted signal is *only* fired when a VolumeMonitor has been instantiated.
         this.volume_monitor = VolumeMonitor.get();
-        
+
         // set up the global null context when needed
         if (null_context == null)
             null_context = new GPhoto.ContextWrapper();
-        
+
         // same with idle-loop wrapper
         if (spin_idle_context == null)
             spin_idle_context = new GPhoto.SpinIdleWrapper();
-        
+
         // monitor source collection to add/remove views
         get_view().monitor_source_collection(import_sources, new ImportViewManager(this), null);
-        
+
         // sort by exposure time
         get_view().set_comparator(preview_comparator, preview_comparator_predicate);
-        
+
         // monitor selection for UI
         get_view().items_state_changed.connect(on_view_changed);
         get_view().contents_altered.connect(on_view_changed);
         get_view().items_visibility_changed.connect(on_view_changed);
-        
+
         // Show subtitles.
         get_view().set_property(CheckerboardItem.PROP_SHOW_SUBTITLES, true);
-        
+
         // monitor Photos for removals, as that will change the result of the ViewFilter
         LibraryPhoto.global.contents_altered.connect(on_media_added_removed);
         Video.global.contents_altered.connect(on_media_added_removed);
-        
+
         init_item_context_menu("ImportContextMenu");
         init_page_context_menu("ImportContextMenu");
     }
-    
+
     ~ImportPage() {
         LibraryPhoto.global.contents_altered.disconnect(on_media_added_removed);
         Video.global.contents_altered.disconnect(on_media_added_removed);
     }
-    
+
     public override Gtk.Toolbar get_toolbar() {
         if (toolbar == null) {
             base.get_toolbar();
@@ -766,15 +771,15 @@ public class ImportPage : CheckerboardPage {
             Gtk.ToolItem hide_item = new Gtk.ToolItem();
             hide_item.is_important = true;
             hide_item.add(hide_imported);
-            
+
             toolbar.insert(hide_item, -1);
-            
+
             // separator to force buttons to right side of toolbar
             Gtk.SeparatorToolItem separator = new Gtk.SeparatorToolItem();
             separator.set_draw(false);
-            
+
             toolbar.insert(separator, -1);
-            
+
             // progress bar in center of toolbar
             progress_bar.set_orientation(Gtk.Orientation.HORIZONTAL);
             progress_bar.visible = false;
@@ -782,19 +787,19 @@ public class ImportPage : CheckerboardPage {
             progress_item.set_expand(true);
             progress_item.add(progress_bar);
             progress_bar.set_show_text(true);
-            
+
             toolbar.insert(progress_item, -1);
-            
+
             // Find button
             Gtk.ToggleToolButton find_button = new Gtk.ToggleToolButton();
             find_button.set_icon_name("edit-find-symbolic");
             find_button.set_action_name ("win.CommonDisplaySearchbar");
-            
+
             toolbar.insert(find_button, -1);
-            
+
             // Separator
             toolbar.insert(new Gtk.SeparatorToolItem(), -1);
-            
+
             // Import selected
             Gtk.ToolButton import_selected_button = new Gtk.ToolButton(null, null);
             import_selected_button.set_icon_name(Resources.IMPORT);
@@ -802,9 +807,9 @@ public class ImportPage : CheckerboardPage {
             import_selected_button.is_important = true;
             import_selected_button.use_underline = true;
             import_selected_button.set_action_name ("win.ImportSelected");
-            
+
             toolbar.insert(import_selected_button, -1);
-            
+
             // Import all
             Gtk.ToolButton import_all_button = new Gtk.ToolButton(null, null);
             import_all_button.set_icon_name(Resources.IMPORT_ALL);
@@ -812,21 +817,21 @@ public class ImportPage : CheckerboardPage {
             import_all_button.is_important = true;
             import_all_button.use_underline = true;
             import_all_button.set_action_name ("win.ImportAll");
-            
+
             toolbar.insert(import_all_button, -1);
 
             // restrain the recalcitrant rascal!  prevents the progress bar from being added to the
             // show_all queue so we have more control over its visibility
             progress_bar.set_no_show_all(true);
-            
+
             update_toolbar_state();
-            
+
             show_all();
         }
-        
+
         return toolbar;
     }
-    
+
     public override Core.ViewTracker? get_view_tracker() {
         return tracker;
     }
@@ -847,18 +852,18 @@ public class ImportPage : CheckerboardPage {
         return ((ImportPreview *) a)->get_import_source().get_exposure_time()
             - ((ImportPreview *) b)->get_import_source().get_exposure_time();
     }
-    
+
     private static bool preview_comparator_predicate(DataObject object, Alteration alteration) {
         return alteration.has_detail("metadata", "exposure-time");
     }
-    
+
     private int64 import_job_comparator(void *a, void *b) {
         return ((CameraImportJob *) a)->get_exposure_time() - ((CameraImportJob *) b)->get_exposure_time();
     }
-    
+
     protected override void init_collect_ui_filenames(Gee.List<string> ui_filenames) {
         base.init_collect_ui_filenames(ui_filenames);
-        
+
         ui_filenames.add("import.ui");
     }
 
@@ -887,28 +892,28 @@ public class ImportPage : CheckerboardPage {
     public GPhoto.Camera get_camera() {
         return dcamera.gcamera;
     }
-    
+
     public string get_uri() {
         return dcamera.uri;
     }
-    
+
     public bool is_busy() {
         return busy;
     }
-    
+
     protected override void init_actions(int selected_count, int count) {
         on_view_changed();
-        
+
         set_action_sensitive("ImportSelected", true);
         set_action_sensitive("ImportAll", true);
-        
+
         base.init_actions(selected_count, count);
     }
-    
+
     public bool is_refreshed() {
         return refreshed && !busy;
     }
-    
+
     public string? get_refresh_message() {
         string msg = null;
         if (refresh_error != null) {
@@ -918,14 +923,14 @@ public class ImportPage : CheckerboardPage {
         } else {
             msg = refresh_result.to_full_string();
         }
-        
+
         return msg;
     }
-    
+
     private void update_status(bool busy, bool refreshed) {
         this.busy = busy;
         this.refreshed = refreshed;
-        
+
         on_view_changed();
     }
 
@@ -933,7 +938,7 @@ public class ImportPage : CheckerboardPage {
         if (hide_imported != null)
             hide_imported.sensitive = !busy && refreshed && (get_view().get_unfiltered_count() > 0);
     }
-    
+
     private void on_view_changed() {
         set_action_sensitive("ImportSelected", !busy && refreshed && get_view().get_selected_count() > 0);
         set_action_sensitive("ImportAll", !busy && refreshed && get_view().get_count() > 0);
@@ -941,7 +946,7 @@ public class ImportPage : CheckerboardPage {
 
         update_toolbar_state();
     }
-    
+
     private void on_media_added_removed() {
         search_filter.refresh();
     }
@@ -957,7 +962,7 @@ public class ImportPage : CheckerboardPage {
 
     public override void switched_to() {
         set_display_titles(Config.Facade.get_instance().get_display_photo_titles());
-        
+
         base.switched_to();
     }
 
@@ -970,7 +975,7 @@ public class ImportPage : CheckerboardPage {
         // if camera has been refreshed or is in the process of refreshing, go no further
         if (refreshed || busy)
             return;
-        
+
         RefreshResult res = refresh_camera();
         switch (res) {
             case ImportPage.RefreshResult.OK:
@@ -978,31 +983,31 @@ public class ImportPage : CheckerboardPage {
                 // nothing to report; if busy, let it continue doing its thing
                 // (although earlier check should've caught this)
             break;
-            
+
             case ImportPage.RefreshResult.LOCKED:
                 if (fail_on_locked) {
                     AppWindow.error_message(UNMOUNT_FAILED_MSG);
-                    
+
                     break;
                 }
-                
+
                 // if locked because it's mounted, offer to unmount
                 debug("Checking if %s is mounted…", dcamera.uri);
 
                 var mount = dcamera.get_mount();
-                
+
                 if (mount != null) {
                     // it's mounted, offer to unmount for the user
                     string mounted_message = _("Shotwell needs to unmount the camera from the filesystem in order to access it. Continue?");
 
-                    Gtk.MessageDialog dialog = new Gtk.MessageDialog(AppWindow.get_instance(), 
+                    Gtk.MessageDialog dialog = new Gtk.MessageDialog(AppWindow.get_instance(),
                         Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION,
                         Gtk.ButtonsType.CANCEL, "%s", mounted_message);
                     dialog.title = Resources.APP_TITLE;
                     dialog.add_button(_("_Unmount"), Gtk.ResponseType.YES);
                     int dialog_res = dialog.run();
                     dialog.destroy();
-                    
+
                     if (dialog_res != Gtk.ResponseType.YES) {
                         set_page_message(_("Please unmount the camera."));
                     } else {
@@ -1018,73 +1023,73 @@ public class ImportPage : CheckerboardPage {
                     dialog.title = Resources.APP_TITLE;
                     dialog.run();
                     dialog.destroy();
-                    
+
                     set_page_message(_("Please close any other application using the camera."));
                 }
             break;
-            
+
             case ImportPage.RefreshResult.LIBRARY_ERROR:
                 AppWindow.error_message(_("Unable to fetch previews from the camera:\n%s").printf(
                     get_refresh_message()));
             break;
-            
+
             default:
                 error("Unknown result type %d", (int) res);
         }
     }
-    
+
     public bool unmount_camera(Mount mount) {
         if (busy)
             return false;
-        
+
         update_status(true, false);
         progress_bar.visible = true;
         progress_bar.set_fraction(0.0);
         progress_bar.set_ellipsize(Pango.EllipsizeMode.NONE);
         progress_bar.set_text(_("Unmounting…"));
-        
+
         // unmount_with_operation() can/will complete with the volume still mounted (probably meaning
         // it's been *scheduled* for unmounting).  However, this signal is fired when the mount
         // really is unmounted -- *if* a VolumeMonitor has been instantiated.
         mount.unmounted.connect(on_unmounted);
-        
+
         debug("Unmounting camera…");
-        mount.unmount_with_operation.begin(MountUnmountFlags.NONE, 
+        mount.unmount_with_operation.begin(MountUnmountFlags.NONE,
             new Gtk.MountOperation(AppWindow.get_instance()), null, on_unmount_finished);
-        
+
         return true;
     }
-    
+
     private void on_unmount_finished(Object? source, AsyncResult aresult) {
         debug("Async unmount finished");
-        
+
         Mount mount = (Mount) source;
         try {
             mount.unmount_with_operation.end(aresult);
         } catch (Error err) {
             AppWindow.error_message(UNMOUNT_FAILED_MSG);
-            
+
             // don't trap this signal, even if it does come in, we've backed off
             mount.unmounted.disconnect(on_unmounted);
-            
+
             update_status(false, refreshed);
             progress_bar.set_ellipsize(Pango.EllipsizeMode.NONE);
             progress_bar.set_text("");
             progress_bar.visible = false;
         }
     }
-    
+
     private void on_unmounted(Mount mount) {
         debug("on_unmounted");
-        
+
         update_status(false, refreshed);
         progress_bar.set_ellipsize(Pango.EllipsizeMode.NONE);
         progress_bar.set_text("");
         progress_bar.visible = false;
-        
+
         try_refreshing_camera(true);
     }
-    
+
     private void clear_all_import_sources() {
         Marker marker = import_sources.start_marking();
         marker.mark_all();
@@ -1133,10 +1138,10 @@ public class ImportPage : CheckerboardPage {
     private RefreshResult refresh_camera() {
         if (busy)
             return RefreshResult.BUSY;
-            
+
         this.set_page_message (_("Connecting to camera, please wait…"));
         update_status(busy, false);
-        
+
         refresh_error = null;
         refresh_result = dcamera.gcamera.init(spin_idle_context.context);
 
@@ -1162,13 +1167,13 @@ public class ImportPage : CheckerboardPage {
 
         if (refresh_result != GPhoto.Result.OK) {
             warning("Unable to initialize camera: %s", refresh_result.to_full_string());
-            
+
             return (refresh_result == GPhoto.Result.IO_LOCK) ? RefreshResult.LOCKED : RefreshResult.LIBRARY_ERROR;
         }
 
         this.set_page_message (_("Starting import, please wait…"));
         update_status(true, refreshed);
-        
+
         on_view_changed();
 
         progress_bar.set_ellipsize(Pango.EllipsizeMode.NONE);
@@ -1176,9 +1181,9 @@ public class ImportPage : CheckerboardPage {
         progress_bar.set_fraction(0.0);
         progress_bar.set_pulse_step(0.01);
         progress_bar.visible = true;
-        
+
         Gee.ArrayList<ImportSource> import_list = new Gee.ArrayList<ImportSource>();
-        
+
         GPhoto.CameraStorageInformation[] sifs = null;
         refresh_result = dcamera.gcamera.get_storageinfo(out sifs, spin_idle_context.context);
         if (refresh_result == GPhoto.Result.OK) {
@@ -1228,7 +1233,7 @@ public class ImportPage : CheckerboardPage {
                     got_well_known_dir = true;
                 }
 
-                // Check common video paths for Sony NEX3, PSP addon camera 
+                // Check common video paths for Sony NEX3, PSP addon camera
                 if (check_directory_exists(fsid, "/", "MP_ROOT")) {
                     enumerate_files(fsid, "/MP_ROOT", import_list);
                     got_well_known_dir = true;
@@ -1237,7 +1242,7 @@ public class ImportPage : CheckerboardPage {
                     enumerate_files(fsid, "/mp_root", import_list);
                     got_well_known_dir = true;
                 }
-                
+
                 // Didn't find any of the common directories we know about
                 // already - try scanning from device root.
                 if (!got_well_known_dir) {
@@ -1251,30 +1256,30 @@ public class ImportPage : CheckerboardPage {
 
         // Associate files (for RAW+JPEG)
         auto_match_raw_jpeg(import_list);
-        
+
 #if UNITY_SUPPORT
         //UnityProgressBar: try to draw progress bar
         uniprobar.set_visible(true);
 #endif
-        
+
         load_previews_and_metadata(import_list);
-        
+
 #if UNITY_SUPPORT
         //UnityProgressBar: reset
         uniprobar.reset();
 #endif
-        
+
         progress_bar.visible = false;
         progress_bar.set_ellipsize(Pango.EllipsizeMode.NONE);
         progress_bar.set_text("");
         progress_bar.set_fraction(0.0);
-        
+
         GPhoto.Result res = dcamera.gcamera.exit(spin_idle_context.context);
         if (res != GPhoto.Result.OK) {
             // log but don't fail
             warning("Unable to unlock camera: %s", res.to_full_string());
         }
-        
+
         if (refresh_result == GPhoto.Result.OK) {
             if (import_sources.get_count () == 0) {
                 this.set_page_message (this.get_view_empty_message ());
@@ -1282,35 +1287,35 @@ public class ImportPage : CheckerboardPage {
             update_status(false, true);
         } else {
             update_status(false, false);
-            
+
             // show 'em all or show none
             clear_all_import_sources();
         }
-        
+
         on_view_changed();
 
         switch (refresh_result) {
             case GPhoto.Result.OK:
                 return RefreshResult.OK;
-            
+
             case GPhoto.Result.IO_LOCK:
                 return RefreshResult.LOCKED;
-            
+
             default:
                 return RefreshResult.LIBRARY_ERROR;
         }
     }
-    
+
     private static string chomp_ch(string str, char ch) {
         long offset = str.length;
         while (--offset >= 0) {
             if (str[offset] != ch)
                 return str.slice(0, offset);
         }
-        
+
         return "";
     }
-    
+
     public static string append_path(string basepath, string addition) {
         if (!basepath.has_suffix("/") && !addition.has_prefix("/"))
             return basepath + "/" + addition;
@@ -1319,7 +1324,7 @@ public class ImportPage : CheckerboardPage {
         else
             return basepath + addition;
     }
-    
+
     // Need to do this because some phones (iPhone, in particular) changes the name of their filesystem
     // between each mount
     public static string? get_fs_basedir(GPhoto.Camera camera, int fsid) {
@@ -1327,7 +1332,7 @@ public class ImportPage : CheckerboardPage {
         GPhoto.Result res = camera.get_storageinfo(out sifs, null_context.context);
         if (res != GPhoto.Result.OK)
             return null;
-        
+
         if (fsid >= sifs.length)
             return null;
 
@@ -1337,18 +1342,18 @@ public class ImportPage : CheckerboardPage {
             return "/";
         }
     }
-    
+
     public static string? get_fulldir(GPhoto.Camera camera, string camera_name, int fsid, string folder) {
         if (folder.length > GPhoto.MAX_BASEDIR_LENGTH)
             return null;
-        
+
         string basedir = get_fs_basedir(camera, fsid);
         if (basedir == null) {
             debug("Unable to find base directory for %s fsid %d", camera_name, fsid);
-            
+
             return folder;
         }
-        
+
         return append_path(basedir, folder);
     }
 
@@ -1356,25 +1361,25 @@ public class ImportPage : CheckerboardPage {
         string? fulldir = get_fulldir(dcamera.gcamera, dcamera.display_name, fsid, dir);
         if (fulldir == null) {
             warning("Skipping enumerating %s: invalid folder name", dir);
-            
+
             return true;
         }
-        
+
         GPhoto.CameraList files;
         refresh_result = GPhoto.CameraList.create(out files);
         if (refresh_result != GPhoto.Result.OK) {
             warning("Unable to create file list: %s", refresh_result.to_full_string());
-            
+
             return false;
         }
-        
+
         refresh_result = dcamera.gcamera.list_files(fulldir, files, spin_idle_context.context);
         if (refresh_result != GPhoto.Result.OK) {
             warning("Unable to list files in %s: %s", fulldir, refresh_result.to_full_string());
-            
+
             // Although an error, don't abort the import because of this
             refresh_result = GPhoto.Result.OK;
-            
+
             return true;
         }
         files.sort();
@@ -1385,25 +1390,25 @@ public class ImportPage : CheckerboardPage {
             if (refresh_result != GPhoto.Result.OK) {
                 warning("Unable to get the name of file %d in %s: %s", ctr, fulldir,
                     refresh_result.to_full_string());
-                
+
                 return false;
             }
-            
+
             try {
                 GPhoto.CameraFileInfo info;
                 if (!GPhoto.get_info(spin_idle_context.context, dcamera.gcamera, fulldir, filename, out info)) {
                     warning("Skipping import of %s/%s: name too long", fulldir, filename);
-                    
+
                     continue;
                 }
-                
+
                 if ((info.file.fields & GPhoto.CameraFileInfoFields.TYPE) == 0) {
                     message("Skipping %s/%s: No file (file=%02Xh)", fulldir, filename,
                         info.file.fields);
-                        
+
                     continue;
                 }
-                
+
                 if (VideoReader.is_supported_video_filename(filename)) {
                     VideoImportSource video_source = new VideoImportSource(dcamera.display_name, dcamera.gcamera,
                         fsid, dir, filename, info.file.size, info.file.mtime);
@@ -1411,60 +1416,59 @@ public class ImportPage : CheckerboardPage {
                 } else {
                     // determine file format from type, and then from file extension
                     string file_type = (string)info.file.type;
-                    PhotoFileFormat file_format = PhotoFileFormat.from_gphoto_type(file_type);               
+                    PhotoFileFormat file_format = PhotoFileFormat.from_gphoto_type(file_type);
                     if (file_format == PhotoFileFormat.UNKNOWN) {
                         file_format = PhotoFileFormat.get_by_basename_extension(filename);
                         if (file_format == PhotoFileFormat.UNKNOWN) {
                             message("Skipping %s/%s: Not a supported file extension (%s)", fulldir,
                                 filename, file_type);
-                            
+
                             continue;
                         }
                     }
                     import_list.add(new PhotoImportSource(dcamera.display_name, dcamera.gcamera, fsid, dir, filename,
                         info.file.size, info.file.mtime, file_format));
                 }
-                
+
                 progress_bar.pulse();
-                
+
                 // spin the event loop so the UI doesn't freeze
                 spin_event_loop();
             } catch (Error err) {
                 warning("Error while enumerating files in %s: %s", fulldir, err.message);
-                
+
                 refresh_error = err.message;
-                
+
                 return false;
             }
         }
-        
+
         GPhoto.CameraList folders;
         refresh_result = GPhoto.CameraList.create(out folders);
         if (refresh_result != GPhoto.Result.OK) {
             warning("Unable to create folder list: %s", refresh_result.to_full_string());
-            
+
             return false;
         }
-        
+
         refresh_result = dcamera.gcamera.list_folders(fulldir, folders, spin_idle_context.context);
         if (refresh_result != GPhoto.Result.OK) {
             warning("Unable to list folders in %s: %s", fulldir, refresh_result.to_full_string());
-            
+
             // Although an error, don't abort the import because of this
             refresh_result = GPhoto.Result.OK;
-            
+
             return true;
         }
-        
+
         for (int ctr = 0; ctr < folders.count(); ctr++) {
             string subdir;
             refresh_result = folders.get_name(ctr, out subdir);
             if (refresh_result != GPhoto.Result.OK) {
                 warning("Unable to get name of folder %d: %s", ctr, refresh_result.to_full_string());
-                
                 return false;
             }
-            
+
             if (subdir.has_prefix(".")) {
                 debug("Skipping hidden sub-folder %s in %s", subdir, dir);
             } else {
@@ -1472,23 +1476,23 @@ public class ImportPage : CheckerboardPage {
                     return false;
             }
         }
-        
+
         return true;
     }
-    
+
     // Try to match RAW+JPEG pairs.
     private void auto_match_raw_jpeg(Gee.ArrayList<ImportSource> import_list) {
         for (int i = 0; i < import_list.size; i++) {
             PhotoImportSource? current = import_list.get(i) as PhotoImportSource;
-            PhotoImportSource? next = (i + 1 < import_list.size) ? 
+            PhotoImportSource? next = (i + 1 < import_list.size) ?
                 import_list.get(i + 1) as PhotoImportSource : null;
-            PhotoImportSource? prev = (i > 0) ? 
+            PhotoImportSource? prev = (i > 0) ?
                 import_list.get(i - 1) as PhotoImportSource : null;
             if (current != null && current.get_file_format() == PhotoFileFormat.RAW) {
                 string current_name;
                 string ext;
                 disassemble_filename(current.get_filename(), out current_name, out ext);
-                
+
                 // Try to find a matching pair.
                 PhotoImportSource? associated = null;
                 if (next != null && next.get_file_format() == PhotoFileFormat.JFIF) {
@@ -1503,7 +1507,7 @@ public class ImportPage : CheckerboardPage {
                     if (prev_name == current_name)
                         associated = prev;
                 }
-                
+
                 // Associate!
                 if (associated != null) {
                     debug("Found RAW+JPEG pair: %s and %s", current.get_filename(), associated.get_filename());
@@ -1516,28 +1520,76 @@ public class ImportPage : CheckerboardPage {
             }
         }
     }
-    
+
     private void load_previews_and_metadata(Gee.List<ImportSource> import_list) {
         int loaded_photos = 0;
+        double before = 0;
+        double after = 0;
+
+        double before1 = 0;
+        double after1 = 0;
+
+        double before_metadata = 0;
+        double after_metadata = 0;
+
+        double before_preview = 0;
+        double after_preview = 0;
+
+        double before_add_source = 0;
+        double after_add_source = 0;
+
+        double before2 = 0;
+        double after2 = 0;
+
+        double total_first_half = 0;
+        double total_second_half = 0;
+        double before_update_photo_source = 0;
+        double after_update_photo_source = 0;
+
+        double before_boilerplate = 0;
+        double after_boilerplate = 0;
+        double before_unity = 0;
+        double after_unity = 0;
+        double before_event_loop = 0;
+        double after_event_loop = 0;
+        double before_pgb = 0;
+        double after_pgb = 0;
+
+        double global_start = get_timestamp();
+
         foreach (ImportSource import_source in import_list) {
+            double total_time = get_timestamp() - global_start;
+            if (0 < loaded_photos) {
+                print(
+                    "Loaded %d photos in %f, rate = %f\n",
+                    loaded_photos,
+                    total_time,
+                    loaded_photos / total_time
+                );
+            }
+
+            before = get_timestamp();
+            before1 = get_timestamp();
+
             string filename = import_source.get_filename();
             string? fulldir = import_source.get_fulldir();
             if (fulldir == null) {
                 warning("Skipping loading preview of %s: invalid folder name", import_source.to_string());
-                
                 continue;
             }
-            
+
             // Get JPEG pair, if available.
             PhotoImportSource? associated = null;
-            if (import_source is PhotoImportSource && 
-                ((PhotoImportSource) import_source).get_associated() != null) {
+            if (import_source is PhotoImportSource && ((PhotoImportSource) import_source).get_associated() != null) {
                 associated = ((PhotoImportSource) import_source).get_associated();
             }
-            
+
+
+            // above here is ~free
+
             progress_bar.set_ellipsize(Pango.EllipsizeMode.MIDDLE);
             progress_bar.set_text(_("Fetching preview for %s").printf(import_source.get_name()));
-            
+
             // Ask GPhoto to read the current file's metadata, but only if the file is not a
             // video. Across every memory card and camera type I've tested (lucas, as of 10/27/2010)
             // GPhoto always loads null metadata for videos. So without the is-not-video guard,
@@ -1546,26 +1598,29 @@ public class ImportPage : CheckerboardPage {
             PhotoMetadata? metadata = null;
             if (!VideoReader.is_supported_video_filename(filename)) {
                 try {
-                    metadata = GPhoto.load_metadata(spin_idle_context.context, dcamera.gcamera, fulldir,
-                        filename);
+                    before_metadata = get_timestamp();
+                    metadata = GPhoto.load_metadata(spin_idle_context.context, dcamera.gcamera, fulldir, filename);
+                    after_metadata = get_timestamp();
                 } catch (Error err) {
-                    warning("Unable to fetch metadata for %s/%s: %s", fulldir, filename,
-                        err.message);
+                    warning("Unable to fetch metadata for %s/%s: %s", fulldir, filename, err.message);
                 }
             }
-            
+
             // calculate EXIF's fingerprint
             string? exif_only_md5 = null;
             if (metadata != null) {
                 exif_only_md5 = metadata.exif_hash();
             }
-            
+
+
+            // above here, might be increasing, but it's also fast overall
+
+            before_preview = get_timestamp();
             // XXX: Cannot use the metadata for the thumbnail preview because libgphoto2
             // 2.4.6 has a bug where the returned EXIF data object is complete garbage.  This
             // is fixed in 2.4.7, but need to work around this as best we can.  In particular,
             // this means the preview orientation will be wrong and the MD5 is not generated
             // if the EXIF did not parse properly (see above)
-            
             Gdk.Pixbuf preview = null;
             string? preview_md5 = null;
             try {
@@ -1575,8 +1630,7 @@ public class ImportPage : CheckerboardPage {
                     preview_fulldir = associated.get_fulldir();
                     preview_filename = associated.get_filename();
                 }
-                preview = GPhoto.load_preview(spin_idle_context.context, dcamera.gcamera, preview_fulldir,
-                    preview_filename, out preview_md5);
+                preview = GPhoto.load_preview(spin_idle_context.context, dcamera.gcamera, preview_fulldir, preview_filename, out preview_md5);
             } catch (Error err) {
                 // only issue the warning message if we're not reading a video. GPhoto is capable
                 // of reading video previews about 50% of the time, so we don't want to put a guard
@@ -1587,115 +1641,151 @@ public class ImportPage : CheckerboardPage {
                     warning("Unable to fetch preview for %s/%s: %s", fulldir, filename, err.message);
                 }
             }
-            
+            after_preview = get_timestamp();
+
+            after1 = get_timestamp();
+            before2 = get_timestamp();
+
 #if TRACE_MD5
             debug("camera MD5 %s: exif=%s preview=%s", filename, exif_only_md5, preview_md5);
 #endif
 
+
+            before_update_photo_source = get_timestamp();
             var video_import_source = import_source as VideoImportSource;
-            if (video_import_source != null)
+            if (video_import_source != null) {
                 video_import_source.update(preview);
+            }
 
             var photo_import_source = import_source as PhotoImportSource;
-            if (photo_import_source != null)
+            if (photo_import_source != null) {
                 photo_import_source.update(preview, preview_md5, metadata, exif_only_md5);
-            
+            }
+            after_update_photo_source = get_timestamp();
+
             if (associated != null) {
+                print("associated != null path\n");
                 try {
-                    PhotoMetadata? associated_metadata = GPhoto.load_metadata(spin_idle_context.context, 
-                        dcamera.gcamera, associated.get_fulldir(), associated.get_filename());
+                    PhotoMetadata? associated_metadata = GPhoto.load_metadata(spin_idle_context.context, dcamera.gcamera, associated.get_fulldir(), associated.get_filename());
                     associated.update(preview, preview_md5, associated_metadata, null);
                 } catch (Error err) {
-                    warning("Unable to fetch metadata for %s/%s: %s",  associated.get_fulldir(),
-                        associated.get_filename(), err.message);
+                    warning("Unable to fetch metadata for %s/%s: %s",  associated.get_fulldir(), associated.get_filename(), err.message);
                 }
             }
-            
+
             // *now* add to the SourceCollection, now that it is completed
+            before_add_source = get_timestamp();
             import_sources.add(import_source);
-            
+            after_add_source = get_timestamp();
+
+
+            before_pgb = get_timestamp();
             progress_bar.set_fraction((double) (++loaded_photos) / (double) import_list.size);
+            after_pgb = get_timestamp();
+
 #if UNITY_SUPPORT
+            before_unity = get_timestamp();
             //UnityProgressBar: set progress
             uniprobar.set_progress((double) (loaded_photos) / (double) import_list.size);
+            after_unity = get_timestamp();
 #endif
-            
+
             // spin the event loop so the UI doesn't freeze
+            before_event_loop = get_timestamp();
             spin_event_loop();
+            after_event_loop = get_timestamp();
+
+
+            after2 = get_timestamp();
+            after = get_timestamp();
+
+            total_time = (after - before) / 100;
+
+            print("add_source only:    %f\n", (after_add_source - before_add_source) / total_time);
+            print("metadata only:      %f\n", (after_metadata - before_metadata) / total_time);
+            print("preview:            %f\n", (after_preview - before_preview) / total_time);
+            print("update photosource: %f\n", (after_update_photo_source - before_update_photo_source) / total_time);
+            print("boilerplate:        %f\n", (after_boilerplate - before_boilerplate) / total_time);
+            print("unity:              %f\n", (after_unity - before_unity) / total_time);
+            print("eventloop:          %f\n", (after_event_loop - before_event_loop) / total_time);
+            print("progress bar:       %f\n", (after_pgb - before_pgb) / total_time);
+
+
+            total_first_half += after1 - before1;
+            total_second_half += after2 - before2;
+
+            print("first half:      %f\n", 100 * total_first_half / (total_first_half + total_second_half));
+            print("second half:     %f\n", 100 * total_second_half / (total_first_half + total_second_half));
+            print("whole thing took %f\n", after - before);
+            print("\n");
         }
     }
-    
+
     private void on_hide_imported() {
         if (hide_imported.get_active())
             get_view().install_view_filter(hide_imported_filter);
         else
             get_view().remove_view_filter(hide_imported_filter);
-        
+
         Config.Facade.get_instance().set_hide_photos_already_imported(hide_imported.get_active());
     }
-    
+
     private void on_import_selected() {
         import(get_view().get_selected());
     }
-    
+
     private void on_import_all() {
         import(get_view().get_all());
     }
-    
+
     private void import(Gee.Iterable<DataObject> items) {
         GPhoto.Result res = dcamera.gcamera.init(spin_idle_context.context);
         if (res != GPhoto.Result.OK) {
             AppWindow.error_message(_("Unable to lock camera: %s").printf(res.to_full_string()));
-            
+
             return;
         }
 
         update_status(true, refreshed);
-        
+
         on_view_changed();
         progress_bar.visible = false;
 
         SortedList<CameraImportJob> jobs = new SortedList<CameraImportJob>(import_job_comparator);
         Gee.ArrayList<CameraImportJob> already_imported = new Gee.ArrayList<CameraImportJob>();
-        
+
         foreach (DataObject object in items) {
             ImportPreview preview = (ImportPreview) object;
             ImportSource import_file = (ImportSource) preview.get_source();
-            
+
             if (preview.is_already_imported()) {
-                message("Skipping import of %s: checksum detected in library", 
-                    import_file.get_filename());
-                
-                already_imported.add(new CameraImportJob(null_context, import_file,
-                    preview.get_duplicated_file()));
-                
+                message("Skipping import of %s: checksum detected in library", import_file.get_filename());
+                already_imported.add(new CameraImportJob(null_context, import_file, preview.get_duplicated_file()));
                 continue;
             }
-            
+
             CameraImportJob import_job = new CameraImportJob(null_context, import_file);
-            
+
             // Maintain RAW+JPEG association.
-            if (import_file is PhotoImportSource && 
-                ((PhotoImportSource) import_file).get_associated() != null) {
-                import_job.set_associated(new CameraImportJob(null_context, 
-                    ((PhotoImportSource) import_file).get_associated()));
+            if (import_file is PhotoImportSource && ((PhotoImportSource) import_file).get_associated() != null) {
+                import_job.set_associated(new CameraImportJob(null_context, ((PhotoImportSource) import_file).get_associated()));
             }
-            
+
             jobs.add(import_job);
         }
-        
+
         debug("Importing %d files from %s", jobs.size, dcamera.display_name);
-        
+
         if (jobs.size > 0) {
             // see import_reporter() to see why this is held during the duration of the import
             assert(local_ref == null);
             local_ref = this;
-            
+
             BatchImport batch_import = new BatchImport(jobs, dcamera.display_name, import_reporter,
                 null, already_imported);
             batch_import.import_job_failed.connect(on_import_job_failed);
             batch_import.import_complete.connect(close_import);
-            
+
             LibraryWindow.get_app().enqueue_batch_import(batch_import, true);
             LibraryWindow.get_app().switch_to_import_queue_page();
             // camera.exit() and busy flag will be handled when the batch import completes
@@ -1703,15 +1793,15 @@ public class ImportPage : CheckerboardPage {
             // since failed up-front, build a fake (faux?) ImportManifest and report it here
             if (already_imported.size > 0)
                 import_reporter(new ImportManifest(null, already_imported));
-            
+
             close_import();
         }
     }
-    
+
     private void on_import_job_failed(BatchImportResult result) {
         if (result.file == null || result.result == ImportResult.SUCCESS)
             return;
-            
+
         // delete the copied file
         try {
             result.file.delete(null);
@@ -1719,7 +1809,7 @@ public class ImportPage : CheckerboardPage {
             message("Unable to delete downloaded file %s: %s", result.file.get_path(), err.message);
         }
     }
-    
+
     private void import_reporter(ImportManifest manifest) {
         // TODO: Need to keep the ImportPage around until the BatchImport is completed, but the
         // page controller (i.e. LibraryWindow) needs to know (a) if ImportPage is busy before
@@ -1728,19 +1818,19 @@ public class ImportPage : CheckerboardPage {
         // until this function returns (at any time)
         ImportPage? local_ref = this.local_ref;
         this.local_ref = null;
-        
+
         if (manifest.success.size > 0) {
             string photos_string = (ngettext("Delete this photo from camera?",
-                "Delete these %d photos from camera?", 
+                "Delete these %d photos from camera?",
                 manifest.success.size)).printf(manifest.success.size);
             string videos_string = (ngettext("Delete this video from camera?",
-                "Delete these %d videos from camera?", 
+                "Delete these %d videos from camera?",
                 manifest.success.size)).printf(manifest.success.size);
             string both_string = (ngettext("Delete this photo/video from camera?",
-                "Delete these %d photos/videos from camera?", 
+                "Delete these %d photos/videos from camera?",
                 manifest.success.size)).printf(manifest.success.size);
             string neither_string = (ngettext("Delete these files from camera?",
-                "Delete these %d files from camera?", 
+                "Delete these %d files from camera?",
                 manifest.success.size)).printf(manifest.success.size);
 
             string question_string = ImportUI.get_media_specific_string(manifest.success,
@@ -1748,24 +1838,24 @@ public class ImportPage : CheckerboardPage {
 
             ImportUI.QuestionParams question = new ImportUI.QuestionParams(
                 question_string, Resources.DELETE_LABEL, _("_Keep"));
-        
+
             if (!ImportUI.report_manifest(manifest, false, question))
                 return;
         } else {
             ImportUI.report_manifest(manifest, false, null);
             return;
         }
-        
-        // delete the photos from the camera and the SourceCollection... for now, this is an 
+
+        // delete the photos from the camera and the SourceCollection... for now, this is an
         // all-or-nothing deal
         Marker marker = import_sources.start_marking();
         foreach (BatchImportResult batch_result in manifest.success) {
             CameraImportJob job = batch_result.job as CameraImportJob;
-            
+
             marker.mark(job.get_source());
         }
-        
-        ProgressDialog progress = new ProgressDialog(AppWindow.get_instance(), 
+
+        ProgressDialog progress = new ProgressDialog(AppWindow.get_instance(),
             _("Removing photos/videos from camera"), new Cancellable());
         int error_count = import_sources.destroy_marked(marker, true, progress.monitor);
         if (error_count > 0) {
@@ -1775,9 +1865,9 @@ public class ImportPage : CheckerboardPage {
                 error_count);
             AppWindow.error_message(error_string);
         }
-        
+
         progress.close();
-        
+
         // to stop build warnings
         local_ref = null;
     }
@@ -1788,9 +1878,9 @@ public class ImportPage : CheckerboardPage {
             // log but don't fail
             message("Unable to unlock camera: %s", res.to_full_string());
         }
-        
+
         update_status(false, refreshed);
-        
+
         on_view_changed();
     }
 
@@ -1799,7 +1889,7 @@ public class ImportPage : CheckerboardPage {
 
         set_action_active ("ViewTitle", display);
     }
-    
+
     // Gets the search view filter for this page.
     public override SearchViewFilter get_search_view_filter() {
         return search_filter;

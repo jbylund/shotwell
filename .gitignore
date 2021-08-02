@@ -85,3 +85,5 @@ virtualization/vagrant/config
 
 # Stuff from running flatpak in-tree
 .flatpak-builder
+shotwell
+sample1.cr2
