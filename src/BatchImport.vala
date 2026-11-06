@@ -416,8 +416,11 @@ public class ImportManifest {
 public class BatchImport : Object {
     private const int WORK_SNIFFER_THROBBER_MSEC = 125;
     
+    // PrepareFilesJob hands the first prepared file to the import workers at once, and the
+    // rest in clusters of at most this many files or this much time. Every cluster blocks
+    // PrepareFilesJob until the main thread has taken it, so do not send them too often.
     public const int REPORT_EVERY_N_PREPARED_FILES = 100;
-    public const int REPORT_PREPARED_FILES_EVERY_N_MSEC = 3000;
+    public const int REPORT_PREPARED_FILES_EVERY_N_MSEC = 500;
     
     private const int READY_SOURCES_COUNT_OVERFLOW = 10;
     
@@ -1767,8 +1770,12 @@ private class PrepareFilesJob : BackgroundImportJob {
                     result);
             }
             
+            // The import workers are idle until the first cluster arrives, so hand over the
+            // first prepared file at once (nothing has been handed over yet while every prepared
+            // file is still in the list)
             if (list.size >= BatchImport.REPORT_EVERY_N_PREPARED_FILES 
-                || ((timer.elapsed() * 1000.0) > BatchImport.REPORT_PREPARED_FILES_EVERY_N_MSEC && list.size > 0)) {
+                || ((timer.elapsed() * 1000.0) > BatchImport.REPORT_PREPARED_FILES_EVERY_N_MSEC && list.size > 0)
+                || (list.size > 0 && list.size == prepared_files)) {
 #if TRACE_IMPORT
                 debug("Notifying that %d prepared files are ready", list.size);
 #endif
