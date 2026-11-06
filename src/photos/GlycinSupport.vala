@@ -14,6 +14,9 @@ public abstract class GlycinReader : PhotoFileReader {
     }
     
     public override Gdk.Pixbuf unscaled_read() throws Error {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope.glycin_decode(get_file()); bench_scope.start();
+#endif
         var loader = new Gly.Loader(get_file());
         loader.set_accepted_memory_formats(Gly.MemoryFormatSelection.R8G8B8A8 | Gly.MemoryFormatSelection.R8G8B8);
         loader.set_apply_transformations(false);
@@ -84,6 +87,9 @@ public abstract class GlycinWriter : PhotoFileWriter {
     }
 
     protected async void do_write_async(int io_priority, Cancellable? cancellable) throws Error {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope.encode(get_file_format() == PhotoFileFormat.JFIF); bench_scope.start();
+#endif
         var image = yield creator.create_async(cancellable);
         var data = image.get_data();
 
@@ -94,6 +100,9 @@ public abstract class GlycinWriter : PhotoFileWriter {
     }
 
     protected void do_write() throws Error {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope.encode(get_file_format() == PhotoFileFormat.JFIF); bench_scope.start();
+#endif
         var image = creator.create();
         var data = image.get_data();
 
@@ -138,6 +147,9 @@ public abstract class GlycinSniffer : PhotoFileSniffer {
     }
     
     public override DetectedPhotoInformation? sniff(out bool is_corrupted) throws Error {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.GLYCIN_SNIFF); bench_scope.start();
+#endif
         detected = new DetectedPhotoInformation();
         is_corrupted = false;
         
