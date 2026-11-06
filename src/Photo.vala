@@ -36,6 +36,7 @@ public class PhotoImportParams {
     // OUT:
     public PhotoRow row = new PhotoRow();
     public Gee.Collection<string>? keywords = null;
+    public PreparedRawDevelopment? raw_development = null;
     
     public PhotoImportParams(File file, File? final_associated_file, ImportID import_id, 
         PhotoFileSniffer.Options sniffer_options, string? exif_md5, string? thumbnail_md5, string? full_md5, 
@@ -59,6 +60,42 @@ public class PhotoImportParams {
         this.thumbnail_md5 = null;
         this.full_md5 = null;
         this.thumbnails = null;
+    }
+}
+
+// The development of a RAW file that the import worker made before the Photo exists, see
+// Photo.prepare_raw_development_for_import(). Photo.set_raw_developer() uses it in place of
+// developing the photo itself.
+public class PreparedRawDevelopment {
+    // The developer it was made for
+    public RawDeveloper developer;
+    
+    // Whether the largest embedded preview is large enough for the EMBEDDED developer
+    public bool embedded_available = false;
+    
+    // The development, or null if no image was written
+    public BackingPhotoRow? row = null;
+    
+    // The result of Photo.read_developed_backing_photo() on row
+    public bool readable = false;
+    public Error? read_error = null;
+    
+    // Set once Photo.set_raw_developer() has used it
+    public bool used = false;
+    
+    // Deletes the development if set_raw_developer() has not used it, for example because the
+    // import was cancelled first
+    public void delete_if_unused() {
+        if (used || row == null)
+            return;
+        
+        try {
+            File.new_for_path(row.filepath).delete(null);
+        } catch (Error err) {
+            warning("Unable to delete unused RAW development %s: %s", row.filepath, err.message);
+        }
+        
+        row = null;
     }
 }
 
@@ -632,8 +669,9 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
     // Reads info on a backing photo and adds it.
     // Note: this function was created for importing new photos.  It will not
     // notify of changes to the developments.
-    public void add_backing_photo_for_development(RawDeveloper d, BackingPhotoRow bpr, bool notify = true) throws Error {
-        import_developed_backing_photo(row, d, bpr);
+    public void add_backing_photo_for_development(RawDeveloper d, BackingPhotoRow bpr, bool notify = true,
+        PreparedRawDevelopment? prepared = null) throws Error {
+        import_developed_backing_photo(row, d, bpr, prepared);
         lock (developments) {
             developments.set(d, bpr);
         }
@@ -642,9 +680,20 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
             notify_altered(new Alteration("image", "developer"));
     }
     
+    // If prepared is not null, the import worker has already read bpr from its file.
     public static void import_developed_backing_photo(PhotoRow row, RawDeveloper d, 
-        BackingPhotoRow bpr) throws Error {
-        if (!read_developed_backing_photo(bpr)) {
+        BackingPhotoRow bpr, PreparedRawDevelopment? prepared = null) throws Error {
+        bool readable;
+        if (prepared != null) {
+            if (prepared.read_error != null)
+                throw prepared.read_error.copy();
+            
+            readable = prepared.readable;
+        } else {
+            readable = read_developed_backing_photo(bpr);
+        }
+        
+        if (!readable) {
             // TODO: Probably should remove from database, but simply exiting for now (prior code
             // didn't even do this check)
             return;
@@ -687,14 +736,16 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
     
     // "Develops" a raw photo
     // Not thread-safe.
-    private void develop_photo(RawDeveloper d, bool notify) {
-        BackingPhotoRow? bps = d.develop(get_master_reader());
+    // If prepared is not null, it is the development of this photo with d that the import
+    // worker has already made.
+    private void develop_photo(RawDeveloper d, bool notify, PreparedRawDevelopment? prepared = null) {
+        BackingPhotoRow? bps = (prepared != null) ? prepared.row : d.develop(get_master_reader());
         if (bps == null)
             return;
         
         try {
             // Read in backing photo info, add to DB.
-            add_backing_photo_for_development(d, bps, notify);
+            add_backing_photo_for_development(d, bps, notify, prepared);
             
             notify_raw_development_modified();
         } catch (Error e) {
@@ -715,7 +766,12 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
     // If prefetch is true, the developed image is loaded once to check that it can be
     // displayed. The import passes false: nothing displays the photo at that point, and the
     // image would be decoded only to be discarded again at the end of this method.
-    public void set_raw_developer(RawDeveloper d, bool notify = true, bool prefetch = true) {
+    //
+    // At import, prepared is what the import worker found and made for this photo, see
+    // prepare_raw_development_for_import(). It is used if it was made for the developer chosen
+    // here; otherwise the caller deletes it.
+    public void set_raw_developer(RawDeveloper d, bool notify = true, bool prefetch = true,
+        PreparedRawDevelopment? prepared = null) {
         if (get_master_file_format() != PhotoFileFormat.RAW)
             return;
         
@@ -727,7 +783,9 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
             
         // If the embedded preview is too small to be used in the PhotoPage, don't
         // allow EMBEDDED to be chosen.
-        if (!is_raw_developer_available(RawDeveloper.EMBEDDED) && d != RawDeveloper.CAMERA)
+        bool embedded_available = (prepared != null) ? prepared.embedded_available
+            : is_raw_developer_available(RawDeveloper.EMBEDDED);
+        if (!embedded_available && d != RawDeveloper.CAMERA)
             d = RawDeveloper.SHOTWELL;
             
         lock (developments) {
@@ -735,7 +793,12 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
             
             // Perform development, bail out if it doesn't work.
             if (!is_raw_developer_complete(d)) {
-                develop_photo(d, notify);
+                if (prepared != null && prepared.developer == d) {
+                    prepared.used = true;
+                    develop_photo(d, notify, prepared);
+                } else {
+                    develop_photo(d, notify);
+                }
             }
             if (!developments.has_key(d))
                 return; // we tried!
@@ -1208,6 +1271,50 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
         debug("IMPORT: total=%lf", total_time.elapsed());
 #endif
         return ImportResult.SUCCESS;
+    }
+    
+    // Develops an imported RAW file as BatchImport's on_import_files_completed() and then
+    // set_raw_developer() will ask for, so that this work is done by the import worker and not
+    // by the main thread. The database is not touched; set_raw_developer() adds the result.
+    //
+    // has_camera_development tells whether a camera JPEG will be attached (RAW+JPEG pair).
+    // Returns null if the developer will be CAMERA, as the camera's JPEG needs no development.
+    // If the main thread then chooses a different developer (for example because attaching the
+    // camera JPEG failed, or the default developer was changed meanwhile), set_raw_developer()
+    // develops the photo itself and the caller deletes this development.
+    //
+    // NOTE: This method is thread-safe.
+    public static PreparedRawDevelopment? prepare_raw_development_for_import(File master,
+        bool has_camera_development, RawDeveloper default_developer) {
+        // The choice that on_import_files_completed() makes...
+        RawDeveloper d = default_developer;
+        if (d == RawDeveloper.CAMERA && !has_camera_development)
+            d = RawDeveloper.EMBEDDED;
+        
+        // ...and then set_raw_developer()
+        if (has_camera_development && d == RawDeveloper.EMBEDDED)
+            d = RawDeveloper.CAMERA;
+        
+        if (d == RawDeveloper.CAMERA)
+            return null;
+        
+        PhotoFileReader reader = PhotoFileFormat.RAW.create_reader(master.get_path());
+        PreparedRawDevelopment prepared = new PreparedRawDevelopment();
+        prepared.embedded_available = is_embedded_development_available(reader);
+        if (!prepared.embedded_available)
+            d = RawDeveloper.SHOTWELL;
+        
+        prepared.developer = d;
+        prepared.row = d.develop(reader);
+        if (prepared.row != null) {
+            try {
+                prepared.readable = read_developed_backing_photo(prepared.row);
+            } catch (Error err) {
+                prepared.read_error = err;
+            }
+        }
+        
+        return prepared;
     }
     
     public static void create_pre_import(PhotoImportParams params) {
