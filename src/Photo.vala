@@ -38,6 +38,12 @@ public class PhotoImportParams {
     public Gee.Collection<string>? keywords = null;
     public PreparedRawDevelopment? raw_development = null;
     
+    // OUT, for a RAW+JPEG pair: the developed image that the thumbnails were made from and its
+    // developer, see Photo.prepare_pair_thumbnails_for_import(). Null if the thumbnails were
+    // made from the RAW file.
+    public BackingPhotoRow? thumbnails_backing = null;
+    public RawDeveloper thumbnails_developer = RawDeveloper.CAMERA;
+    
     public PhotoImportParams(File file, File? final_associated_file, ImportID import_id, 
         PhotoFileSniffer.Options sniffer_options, string? exif_md5, string? thumbnail_md5, string? full_md5, 
         Thumbnails? thumbnails = null) {
@@ -607,6 +613,21 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
         lock (developments) {
             return developments.has_key(d) &&
                 FileUtils.test(developments.get(d).filepath, FileTest.EXISTS);
+        }
+    }
+    
+    // Whether this photo shows the image in backing, developed by d, without any transformation.
+    // Then thumbnails made from backing by prepare_pair_thumbnails_for_import() are the ones
+    // LibraryPhoto.generate_thumbnails() would make.
+    public bool is_untransformed_development(RawDeveloper d, BackingPhotoRow backing) {
+        if (has_editable())
+            return false;
+        
+        lock (row) {
+            return row.developer == d && backing_photo_row.filepath == backing.filepath
+                && backing_photo_row.file_format == backing.file_format
+                && backing_photo_row.dim.equals(backing.dim)
+                && row.orientation == backing.original_orientation && row.transformations == null;
         }
     }
     
@@ -1258,21 +1279,87 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
         params.row.rating = rating;
         
         if (params.thumbnails != null) {
-            PhotoFileReader reader = params.row.master.file_format.create_reader(
-                params.row.master.filepath);
-            reader.set_role (PhotoFileReader.Role.THUMBNAIL);
-            try {
-                ThumbnailCache.generate_for_photo(params.thumbnails, reader, params.row.orientation, 
-                    params.row.master.dim);
-            } catch (Error err) {
-                return ImportResult.convert_error(err, ImportResult.FILE_ERROR);
-            }
+            ImportResult result = generate_master_thumbnails_for_import(params);
+            if (result != ImportResult.SUCCESS)
+                return result;
         }
         
 #if MEASURE_IMPORT
         debug("IMPORT: total=%lf", total_time.elapsed());
 #endif
         return ImportResult.SUCCESS;
+    }
+    
+    // Makes params.thumbnails from the master file (for a RAW file, from its embedded thumbnail).
+    private static ImportResult generate_master_thumbnails_for_import(PhotoImportParams params) {
+        PhotoFileReader reader = params.row.master.file_format.create_reader(
+            params.row.master.filepath);
+        reader.set_role (PhotoFileReader.Role.THUMBNAIL);
+        try {
+            ThumbnailCache.generate_for_photo(params.thumbnails, reader, params.row.orientation, 
+                params.row.master.dim);
+        } catch (Error err) {
+            return ImportResult.convert_error(err, ImportResult.FILE_ERROR);
+        }
+        
+        return ImportResult.SUCCESS;
+    }
+    
+    // Makes the thumbnails of a RAW+JPEG pair, after prepare_for_import() (called without
+    // thumbnails) and prepare_raw_development_for_import(). They are made once, from the image
+    // that the photo will show after set_raw_developer(): the camera JPEG if the developer will
+    // be CAMERA, otherwise the development in params.raw_development. These are the thumbnails
+    // that LibraryPhoto.generate_thumbnails() would make after the import, so the camera JPEG
+    // can be attached on the main thread without regenerating them there. The image and its
+    // developer are returned in params.thumbnails_backing and params.thumbnails_developer, for
+    // is_untransformed_development().
+    //
+    // If that image cannot be read, the thumbnails are made from the RAW file as for any other
+    // photo, and params.thumbnails_backing stays null.
+    //
+    // NOTE: This method is thread-safe.
+    public static ImportResult prepare_pair_thumbnails_for_import(PhotoImportParams params) {
+        params.thumbnails = new Thumbnails();
+        params.thumbnails_backing = null;
+        
+        BackingPhotoRow? backing = null;
+        RawDeveloper d = RawDeveloper.CAMERA;
+        if (params.row.master.file_format == PhotoFileFormat.RAW && params.final_associated_file != null) {
+            if (params.raw_development == null) {
+                // the developer will be CAMERA; read the camera JPEG as
+                // import_developed_backing_photo() will
+                backing = new BackingPhotoRow();
+                backing.file_format = PhotoFileFormat.JFIF;
+                backing.filepath = params.final_associated_file.get_path();
+                try {
+                    if (!read_developed_backing_photo(backing))
+                        backing = null;
+                } catch (Error err) {
+                    backing = null;
+                }
+            } else if (params.raw_development.row != null && params.raw_development.readable) {
+                backing = params.raw_development.row;
+                d = params.raw_development.developer;
+            }
+        }
+        
+        if (backing != null) {
+            try {
+                ThumbnailCache.generate_for_untransformed_photo(params.thumbnails,
+                    backing.file_format.create_reader(backing.filepath), backing.original_orientation,
+                    backing.dim);
+                params.thumbnails_backing = backing;
+                params.thumbnails_developer = d;
+                
+                return ImportResult.SUCCESS;
+            } catch (Error err) {
+                debug("Unable to make thumbnails of %s from %s: %s", params.file.get_path(),
+                    backing.filepath, err.message);
+                params.thumbnails = new Thumbnails();
+            }
+        }
+        
+        return generate_master_thumbnails_for_import(params);
     }
     
     // Develops an imported RAW file as BatchImport's on_import_files_completed() and then
