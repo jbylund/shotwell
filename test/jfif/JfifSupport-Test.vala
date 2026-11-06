@@ -81,11 +81,53 @@ void add_jfif_sniff_fast_no_md5_tests () {
     });
 }
 
+// Small JPEGs that cover a baseline file, a progressive file with odd dimensions and a file
+// whose EXIF orientation swaps width and height on display
+const string[] TEST_JPEGS = {
+    "shotwell-street.jpg",
+    "shotwell-street-progressive.jpg",
+    "shotwell-street-rotated.jpg"
+};
+
+void add_jfif_header_dimensions_tests () {
+    Test.add_func ("/functional/photos/jfif/header_dimensions", () => {
+            foreach (string name in TEST_JPEGS) {
+                File f = File.new_for_path(TEST_DATA_DIR + "/" + name);
+                try {
+                    // What the image decodes to, ignoring the EXIF orientation like the
+                    // sniffers do
+                    Gdk.Pixbuf decoded = new JfifReader(f.get_path()).unscaled_read();
+                    Dimensions decoded_dim = Dimensions.for_pixbuf(decoded);
+
+                    bool is_corrupted = false;
+                    DetectedPhotoInformation? fast =
+                        new JfifSniffer(f, PhotoFileSniffer.Options.NO_MD5).sniff(out is_corrupted);
+                    assert(fast != null);
+                    assert(!is_corrupted);
+                    assert(fast.image_dim.equals(decoded_dim));
+
+                    DetectedPhotoInformation? full =
+                        new JfifSniffer(f, PhotoFileSniffer.Options.GET_ALL).sniff(out is_corrupted);
+                    assert(full != null);
+                    assert(!is_corrupted);
+                    assert(full.image_dim.equals(decoded_dim));
+                    assert(full.channels == 3);
+                    assert(full.format_name == "jpeg");
+                    assert(full.md5 != null);
+                } catch (Error err) {
+                    critical("%s: %s", name, err.message);
+                    assert_not_reached();
+                }
+            }
+    });
+}
+
 void main (string[] args) {
     Test.init (ref args);
     add_jfif_sof_tests();
     add_jfif_sniff_fast_tests();
     add_jfif_sniff_fast_no_md5_tests();
+    add_jfif_header_dimensions_tests();
     Test.run();
 }
 
