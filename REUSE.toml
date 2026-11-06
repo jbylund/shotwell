@@ -180,6 +180,12 @@ path = ["flatpak/*.json", "flatpak/patches/*.patch"]
 SPDX-FileCopyrightText = "2026 Software Freedom Conservancy Inc."
 SPDX-License-Identifier = "LGPL-2.1-or-later"
 
+# List of benchmark sample files (URLs and checksums); JSON cannot carry a header.
+[[annotations]]
+path = ["build-aux/bench/corpus-manifest.json"]
+SPDX-FileCopyrightText = "2026 Shotwell contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
 
 [[annotations]]
 path = ["subprojects/shotwell-facedetect/deploy.prototxt"]
