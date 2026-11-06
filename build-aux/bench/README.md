@@ -61,6 +61,8 @@ every file was imported. `run-in-container.sh` adds the lower bound and cgroup f
 | `shotwell.counters.<probe>` | count, bytes, total time summed over threads, longest call, active span |
 | `shotwell.counters_after_completion` | what happened during the settle period |
 | `shotwell.main_thread_callbacks_s` | time in the BatchImport main-thread callbacks |
+| `shotwell.main_loop_lag` | stalls of the main loop during the import (see below) |
+| `shotwell.main_loop_lag_after_completion` | the same, during the settle period |
 | `cgroup.import_device_io.rbytes` | bytes the container read from the block device during the import |
 | `counters_per_file` | counts divided by the number of corpus files |
 
@@ -72,6 +74,20 @@ The probes are defined in `src/BenchCounters.vala`. Some notes on them:
 - `glycin_decode_other` is mostly the UI reading cached thumbnails.
 - `md5_source` and `md5_library` split `md5_file()` reads by directory. The glycin sniffer
   hashes files itself and is not included.
+- `worker_feeder_notify_wait` is the time `PrepareFilesJob` spends in `notify()`: it hands a
+  cluster of prepared files to the main thread and waits until the main thread has taken it,
+  so it grows when the main thread is busy.
+- `library_photo_generate_thumbnails` is `LibraryPhoto.generate_thumbnails()`, which runs on the
+  main thread at `Priority.LOW` after a change to the image of a photo (for example attaching
+  the camera JPEG of a RAW+JPEG pair). It is not one of the BatchImport callbacks, so it is not
+  in `main_thread_callbacks_s`. `thumbnail_import_from_source` is the `ThumbnailCache` call
+  inside it (and in any other caller).
+
+`main_loop_lag` comes from a timer at `Priority.HIGH` that fires every 5 ms. When the main thread
+is busy in one callback for X ms, the next tick is about X ms late. `max_s` is the longest stall,
+`stalls_over_20ms` and `stall_total_over_20ms_s` count the ticks that were more than 20 ms late
+and their total lateness, and `lag_total_s` adds up all lateness. It covers all main-thread work,
+including GTK.
 
 ## Modes and throttling
 
@@ -140,7 +156,9 @@ import skips files whose MD5 is already in the library:
   (a `free` box for CR3). These copies keep the original date.
 
 Every copy is checked with `raw-identify`, and the first copy of each sample is decoded with
-`dcraw_emu`. `make-corpus.sh --inspect` prints the preview sizes, libraw support and exiv2
+`dcraw_emu`. `make-corpus.sh --pairs-only [SEED [N]]` makes the set `sSEED-nN-pairs` from the
+four paired samples only, so that every shot is a RAW+JPEG pair (N shots, 2N files).
+`make-corpus.sh --inspect` prints the preview sizes, libraw support and exiv2
 writability of the samples. The downloaded files stay in the volume and are only read by
 exiv2 and libraw.
 
