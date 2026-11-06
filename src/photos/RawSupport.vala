@@ -358,4 +358,121 @@ public enum RawDeveloper {
         
         return ns;
     }
+    
+    // Develops the RAW file that master_reader reads into a new JPEG next to it (see
+    // create_backing_row_for_development()), for the SHOTWELL and EMBEDDED developers.
+    //
+    // Returns the new BackingPhotoRow, with only filepath and file_format set, if the image
+    // was written. The row is returned even if writing the metadata to the JPEG failed
+    // afterwards: some cameras write EXIF segments that exiv2 cannot save, and the image is
+    // still usable. Returns null if no image was written; the error is only logged. CAMERA
+    // developments come from the camera, so there is nothing to develop and null is returned.
+    //
+    // This does not touch the database or any Photo, so it can run on any thread.
+    public BackingPhotoRow? develop(PhotoFileReader master_reader) {
+        bool wrote_img_to_disk = false;
+        BackingPhotoRow bps = null;
+        
+        switch (this) {
+            case SHOTWELL:
+                try {
+                    // Create file and prep.
+                    bps = create_backing_row_for_development(master_reader.get_filepath());
+                    // Don't rotate this pixbuf before writing it out. We don't
+                    // need to because we'll display it using the orientation
+                    // from the parent raw file, so rotating it here would cause
+                    // portrait images to rotate _twice_...
+                    Gdk.Pixbuf? pix = master_reader.unscaled_read();
+                    
+                    if (pix == null) {
+                        debug("Could not get preview pixbuf");
+                        return null;
+                    }
+                    
+                    // Write out the JPEG.
+                    PhotoFileWriter writer = PhotoFileFormat.JFIF.create_writer(bps.filepath);
+                    writer.write(pix, Jpeg.Quality.HIGH);
+                    
+                    // Remember that we wrote it (we'll only get here if writing
+                    // the jpeg doesn't throw an exception).  We do this because
+                    // some cameras' output has non-spec-compliant exif segments
+                    // larger than 64k (exiv2 can't cope with this), so saving
+                    // metadata to the development could fail, but we want to use
+                    // it anyway since the image portion is still valid...
+                    wrote_img_to_disk = true;
+                    
+                    // Write out metadata. An exception could get thrown here as
+                    // well, hence the separate check for being able to save the
+                    // image above...
+                    PhotoMetadata meta = master_reader.read_metadata();
+                    PhotoFileMetadataWriter mwriter = PhotoFileFormat.JFIF.create_metadata_writer(bps.filepath);
+                    mwriter.write_metadata(meta);
+                } catch (Error err) {
+                    debug("Error developing photo: %s", err.message);
+                }
+                
+                break;
+                
+            case CAMERA:
+                // No development needed.
+                break;
+                
+            case EMBEDDED:
+                try {
+                    // Read in embedded JPEG.
+                    PhotoMetadata meta = master_reader.read_metadata();
+                    uint c = meta.get_preview_count();
+                    if (c <= 0)
+                        return null;
+                    PhotoPreview? prev = meta.get_preview(c - 1);
+                    if (prev == null) {
+                        debug("Could not get preview from metadata");
+                        return null;
+                    }
+                    
+                    var pix = prev.flatten();
+                    if (pix == null) {
+                        debug("Could not get preview pixbuf");
+                        return null;
+                    }
+
+                    // Write out file.
+                    bps = create_backing_row_for_development(master_reader.get_filepath());
+
+                    // Peek at data. If we really have a JPEG image, just use it,
+                    // otherwise do GdkPixbuf roundtrip
+                    if (Jpeg.is_jpeg_bytes(pix)) {
+                        var outfile = File.new_for_path(bps.filepath);
+                        outfile.replace_contents(pix.get_data(), null,
+                                false, FileCreateFlags.NONE, null);
+                    } else {
+                        var pixbuf = prev.get_pixbuf();
+                        if (pixbuf == null) {
+                            debug("Could not get preview pixbuf");
+                            return null;
+                        }
+
+                        var writer = PhotoFileFormat.JFIF.create_writer(bps.filepath);
+                        writer.write(pixbuf, Jpeg.Quality.HIGH);
+                    }
+
+
+                    // Remember that we wrote it (see above
+                    // case for why this is necessary).
+                    wrote_img_to_disk = true;
+                    
+                    // Write out metadata
+                    PhotoFileMetadataWriter mwriter = PhotoFileFormat.JFIF.create_metadata_writer(bps.filepath);
+                    mwriter.write_metadata(meta);
+                } catch (Error e) {
+                    debug("Error accessing embedded preview. Message: %s", e.message);
+                }
+                break;
+            
+            default:
+                assert_not_reached();
+        }
+        
+        return wrote_img_to_disk ? bps : null;
+    }
 }
