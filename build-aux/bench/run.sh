@@ -16,6 +16,7 @@
 #   --repeat N       run N times (default 1)
 #   --no-decode-bound  skip the dcraw_emu lower-bound measurement
 #   --keep           keep the run directory (library, database, logs) in the work volume
+#   --developer DEV  default RAW developer: CAMERA (the default), EMBEDDED or SHOTWELL
 #
 # The read cap is applied with "docker run --device-read-bps" on the block device that holds
 # the corpus volume (inside the Docker Desktop VM that is /dev/vda). It limits every read of
@@ -34,6 +35,7 @@ mode=sd-slow
 set_name="s1-n$DEFAULT_SHOTS"
 out_dir="$PWD/bench-results"
 repeat=1
+developer=
 docker_extra=()
 env_extra=()
 while [ $# -gt 0 ]; do
@@ -46,13 +48,14 @@ while [ $# -gt 0 ]; do
         --repeat) repeat="$2"; shift 2 ;;
         --no-decode-bound) env_extra+=(-e LOWER_BOUND_DECODE=0); shift ;;
         --keep) env_extra+=(-e KEEP_RUN_DIR=1); shift ;;
-        -h|--help) sed -n '5,25p' "$0"; exit 0 ;;
+        --developer) env_extra+=(-e RAW_DEVELOPER="$2"); developer="$2"; shift 2 ;;
+        -h|--help) sed -n '5,26p' "$0"; exit 0 ;;
         -*) echo "unknown option $1" >&2; exit 2 ;;
         *) break ;;
     esac
 done
 if [ $# -ne 1 ]; then
-    sed -n '5,25p' "$0" >&2
+    sed -n '5,26p' "$0" >&2
     exit 2
 fi
 build="$1"
@@ -90,7 +93,7 @@ mkdir -p "$out_dir"
 out_dir="$(cd "$out_dir" >/dev/null && pwd)"
 for i in $(seq "$repeat"); do
     stamp="$(date +%Y%m%d-%H%M%S)"
-    prefix="$stamp-$build-$mode"
+    prefix="$stamp-$build-$mode${developer:+-$developer}"
     [ "$repeat" -gt 1 ] && prefix="$prefix-$i"
     echo "== run $i/$repeat: build $build, mode $mode ${rate:+($device at $rate/s)}, set $set_name" >&2
     set +e
