@@ -734,8 +734,8 @@ public class BatchImport : Object {
         
         while(ready_files.size > 0 && import_workers.get_pending_job_count() < max_outstanding_import_jobs) {
             import_workers.enqueue(new PreparedFileImportJob(this, ready_files.remove_at(0),
-                import_roll.import_id, on_import_files_completed, cancellable,
-                on_import_files_cancelled));
+                import_roll.import_id, Config.Facade.get_instance().get_default_raw_developer(),
+                on_import_files_completed, cancellable, on_import_files_cancelled));
         }
     }
     
@@ -1069,8 +1069,13 @@ public class BatchImport : Object {
                         d = RawDeveloper.EMBEDDED;
                     
                     photo.set_default_raw_developer(d);
-                    photo.set_raw_developer(d, false, false);
+                    photo.set_raw_developer(d, false, false,
+                        job.ready.photo_import_params.raw_development);
                 }
+                
+                // set_raw_developer() made a different development than the import worker
+                if (job.ready.photo_import_params.raw_development != null)
+                    job.ready.photo_import_params.raw_development.delete_if_unused();
             }
             
             if (job.ready.batch_result.result != ImportResult.SUCCESS) {
@@ -1932,6 +1937,10 @@ private class ReadyForImport {
             }
         }
         
+        // if the RAW file was developed by the import worker, delete the development
+        if (photo_import_params != null && photo_import_params.raw_development != null)
+            photo_import_params.raw_development.delete_if_unused();
+        
         batch_result = new BatchImportResult(prepared_file.job, prepared_file.file,         
             prepared_file.job.get_source_identifier(), prepared_file.job.get_dest_identifier(), 
             null, ImportResult.USER_ABORT);
@@ -1951,12 +1960,15 @@ private class PreparedFileImportJob : BackgroundJob {
     public BatchImportResult? failed = null;
     
     private ImportID import_id;
+    private RawDeveloper default_raw_developer;
     
     public PreparedFileImportJob(BatchImport owner, PreparedFile prepared_file, ImportID import_id,
-        CompletionCallback callback, Cancellable cancellable, CancellationCallback cancellation) {
+        RawDeveloper default_raw_developer, CompletionCallback callback, Cancellable cancellable,
+        CancellationCallback cancellation) {
         base (owner, callback, cancellable, cancellation);
         
         this.import_id = import_id;
+        this.default_raw_developer = default_raw_developer;
         not_ready = prepared_file;
         
         set_completion_priority(Priority.LOW);
@@ -2017,6 +2029,13 @@ private class PreparedFileImportJob : BackgroundJob {
                 prepared_file.thumbnail_md5, prepared_file.full_md5, new Thumbnails());
             
             result = Photo.prepare_for_import(photo_import_params);
+            
+            // Develop RAW files here, not on the main thread in on_import_files_completed()
+            if (result == ImportResult.SUCCESS
+                && photo_import_params.row.master.file_format == PhotoFileFormat.RAW) {
+                photo_import_params.raw_development = Photo.prepare_raw_development_for_import(
+                    final_file, final_associated_file != null, default_raw_developer);
+            }
         }
         
         if (result != ImportResult.SUCCESS && final_file != prepared_file.file) {
