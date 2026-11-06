@@ -219,6 +219,9 @@ public class ThumbnailCache : Object {
     
     public static void import_from_source(ThumbnailSource source, bool force = false)
         throws Error {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.THUMBNAIL_IMPORT_FROM_SOURCE); bench_scope.start();
+#endif
         debug("import from source: %s", source.to_string());
         big._import_from_source(source, force);
         medium._import_from_source(source, force);

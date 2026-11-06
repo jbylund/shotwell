@@ -32,7 +32,9 @@ KEYS = [
 MAIN = ["main_process_prepared_file", "main_import_files_completed", "main_thumbnail_writer_completed",
         "main_flush_ready_sources", "main_display_imported_timer"]
 WORKER = ["worker_prepare_files_job", "worker_prepare_file", "worker_prepared_file_import",
-          "worker_thumbnail_writer"]
+          "worker_thumbnail_writer", "worker_feeder_notify_wait"]
+# thumbnails made outside the import pipeline (generate_thumbnails runs on the main thread)
+OTHER = ["library_photo_generate_thumbnails", "thumbnail_import_from_source"]
 
 
 def show(path):
@@ -55,6 +57,13 @@ def show(path):
     print("  main thread in import callbacks %.1f s (%.0f%% of wall time); process CPU %.1f s user"
           % (s.get("main_thread_callbacks_s", 0), 100 * s.get("main_thread_busy_fraction", 0),
              s.get("process_cpu_s", {}).get("user", 0)))
+    print("  first photo shown after %.2f s" % s.get("first_imported_s", -1))
+    for key, label in (("main_loop_lag", "during import"),
+                       ("main_loop_lag_after_completion", "after import_complete")):
+        lag = s.get(key)
+        if lag:
+            print("  main-loop lag %s: longest stall %.3f s, %d stalls over 20 ms totalling %.2f s"
+                  % (label, lag["max_s"], lag["stalls_over_20ms"], lag["stall_total_over_20ms_s"]))
     cg = r.get("cgroup", {})
     print("  shotwell peak RSS %.0f MB; container memory limit %s" % (
         s.get("peak_rss_mb", 0), cg.get("memory_max")))
@@ -69,7 +78,7 @@ def show(path):
             extra = (", %.0f MB" % (v["bytes"] / 1e6)) if v.get("bytes") else ""
             print("  %-32s %6d  (%.2f per file, %.1f s total%s)" % (
                 label, v["count"], v["count"] / files if files else 0, v["total_s"], extra))
-    for key in MAIN + WORKER:
+    for key in MAIN + WORKER + OTHER:
         v = c.get(key, {})
         if v.get("count"):
             print("  %-32s %6d calls, %.2f s total, max %.3f s, active %.1f s" % (

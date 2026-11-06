@@ -7,6 +7,9 @@
 #
 #   build-aux/bench/make-corpus.sh [SEED [N [ONLY]]]   default: SEED=1, N=$DEFAULT_SHOTS
 #                                                 ONLY: only samples whose name contains it
+#   build-aux/bench/make-corpus.sh --pairs-only [SEED [N]]
+#                                                 only the samples that get a JPEG sibling, so
+#                                                 every shot is a RAW+JPEG pair: set sSEED-nN-pairs
 #   build-aux/bench/make-corpus.sh --inspect      preview sizes, libraw support, exiv2 writability
 #
 # The set is /corpus/sets/sSEED-nN inside the volume; run.sh takes its name with --set.
@@ -36,6 +39,12 @@ if [ "${1:-}" = "--inspect" ]; then
     exit 0
 fi
 
+pairs=()
+if [ "${1:-}" = "--pairs-only" ]; then
+    pairs=(--pairs-only)
+    shift
+fi
+
 seed="${1:-1}"
 shots="${2:-$DEFAULT_SHOTS}"
-docker_run python3 -I /bench/corpus.py make "$seed" "$shots" ${3:+"$3"}
+docker_run python3 -I /bench/corpus.py make "$seed" "$shots" ${3:+"$3"} ${pairs[@]+"${pairs[@]}"}
