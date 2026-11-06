@@ -224,6 +224,9 @@ public class RawReader : PhotoFileReader {
     }
     
     public override Gdk.Pixbuf unscaled_read() throws Error {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.RAW_UNSCALED_READ); bench_scope.start();
+#endif
         GRaw.Processor processor = new GRaw.Processor();
         processor.configure_for_rgb_display(false);
         processor.output_params->user_flip = GRaw.Flip.NONE;
@@ -236,6 +239,9 @@ public class RawReader : PhotoFileReader {
     }
     
     public override Gdk.Pixbuf scaled_read(Dimensions full, Dimensions scaled) throws Error {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.RAW_SCALED_READ); bench_scope.start();
+#endif
         // Try to get the embedded thumbnail first
         double width_proportion = (double) scaled.width / (double) full.width;
         double height_proportion = (double) scaled.height / (double) full.height;

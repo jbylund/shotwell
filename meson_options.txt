@@ -9,3 +9,4 @@ option('face_detection_helper', type : 'boolean', value : true, description : 'I
 option('face_detection_helper_bus', type:'combo', choices: ['private', 'session'], value : 'private', description: 'Which DBus bus to use for external helper tool')
 option('fatal_warnings', type:'boolean', value:false)
 option('extra_pixbuf_loaders_path', type:'string', value: '')
+option('benchmark', type: 'boolean', value: false, description: 'Developer only: build the import benchmark counters and the --benchmark-import command line option')
