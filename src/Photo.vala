@@ -5313,6 +5313,9 @@ public class LibraryPhoto : Photo, Flaggable, Monitorable {
     }
     
     private void generate_thumbnails() {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.LIBRARY_PHOTO_GENERATE_THUMBNAILS); bench_scope.start();
+#endif
         try {
             ThumbnailCache.import_from_source(this, true);
         } catch (Error err) {
