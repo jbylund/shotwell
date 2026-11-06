@@ -46,7 +46,16 @@ mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME" "$XDG_RUN
 chmod 0700 "$XDG_RUNTIME_DIR"
 data_dir="$run_dir/data"
 
-export GSETTINGS_BACKEND=memory
+# Settings live in memory, unless a default RAW developer is asked for (RAW_DEVELOPER: CAMERA,
+# EMBEDDED or SHOTWELL); then they are in a key file in the run directory.
+if [ -n "${RAW_DEVELOPER:-}" ]; then
+    export GSETTINGS_BACKEND=keyfile
+    mkdir -p "$XDG_CONFIG_HOME/glib-2.0/settings"
+    printf "[org/gnome/shotwell/preferences/files]\nraw-developer-default='%s'\n" "$RAW_DEVELOPER" \
+        > "$XDG_CONFIG_HOME/glib-2.0/settings/keyfile"
+else
+    export GSETTINGS_BACKEND=memory
+fi
 export GSK_RENDERER=cairo
 export GTK_A11Y=none
 export NO_AT_BRIDGE=1
