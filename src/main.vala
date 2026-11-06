@@ -185,6 +185,10 @@ void library_exec(string[] mounts) {
     library_window.present();
 
     WelcomeServiceEntry[] selected_import_entries = new WelcomeServiceEntry[0];
+#if BENCHMARK
+    if (CommandlineOptions.benchmark_import != null)
+        Config.Facade.get_instance().set_show_welcome_dialog(false);
+#endif
     if (Config.Facade.get_instance().get_show_welcome_dialog() &&
         LibraryPhoto.global.get_count() == 0) {
         WelcomeDialog welcome = new WelcomeDialog(library_window);
@@ -205,6 +209,10 @@ void library_exec(string[] mounts) {
          */
         run_system_pictures_import();
     }
+#if BENCHMARK
+    if (CommandlineOptions.benchmark_import != null)
+        BenchmarkImport.start(CommandlineOptions.benchmark_import);
+#endif
         
     debug("%lf seconds to Gtk.main()", startup_timer.elapsed());
     
@@ -352,6 +360,9 @@ string? profile = null;
 bool create_profile = false;
 bool list_profiles = false;
 bool browse_profiles = false;
+#if BENCHMARK
+string? benchmark_import = null;
+#endif
 
 const OptionEntry[] entries = {
     { "datadir", 'd', 0, OptionArg.FILENAME, ref data_dir, N_("Path to Shotwell’s private data"), N_("DIRECTORY") },
@@ -364,11 +375,26 @@ const OptionEntry[] entries = {
     { "profile-browser", 'b', 0, OptionArg.NONE, ref browse_profiles, N_("Start with a browser of available profiles"), null },
     { "create", 'c', 0, OptionArg.NONE, ref create_profile, N_("If PROFILE given with --profile does not exist, create it"), null },
     { "list-profiles", 'l', 0, OptionArg.NONE, ref list_profiles, N_("Show available profiles"), null },
+#if BENCHMARK
+    // Developer only, not translated
+    { "benchmark-import", 0, 0, OptionArg.FILENAME, ref benchmark_import, "Import DIR into the library, print a JSON report to stdout and exit (benchmark build only)", "DIR" },
+#endif
     { null, 0, 0, 0, null, null, null }
 };
 }
 
+#if BENCHMARK
+int main(string[] args) {
+    BenchCounters.init();
+    real_main(args);
+    
+    return (CommandlineOptions.benchmark_import != null) ? BenchmarkImport.get_exit_status() : 0;
+}
+
+void real_main(string[] args) {
+#else
 void main(string[] args) {
+#endif
     Shotwell.Widgets.init();
     Application.timezone = new TimeZone.local();
 

@@ -237,6 +237,9 @@ public class PhotoMetadata : MediaMetadata {
         }
         
         public override Bytes flatten() throws Error {
+#if BENCHMARK
+            var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.EXIV2_PREVIEW_EXTRACT); bench_scope.start();
+#endif
             unowned GExiv2.PreviewProperties?[] props = owner.exiv2.get_preview_properties();
             assert(props != null && props.length > number);
            
@@ -257,6 +260,9 @@ public class PhotoMetadata : MediaMetadata {
     }
     
     public override void read_from_file(File file) throws Error {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.EXIV2_READ_FILE); bench_scope.start();
+#endif
         exiv2 = new GExiv2.Metadata();
         
         exiv2.open_path(file.get_path());
@@ -264,10 +270,16 @@ public class PhotoMetadata : MediaMetadata {
     }
     
     public void write_to_file(File file) throws Error {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.EXIV2_WRITE_FILE); bench_scope.start();
+#endif
         exiv2.save_file(file.get_path());
     }
     
     public void read_from_buffer(uint8[] buffer, int length = 0) throws Error {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.EXIV2_READ_BUFFER); bench_scope.start();
+#endif
         if (length <= 0)
             length = buffer.length;
         
@@ -280,6 +292,9 @@ public class PhotoMetadata : MediaMetadata {
     }
     
     public void read_from_app1_segment(Bytes buffer) throws Error {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.EXIV2_READ_BUFFER); bench_scope.start();
+#endif
         exiv2 = new GExiv2.Metadata();
         
         exiv2.from_app1_segment(buffer.get_data());
