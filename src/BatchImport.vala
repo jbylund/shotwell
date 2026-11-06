@@ -1787,7 +1787,13 @@ private class PrepareFilesJob : BackgroundImportJob {
 #endif
                 PreparedFileCluster cluster = new PreparedFileCluster(list);
                 list = new Gee.ArrayList<PreparedFile>();
+#if BENCHMARK
+                int64 bench_notify_start = BenchCounters.now_us();
+#endif
                 notify(notification, cluster);
+#if BENCHMARK
+                BenchCounters.add_since(BenchCounters.Probe.WORKER_FEEDER_NOTIFY_WAIT, bench_notify_start);
+#endif
                 timer.start();
             }
         }
@@ -1795,7 +1801,13 @@ private class PrepareFilesJob : BackgroundImportJob {
         if (list.size > 0) {
             ImportResult result = abort_check();
             if (result == ImportResult.SUCCESS) {
+#if BENCHMARK
+                int64 bench_notify_start = BenchCounters.now_us();
+#endif
                 notify(notification, new PreparedFileCluster(list));
+#if BENCHMARK
+                BenchCounters.add_since(BenchCounters.Probe.WORKER_FEEDER_NOTIFY_WAIT, bench_notify_start);
+#endif
             } else {
                 // subtract these, as they are not being submitted
                 assert(prepared_files >= list.size);
