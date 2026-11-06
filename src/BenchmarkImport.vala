@@ -34,6 +34,63 @@ private double cpu_user_end = 0;
 private int64 rss_peak_kb = 0;
 private double cpu_sys_end = 0;
 
+// Main-loop lag: a timer at Priority.HIGH fires every LAG_TICK_MSEC. Whenever the main thread is
+// busy in one callback, the next tick is late by about as long as that callback ran. This counts
+// all main-thread work, including work the import schedules for later (for example
+// LibraryPhoto.generate_thumbnails()), not only the BatchImport callbacks.
+private const uint LAG_TICK_MSEC = 5;
+private const int64 LAG_STALL_US = 20000;
+
+private class LagStats {
+    public int64 ticks = 0;
+    public int64 max_us = 0;
+    public int64 max_end_us = 0;
+    public int64 stalls = 0;
+    public int64 stall_total_us = 0;
+    public int64 lag_total_us = 0;
+
+    public void add(int64 lag_us, int64 now_us) {
+        ticks++;
+        if (lag_us <= 0)
+            return;
+        lag_total_us += lag_us;
+        if (lag_us > max_us) {
+            max_us = lag_us;
+            max_end_us = now_us;
+        }
+        if (lag_us > LAG_STALL_US) {
+            stalls++;
+            stall_total_us += lag_us;
+        }
+    }
+
+    public string to_json() {
+        // max_end_s is when the longest stall ended, in seconds since the import started
+        return ("{ \"tick_ms\": %u, \"ticks\": %s, \"max_s\": %.6f, \"max_end_s\": %.6f, "
+            + "\"stalls_over_20ms\": %s, \"stall_total_over_20ms_s\": %.6f, \"lag_total_s\": %.6f }").printf(
+            LAG_TICK_MSEC, ticks.to_string(), max_us / 1e6, (max_end_us - start_us) / 1e6,
+            stalls.to_string(), stall_total_us / 1e6, lag_total_us / 1e6);
+    }
+}
+
+private LagStats lag_import = null;
+private LagStats lag_settle = null;
+private LagStats? lag_current = null;
+private int64 lag_last_us = -1;
+
+private bool on_lag_tick() {
+    if (lag_current == null)
+        return false;
+
+    // the first tick only marks the time: before it, the main loop was not running yet
+    int64 now = BenchCounters.now_us();
+    if (lag_last_us >= 0)
+        lag_current.add(now - lag_last_us - LAG_TICK_MSEC * 1000, now);
+    lag_last_us = now;
+
+    return true;
+}
+
 public int get_exit_status() {
     return exit_status;
 }
@@ -163,6 +220,11 @@ public void start(string dir) {
     get_cpu_times(out cpu_user_start, out cpu_sys_start);
     start_us = BenchCounters.now_us();
 
+    lag_import = new LagStats();
+    lag_settle = new LagStats();
+    lag_current = lag_import;
+    Timeout.add(LAG_TICK_MSEC, on_lag_tick, Priority.HIGH);
+
     LibraryWindow library_window = (LibraryWindow) AppWindow.get_instance();
     library_window.enqueue_batch_import(batch_import, true);
     library_window.switch_to_import_queue_page();
@@ -176,6 +238,7 @@ private void on_imported(MediaSource source, Gdk.Pixbuf pixbuf, int to_follow) {
 
 private void on_import_complete(ImportManifest manifest, BatchImportRoll import_roll) {
     end_us = BenchCounters.now_us();
+    lag_current = lag_settle;
     at_completion = new BenchCounters.Snapshot();
     proc_io_end = read_proc_io();
     get_cpu_times(out cpu_user_end, out cpu_sys_end);
@@ -198,6 +261,7 @@ private void on_import_complete(ImportManifest manifest, BatchImportRoll import_
 
 private bool finish() {
     BenchCounters.Snapshot after_settle = new BenchCounters.Snapshot();
+    lag_current = null;
 
     ImportManifest manifest = result_manifest;
     int failures = manifest.failed.size + manifest.camera_failed.size + manifest.write_failed.size
@@ -246,6 +310,8 @@ private bool finish() {
     json.append_printf("  \"default_raw_developer\": %s,\n",
         escape(Config.Facade.get_instance().get_default_raw_developer().to_string()));
     json.append_printf("  \"wall_s\": %.6f,\n", wall);
+    // the probes' first_start_s count from the same origin as this
+    json.append_printf("  \"import_start_s\": %.6f,\n", start_us / 1e6);
     json.append_printf("  \"first_imported_s\": %.6f,\n",
         first_imported_us >= 0 ? (first_imported_us - start_us) / 1e6 : -1.0);
     json.append_printf("  \"corpus_files\": %s,\n", corpus_files.to_string());
@@ -266,6 +332,8 @@ private bool finish() {
     json.append_printf("  \"main_thread_callbacks_s\": %.6f,\n", main_thread_us / 1e6);
     json.append_printf("  \"main_thread_busy_fraction\": %.4f,\n",
         wall > 0 ? main_thread_us / 1e6 / wall : 0.0);
+    json.append_printf("  \"main_loop_lag\": %s,\n", lag_import.to_json());
+    json.append_printf("  \"main_loop_lag_after_completion\": %s,\n", lag_settle.to_json());
     json.append_printf("  \"process_cpu_s\": { \"user\": %.3f, \"system\": %.3f },\n",
         cpu_user_end - cpu_user_start, cpu_sys_end - cpu_sys_start);
     json.append_printf("  \"peak_rss_mb\": %.1f,\n", rss_peak_kb / 1024.0);
