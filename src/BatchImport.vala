@@ -1046,6 +1046,7 @@ public class BatchImport : Object {
         
             // import ready photos into database
             MediaSource? source = null;
+            bool regenerate_thumbnails = false;
             if (job.ready.is_video) {
                 job.ready.batch_result.result = Video.import_create(job.ready.video_import_params,
                     out source);
@@ -1062,7 +1063,9 @@ public class BatchImport : Object {
                     debug("Associating %s with sibling %s", ((Photo) source).get_file().get_path(),
                         bpr.filepath);
                     try {
-                        ((Photo) source).add_backing_photo_for_development(RawDeveloper.CAMERA, bpr);
+                        // no notification, which would regenerate the thumbnails; see below
+                        ((Photo) source).add_backing_photo_for_development(RawDeveloper.CAMERA, bpr,
+                            false);
                     } catch (Error e) {
                         warning("Unable to associate JPEG with RAW. File: %s Error: %s", 
                             bpr.filepath, e.message);
@@ -1083,6 +1086,16 @@ public class BatchImport : Object {
                 // set_raw_developer() made a different development than the import worker
                 if (job.ready.photo_import_params.raw_development != null)
                     job.ready.photo_import_params.raw_development.delete_if_unused();
+                
+                // The import worker made the thumbnails of a RAW+JPEG pair from the image it
+                // expected the photo to show. If the photo shows anything else, they are
+                // regenerated from what it shows once they have been written, as attaching the
+                // camera JPEG with a notification did before
+                if (job.ready.photo_import_params.final_associated_file != null) {
+                    BackingPhotoRow? thumbnails_backing = job.ready.photo_import_params.thumbnails_backing;
+                    regenerate_thumbnails = thumbnails_backing == null || !photo.is_untransformed_development(
+                        job.ready.photo_import_params.thumbnails_developer, thumbnails_backing);
+                }
             }
             
             if (job.ready.batch_result.result != ImportResult.SUCCESS) {
@@ -1093,8 +1106,7 @@ public class BatchImport : Object {
             } else {
                 CompletedImportObject completed = new CompletedImportObject(source,
                     job.ready.get_thumbnails(), job.ready.prepared_file.job, job.ready.batch_result);
-                completed.regenerate_thumbnails = job.ready.photo_import_params != null
-                    && job.ready.photo_import_params.final_associated_file != null;
+                completed.regenerate_thumbnails = regenerate_thumbnails;
                 ready_thumbnails.add(completed);
             }
         }
@@ -1159,13 +1171,9 @@ public class BatchImport : Object {
             manifest.imported.add(completed.source);
             manifest.add_result(completed.batch_result);
             
-            // Attaching the camera JPEG to a RAW file made LibraryPhoto regenerate the thumbnails
-            // from it, but that can run before ThumbnailWriterJob writes the ones made from the
-            // RAW file, which then win. Ask again now that they are written, so that the thumbnails
-            // of a pair are always made from its development.
-            // TODO: remove when the import worker makes the thumbnails of a pair from the image
-            // that the photo shows, and nothing needs to be regenerated.
+            // see on_import_files_completed()
             if (completed.regenerate_thumbnails) {
+                debug("Regenerating the thumbnails of %s", completed.source.to_string());
                 ((LibraryPhoto) completed.source).notify_altered(new Alteration("image", "developer"));
             }
             
@@ -2027,9 +2035,11 @@ private class PreparedFileImportJob : BackgroundJob {
             
             result = VideoReader.prepare_for_import(video_import_params);
         } else {
+            // The thumbnails of a RAW+JPEG pair are made below, from the image of its developer
             photo_import_params = new PhotoImportParams(final_file, final_associated_file, import_id,
                 PhotoFileSniffer.Options.GET_ALL, prepared_file.exif_md5,
-                prepared_file.thumbnail_md5, prepared_file.full_md5, new Thumbnails());
+                prepared_file.thumbnail_md5, prepared_file.full_md5,
+                (final_associated_file == null) ? new Thumbnails() : null);
             
             result = Photo.prepare_for_import(photo_import_params);
             
@@ -2038,6 +2048,14 @@ private class PreparedFileImportJob : BackgroundJob {
                 && photo_import_params.row.master.file_format == PhotoFileFormat.RAW) {
                 photo_import_params.raw_development = Photo.prepare_raw_development_for_import(
                     final_file, final_associated_file != null, default_raw_developer);
+            }
+            
+            if (result == ImportResult.SUCCESS && photo_import_params.thumbnails == null) {
+                result = Photo.prepare_pair_thumbnails_for_import(photo_import_params);
+                
+                // the photo is not imported, so its development is not either
+                if (result != ImportResult.SUCCESS && photo_import_params.raw_development != null)
+                    photo_import_params.raw_development.delete_if_unused();
             }
         }
         
@@ -2069,7 +2087,7 @@ private class CompletedImportObject {
     public BatchImportJob original_job;
     public Gdk.Pixbuf user_preview;
     
-    // The photo is a RAW+JPEG pair; see BatchImport.on_thumbnail_writer_completed()
+    // The thumbnails are not made from the image the photo shows; regenerate them once written
     public bool regenerate_thumbnails = false;
     
     public CompletedImportObject(MediaSource source, Thumbnails thumbnails,
