@@ -588,38 +588,45 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
                 return false;
             
             case RawDeveloper.EMBEDDED:
-                try {
-                    PhotoMetadata meta = get_master_metadata();
-                    uint num_previews = meta.get_preview_count();
-                    
-                    if (num_previews > 0) {
-                        PhotoPreview? prev = meta.get_preview(num_previews - 1);
-
-                        // Embedded preview could not be fetched?
-                        if (prev == null)
-                            return false;
-                        
-                        Dimensions dims = prev.get_pixel_dimensions();
-                        
-                        // Largest embedded preview was an unacceptable size?
-                        int preview_major_axis = (dims.width > dims.height) ? dims.width : dims.height;
-                        if (preview_major_axis < MIN_EMBEDDED_SIZE)
-                            return false;
-                        
-                        // Preview was a supported size, use it.
-                        return true;
-                    }
-                    
-                    // Image has no embedded preview at all.
-                    return false;
-                } catch (Error e) {
-                    debug("Error accessing embedded preview. Message: %s", e.message);
-                }
-                return false;
+                return is_embedded_development_available(get_master_reader());
             
             default:
                 assert_not_reached();
         }
+    }
+    
+    // Whether the largest preview embedded in the RAW file that master_reader reads is large
+    // enough to be used as the EMBEDDED development. This does not touch any Photo, so it can
+    // run on any thread.
+    public static bool is_embedded_development_available(PhotoFileReader master_reader) {
+        try {
+            PhotoMetadata meta = master_reader.read_metadata();
+            uint num_previews = meta.get_preview_count();
+            
+            if (num_previews > 0) {
+                PhotoPreview? prev = meta.get_preview(num_previews - 1);
+
+                // Embedded preview could not be fetched?
+                if (prev == null)
+                    return false;
+                
+                Dimensions dims = prev.get_pixel_dimensions();
+                
+                // Largest embedded preview was an unacceptable size?
+                int preview_major_axis = (dims.width > dims.height) ? dims.width : dims.height;
+                if (preview_major_axis < MIN_EMBEDDED_SIZE)
+                    return false;
+                
+                // Preview was a supported size, use it.
+                return true;
+            }
+            
+            // Image has no embedded preview at all.
+            return false;
+        } catch (Error e) {
+            debug("Error accessing embedded preview. Message: %s", e.message);
+        }
+        return false;
     }
     
     // Reads info on a backing photo and adds it.
@@ -637,6 +644,21 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
     
     public static void import_developed_backing_photo(PhotoRow row, RawDeveloper d, 
         BackingPhotoRow bpr) throws Error {
+        if (!read_developed_backing_photo(bpr)) {
+            // TODO: Probably should remove from database, but simply exiting for now (prior code
+            // didn't even do this check)
+            return;
+        }
+        
+        // Add to DB.
+        BackingPhotoTable.get_instance().add(bpr);
+        PhotoTable.get_instance().update_raw_development(row, d, bpr.id);
+    }
+    
+    // Fills in the size, timestamp, dimensions and original orientation of a developed backing
+    // photo from its file. Returns false if the file cannot be read as a photo. This does not
+    // touch the database, so it can run on any thread.
+    public static bool read_developed_backing_photo(BackingPhotoRow bpr) throws Error {
         File file = File.new_for_path(bpr.filepath);
         FileInfo info = file.query_info(DirectoryMonitor.SUPPLIED_ATTRIBUTES,
             FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
@@ -651,9 +673,7 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
         
         DetectedPhotoInformation? detected = interrogator.get_detected_photo_information();
         if (detected == null || interrogator.get_is_photo_corrupted()) {
-            // TODO: Probably should remove from database, but simply exiting for now (prior code
-            // didn't even do this check)
-            return;
+            return false;
         }
         
         bpr.dim = detected.image_dim;
@@ -662,143 +682,24 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
         bpr.original_orientation = detected.metadata != null ? detected.metadata.get_orientation() : 
             Orientation.TOP_LEFT;
         
-        // Add to DB.
-        BackingPhotoTable.get_instance().add(bpr);
-        PhotoTable.get_instance().update_raw_development(row, d, bpr.id);
+        return true;
     }
     
     // "Develops" a raw photo
     // Not thread-safe.
     private void develop_photo(RawDeveloper d, bool notify) {
-        bool wrote_img_to_disk = false;
-        BackingPhotoRow bps = null;
+        BackingPhotoRow? bps = d.develop(get_master_reader());
+        if (bps == null)
+            return;
         
-        switch (d) {
-            case RawDeveloper.SHOTWELL:
-                try {
-                    // Create file and prep.
-                    bps = d.create_backing_row_for_development(row.master.filepath);
-                    Gdk.Pixbuf? pix = null;
-                    lock (readers) {
-                        // Don't rotate this pixbuf before writing it out. We don't
-                        // need to because we'll display it using the orientation
-                        // from the parent raw file, so rotating it here would cause
-                        // portrait images to rotate _twice_...
-                        pix = get_master_pixbuf(Scaling.for_original(), false);
-                    }
-                    
-                    if (pix == null) {
-                        debug("Could not get preview pixbuf");
-                        return;
-                    }
-                    
-                    // Write out the JPEG.
-                    PhotoFileWriter writer = PhotoFileFormat.JFIF.create_writer(bps.filepath);
-                    writer.write(pix, Jpeg.Quality.HIGH);
-                    
-                    // Remember that we wrote it (we'll only get here if writing
-                    // the jpeg doesn't throw an exception).  We do this because
-                    // some cameras' output has non-spec-compliant exif segments
-                    // larger than 64k (exiv2 can't cope with this), so saving
-                    // metadata to the development could fail, but we want to use
-                    // it anyway since the image portion is still valid...
-                    wrote_img_to_disk = true;
-                    
-                    // Write out metadata. An exception could get thrown here as
-                    // well, hence the separate check for being able to save the
-                    // image above...
-                    PhotoMetadata meta = get_master_metadata();
-                    PhotoFileMetadataWriter mwriter = PhotoFileFormat.JFIF.create_metadata_writer(bps.filepath);
-                    mwriter.write_metadata(meta);
-                } catch (Error err) {
-                    debug("Error developing photo: %s", err.message);
-                } finally {
-                    if (wrote_img_to_disk) {
-                        try {
-                            // Read in backing photo info, add to DB.
-                            add_backing_photo_for_development(d, bps, notify);
-                            
-                            notify_raw_development_modified();
-                        } catch (Error e) {
-                            debug("Error adding backing photo as development. Message: %s",
-                                e.message);
-                        }
-                    }
-                }
-                
-                break;
-                
-            case RawDeveloper.CAMERA:
-                // No development needed.
-                break;
-                
-            case RawDeveloper.EMBEDDED:
-                try {
-                    // Read in embedded JPEG.
-                    PhotoMetadata meta = get_master_metadata();
-                    uint c = meta.get_preview_count();
-                    if (c <= 0)
-                        return;
-                    PhotoPreview? prev = meta.get_preview(c - 1);
-                    if (prev == null) {
-                        debug("Could not get preview from metadata");
-                        return;
-                    }
-                    
-                    var pix = prev.flatten();
-                    if (pix == null) {
-                        debug("Could not get preview pixbuf");
-                        return;
-                    }
-
-                    // Write out file.
-                    bps = d.create_backing_row_for_development(row.master.filepath);
-
-                    // Peek at data. If we really have a JPEG image, just use it,
-                    // otherwise do GdkPixbuf roundtrip
-                    if (Jpeg.is_jpeg_bytes(pix)) {
-                        var outfile = File.new_for_path(bps.filepath);
-                        outfile.replace_contents(pix.get_data(), null,
-                                false, FileCreateFlags.NONE, null);
-                    } else {
-                        var pixbuf = prev.get_pixbuf();
-                        if (pixbuf == null) {
-                            debug("Could not get preview pixbuf");
-                            return;
-                        }
-
-                        var writer = PhotoFileFormat.JFIF.create_writer(bps.filepath);
-                        writer.write(pixbuf, Jpeg.Quality.HIGH);
-                    }
-
-
-                    // Remember that we wrote it (see above
-                    // case for why this is necessary).
-                    wrote_img_to_disk = true;
-                    
-                    // Write out metadata
-                    PhotoFileMetadataWriter mwriter = PhotoFileFormat.JFIF.create_metadata_writer(bps.filepath);
-                    mwriter.write_metadata(meta);
-                } catch (Error e) {
-                    debug("Error accessing embedded preview. Message: %s", e.message);
-                    return;
-                } finally {
-                    if (wrote_img_to_disk) {
-                        try {
-                            // Read in backing photo info, add to DB.
-                            add_backing_photo_for_development(d, bps, notify);
-                            
-                            notify_raw_development_modified();
-                        } catch (Error e) {
-                            debug("Error adding backing photo as development. Message: %s",
-                                e.message);
-                        }
-                    }
-                }
-                break;
+        try {
+            // Read in backing photo info, add to DB.
+            add_backing_photo_for_development(d, bps, notify);
             
-            default:
-                assert_not_reached();
+            notify_raw_development_modified();
+        } catch (Error e) {
+            debug("Error adding backing photo as development. Message: %s",
+                e.message);
         }
     }
     
