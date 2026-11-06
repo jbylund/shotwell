@@ -425,7 +425,7 @@ public class BatchImport : Object {
     private const int READY_SOURCES_COUNT_OVERFLOW = 10;
     
     private const int DISPLAY_QUEUE_TIMER_MSEC = 125;
-    private const int DISPLAY_QUEUE_HYSTERESIS_OVERFLOW = (3 * 1000) / DISPLAY_QUEUE_TIMER_MSEC;
+    private const int DISPLAY_QUEUE_TICK_BUDGET_MSEC = 10;
     
     private static Workers feeder_workers = new Workers(1, false);
     private static Workers import_workers = new Workers(Workers.thread_per_cpu_minus_one(), false);
@@ -478,8 +478,8 @@ public class BatchImport : Object {
     // Called for each Photo or Video imported to the system. For photos, the pixbuf is
     // screen-sized and rotated. For videos, the pixbuf is a frame-grab of the first frame.
     //
-    // The to_follow number is the number of queued-up sources to expect following this signal
-    // in one burst.
+    // The to_follow number is zero for the last source of a burst. Otherwise at least one more
+    // source follows in the same burst, and to_follow is the number of sources still queued.
     public signal void imported(MediaSource source, Gdk.Pixbuf pixbuf, int to_follow);
     
     // Called when a fatal error occurs that stops the import entirely.  Remaining jobs will be
@@ -1244,35 +1244,12 @@ public class BatchImport : Object {
         
         log_status("display_imported_timer");
         
-        // only display one at a time, so the user can see them come into the library in order.
-        // however, if the queue backs up to the hysteresis point (currently defined as more than
-        // 3 seconds wait for the last photo on the queue), then begin doing them in increasingly
-        // larger chunks, to stop the queue from growing and then to get ahead of the other
-        // import cycles.
-        //
-        // if cancelled, want to do as many as possible, but want to relinquish the thread to
-        // keep the system active
-        int total = 1;
-        if (!cancellable.is_cancelled()) {
-            if (display_imported_queue.size > DISPLAY_QUEUE_HYSTERESIS_OVERFLOW)
-                total = 
-                    1 << ((display_imported_queue.size / DISPLAY_QUEUE_HYSTERESIS_OVERFLOW) + 2).clamp(0, 16);
-        } else {
-            // do in overflow-sized chunks
-            total = DISPLAY_QUEUE_HYSTERESIS_OVERFLOW;
-        }
-        
-        total = int.min(total, display_imported_queue.size);
-        
-#if TRACE_IMPORT
-        if (total > 1) {
-            debug("DISPLAY IMPORT QUEUE: hysteresis, dumping %d/%d media sources", total,
-                display_imported_queue.size);
-        }
-#endif
-        
-        // post-decrement because the 0-based total is used when firing "imported"
-        while (total-- > 0) {
+        // hand over every source that is ready, in the order they finished, until the time budget
+        // of this tick is used up; the rest wait for the next tick, so the GTK event queue still
+        // gets a chance to operate
+        int64 deadline = get_monotonic_time() + DISPLAY_QUEUE_TICK_BUDGET_MSEC * 1000;
+        bool more = true;
+        while (more) {
             CompletedImportObject completed_object = display_imported_queue.remove_at(0);
             
             // stash preview for reporting progress
@@ -1287,7 +1264,9 @@ public class BatchImport : Object {
             // NOTE: completed_object must be added prior to file_import_complete()
             ready_sources.add(completed_object);
             
-            imported(completed_object.source, user_preview, total);
+            // decide now whether another source follows in this burst, as "imported" reports it
+            more = display_imported_queue.size > 0 && get_monotonic_time() < deadline;
+            imported(completed_object.source, user_preview, more ? display_imported_queue.size : 0);
             // If we have a photo, use master size. For RAW import, we might end up with reporting
             // the size of the (much smaller) JPEG which will look like no progress at all
             if (completed_object.source is PhotoSource) {
