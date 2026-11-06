@@ -1187,8 +1187,10 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
         
         var timestamp = coarsify_date_time(info.get_modification_date_time());
         
-        // if all MD5s supplied, don't sniff for them
-        if (params.exif_md5 != null && params.thumbnail_md5 != null && params.full_md5 != null)
+        // if the MD5s were supplied, don't sniff for them. Only the full MD5 is required: the
+        // caller computed thumbnail_md5 from the same bytes, so null there means the file has no
+        // EXIF thumbnail, and the sniffers never compute an exif_md5
+        if (params.full_md5 != null)
             params.sniffer_options |= PhotoFileSniffer.Options.NO_MD5;
         
         // interrogate file for photo information
