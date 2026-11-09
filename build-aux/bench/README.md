@@ -179,7 +179,7 @@ stay comparable.
 
 | File | Runs on | Purpose |
 |---|---|---|
-| `Dockerfile` | | Ubuntu 26.04 with the build dependencies, vala 0.56.19 and gexiv2 0.16.2 |
+| `Dockerfile` | | Ubuntu 26.04 with the build dependencies, vala 0.56.19, gexiv2 0.16.2 and glycin 2.2.6 |
 | `build.sh` | host | builds a ref or a worktree with `-Dbenchmark=true` |
 | `build-in-container.sh` | container | meson setup, ninja, optionally meson test |
 | `make-corpus.sh`, `corpus.py` | host, container | downloads the samples and makes a corpus set |
@@ -194,3 +194,11 @@ stay comparable.
 The image builds vala 0.56.19 from the release tarball, because the gtk4 bindings of the
 packaged valac 0.56.18 predate GTK 4.20 and master does not compile with them. It builds
 gexiv2 0.16.2 because Ubuntu only has 0.14.6.
+
+It builds glycin 2.2.6 (libglycin and the loaders) because Ubuntu ships 2.1.5, whose JPEG
+creator is image-rs's built-in encoder. glycin 2.2 encodes with the jpeg-encoder crate instead,
+in about half the time, so with 2.1.5 the thumbnail encodes cost about twice what they cost on
+current systems and in the Flatpak runtime. `GLYCIN_DATA_DIR=/usr/local/share` makes glycin use
+only these loaders; Ubuntu's 2.1.5 loaders stay installed as dependencies of gdk-pixbuf but are
+not read. Results from images built before this change used glycin 2.1.5 and are not directly
+comparable for thumbnail and JPEG-development costs.
