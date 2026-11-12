@@ -103,6 +103,9 @@ private File duplicate(File src, FileProgressCallback? progress_callback, bool b
         LibraryMonitor.blacklist_file(dest, "LibraryFiles.duplicate");
     
     try {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope.file(BenchCounters.Probe.LIBRARY_COPY, src); bench_scope.start();
+#endif
         if (use_fallback_copy_func) {
             fallback_copy(src, dest, progress_callback);
         } else {
