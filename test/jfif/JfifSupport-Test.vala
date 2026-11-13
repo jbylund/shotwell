@@ -84,31 +84,59 @@ void add_jfif_sniff_fast_metadata_tests () {
 
 // Small JPEGs that cover a baseline file, a progressive file with odd dimensions, a file
 // whose EXIF orientation swaps width and height on display and a grayscale file (one component,
-// still reported as three channels because it is decoded as RGB)
-const string[] TEST_JPEGS = {
-    "shotwell-street.jpg",
-    "shotwell-street-progressive.jpg",
-    "shotwell-street-rotated.jpg",
-    "shotwell-street-gray.jpg"
+// still reported as three channels because it is decoded as RGB). The sizes are the ones in
+// the SOF marker, which is what the sniffers report: they ignore the EXIF orientation.
+struct TestJpeg {
+    string name;
+    int width;
+    int height;
+}
+
+const TestJpeg[] TEST_JPEGS = {
+    { "shotwell-street.jpg", 360, 236 },
+    { "shotwell-street-progressive.jpg", 357, 233 },
+    { "shotwell-street-rotated.jpg", 341, 223 },
+    { "shotwell-street-gray.jpg", 357, 233 }
 };
 
 void add_jfif_header_dimensions_tests () {
-    Test.add_func ("/functional/photos/jfif/header_dimensions", () => {
-            foreach (string name in TEST_JPEGS) {
-                File f = File.new_for_path(TEST_DATA_DIR + "/" + name);
+    // Does not need a glycin loader: NO_MD5 reads the size from the header.
+    Test.add_func ("/functional/photos/jfif/header_dimensions_fast", () => {
+            foreach (unowned TestJpeg jpeg in TEST_JPEGS) {
+                File f = File.new_for_path(TEST_DATA_DIR + "/" + jpeg.name);
+                bool is_corrupted = false;
                 try {
-                    // What the image decodes to, ignoring the EXIF orientation like the
-                    // sniffers do
-                    Gdk.Pixbuf decoded = new JfifReader(f.get_path()).unscaled_read();
-                    Dimensions decoded_dim = Dimensions.for_pixbuf(decoded);
-
-                    bool is_corrupted = false;
                     DetectedPhotoInformation? fast =
                         new JfifSniffer(f, PhotoFileSniffer.Options.NO_MD5).sniff(out is_corrupted);
                     assert(fast != null);
                     assert(!is_corrupted);
-                    assert(fast.image_dim.equals(decoded_dim));
+                    assert(fast.image_dim.equals(Dimensions(jpeg.width, jpeg.height)));
+                } catch (Error err) {
+                    critical("%s: %s", jpeg.name, err.message);
+                    assert_not_reached();
+                }
+            }
+    });
 
+    // Decodes with glycin, so it is skipped where glycin cannot start its sandboxed loader
+    // (for example in a flatpak-builder build).
+    Test.add_func ("/functional/photos/jfif/header_dimensions_glycin", () => {
+            foreach (unowned TestJpeg jpeg in TEST_JPEGS) {
+                File f = File.new_for_path(TEST_DATA_DIR + "/" + jpeg.name);
+                try {
+                    // What the image decodes to, ignoring the EXIF orientation like the
+                    // sniffers do
+                    Gdk.Pixbuf decoded;
+                    try {
+                        decoded = new JfifReader(f.get_path()).unscaled_read();
+                    } catch (Error err) {
+                        Test.skip("glycin cannot decode: " + err.message);
+                        return;
+                    }
+                    Dimensions decoded_dim = Dimensions.for_pixbuf(decoded);
+                    assert(decoded_dim.equals(Dimensions(jpeg.width, jpeg.height)));
+
+                    bool is_corrupted = false;
                     DetectedPhotoInformation? full =
                         new JfifSniffer(f, PhotoFileSniffer.Options.GET_ALL).sniff(out is_corrupted);
                     assert(full != null);
@@ -118,7 +146,7 @@ void add_jfif_header_dimensions_tests () {
                     assert(full.format_name == "jpeg");
                     assert(full.md5 != null);
                 } catch (Error err) {
-                    critical("%s: %s", name, err.message);
+                    critical("%s: %s", jpeg.name, err.message);
                     assert_not_reached();
                 }
             }
