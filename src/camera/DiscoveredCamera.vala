@@ -353,6 +353,17 @@ public class DiscoveredCamera : Object {
             return GPhoto.Result.OK;
         }
 
+        // Runs on the camera worker thread. The context is shared by all the jobs of a camera, and
+        // the worker runs one job at a time. Set the cancel callback here, and not when the job
+        // is queued from the main thread, because other jobs can be queued (or running) by then.
+        public override void execute() {
+            install_cancel_handler();
+            do_execute();
+            clear_cancel_handler();
+        }
+
+        protected abstract void do_execute();
+
         protected void install_cancel_handler() {
             Cancellable? cancellable = get_cancellable();
             if (cancellable != null) {
@@ -371,10 +382,8 @@ public class DiscoveredCamera : Object {
 
         public async GPhoto.Result run(Workers camera_workers) {
             this.function_callback = run.callback;
-            install_cancel_handler();
             camera_workers.enqueue(this);
             yield;
-            clear_cancel_handler();
 
             return get_result();
         }
@@ -404,10 +413,8 @@ public class DiscoveredCamera : Object {
 
         public new async void run(Workers camera_workers) throws Error {
             this.function_callback = run.callback;
-            install_cancel_handler();
             camera_workers.enqueue(this);
             yield;
-            clear_cancel_handler();
 
             if (get_cancellable() != null && get_cancellable().is_cancelled() && this.error == null)
                 throw new IOError.CANCELLED("Camera operation cancelled by user");
@@ -423,7 +430,7 @@ public class DiscoveredCamera : Object {
             base(owner, context, camera, cancellable);
         }
 
-        public override void execute() {
+        protected override void do_execute() {
             this.result = camera.init(this.context);
         }
     }
@@ -448,7 +455,7 @@ public class DiscoveredCamera : Object {
             base(owner, context, camera, cancellable);
         }
 
-        public override void execute() {
+        protected override void do_execute() {
             this.result = camera.get_storageinfo(out this.sifs, this.context);
         }
     }
@@ -512,7 +519,7 @@ public class DiscoveredCamera : Object {
             this.fulldir = fulldir;
         }
 
-        public override void execute() {
+        protected override void do_execute() {
             this.result = GPhoto.CameraList.create(out this.files);
             if (this.result != GPhoto.Result.OK) {
                 warning("Unable to create file list: %s", result.to_full_string());
@@ -533,7 +540,7 @@ public class DiscoveredCamera : Object {
             this.fulldir = fulldir;
         }
 
-        public override void execute() {
+        protected override void do_execute() {
             this.result = GPhoto.CameraList.create(out this.folders);
             if (this.result != GPhoto.Result.OK) {
                 warning("Unable to create file list: %s", result.to_full_string());
@@ -556,7 +563,7 @@ public class DiscoveredCamera : Object {
             this.file_name = file_name;
         }
 
-        public override void execute() {
+        protected override void do_execute() {
             this.result = this.camera.get_file_info (this.fulldir, this.file_name, out this.info, this.context);
         }
     }
@@ -708,7 +715,7 @@ public class DiscoveredCamera : Object {
             this.file_name = file_name;
         }
 
-        public override void execute() {
+        protected override void do_execute() {
             try {
                 Bytes? camera_raw = null;
                 try {
@@ -753,7 +760,7 @@ public class DiscoveredCamera : Object {
             this.file_name = file_name;
         }
 
-        public override void execute() {
+        protected override void do_execute() {
             try {
                 Bytes? raw = null;
                 this.md5 = null;
@@ -800,7 +807,7 @@ public class DiscoveredCamera : Object {
             base(owner, context, camera, cancellable);
         }
 
-        public override void execute() {
+        protected override void do_execute() {
             this.result = camera.exit(this.context);
         }
     }
@@ -824,7 +831,7 @@ public class DiscoveredCamera : Object {
             this.file_name = file_name;
         }
 
-        public override void execute() {
+        protected override void do_execute() {
             this.result = this.camera.delete_file(this.fulldir, this.file_name, this.context);
         }
     }
