@@ -1143,8 +1143,16 @@ public class ImportPage : CheckerboardPage {
         }
     }
 
+    // Every item added to the collection makes the view lay out all its items again and refresh the
+    // properties, so the finished items are added in batches: when this many are ready, or when
+    // this much time has passed since the last batch.
+    private const int ADD_BATCH_SIZE = 25;
+    private const int64 ADD_BATCH_INTERVAL_USEC = 100 * 1000;
+
     private async void load_previews_and_metadata(Gee.List<ImportSource> import_list) {
         int loaded_photos = 0;
+        var pending = new Gee.ArrayList<DataObject>();
+        int64 last_flush = get_monotonic_time();
         foreach (var import_source in import_list) {
             if (refresh_cancellable != null && refresh_cancellable.is_cancelled())
                 break;
@@ -1234,10 +1242,20 @@ public class ImportPage : CheckerboardPage {
             }
             
             // *now* add to the SourceCollection, now that it is completed
-            import_sources.add(import_source);
+            pending.add(import_source);
             
             progress_bar.set_fraction((double) (++loaded_photos) / (double) import_list.size);
+            
+            if (pending.size >= ADD_BATCH_SIZE ||
+                get_monotonic_time() - last_flush >= ADD_BATCH_INTERVAL_USEC) {
+                import_sources.add_many(pending);
+                pending.clear();
+                last_flush = get_monotonic_time();
+            }
         }
+        
+        if (pending.size > 0)
+            import_sources.add_many(pending);
     }
     
     private void on_hide_imported(GLib.SimpleAction action, Variant? value) {
