@@ -1402,45 +1402,96 @@ public class ImportPage : CheckerboardPage {
         return true;
     }
     
-    // Try to match RAW+JPEG pairs.
-    private void auto_match_raw_jpeg(Gee.ArrayList<ImportSource> import_list) {
-        for (int i = 0; i < import_list.size; i++) {
-            PhotoImportSource? current = import_list.get(i) as PhotoImportSource;
-            PhotoImportSource? next = (i + 1 < import_list.size) ? 
-                import_list.get(i + 1) as PhotoImportSource : null;
-            PhotoImportSource? prev = (i > 0) ? 
-                import_list.get(i - 1) as PhotoImportSource : null;
-            if (current != null && current.get_file_format() == PhotoFileFormat.RAW) {
-                string current_name;
-                string ext;
-                disassemble_filename(current.get_filename(), out current_name, out ext);
-                
-                // Try to find a matching pair.
-                PhotoImportSource? associated = null;
-                if (next != null && next.get_file_format() == PhotoFileFormat.JFIF) {
-                    string next_name;
-                    disassemble_filename(next.get_filename(), out next_name, out ext);
-                    if (next_name == current_name)
-                        associated = next;
-                }
-                if (prev != null && prev.get_file_format() == PhotoFileFormat.JFIF) {
-                    string prev_name;
-                    disassemble_filename(prev.get_filename(), out prev_name, out ext);
-                    if (prev_name == current_name)
-                        associated = prev;
-                }
-                
-                // Associate!
-                if (associated != null) {
-                    debug("Found RAW+JPEG pair: %s and %s", current.get_filename(), associated.get_filename());
-                    current.set_associated(associated);
-                    if (!import_list.remove(associated)) {
-                        debug("Unable to associate files");
-                        current.set_associated(null);
-                    }
-                }
+    // What a RAW file and its JPEG have in common: the folder on the camera, and the name without
+    // the extension. A photo in a folder that cannot be read has no key and is not paired.
+    private static string? get_pair_key(PhotoImportSource photo) {
+        string? fulldir = photo.get_fulldir();
+        if (fulldir == null)
+            return null;
+
+        string name;
+        string ext;
+        disassemble_filename(photo.get_filename(), out name, out ext);
+
+        return "%s/%s".printf(fulldir, name);
+    }
+
+    // The files that have the same name (see get_pair_key()). A name with exactly one RAW file and
+    // exactly one JPEG is a pair. With more of either it is not clear which belong together, so
+    // none is paired and all of them stay in the list.
+    // Returns the JPEG that was paired with the RAW file, or null if there is no pair.
+    private static PhotoImportSource? pair_up(string key, Gee.Collection<PhotoImportSource> same_name) {
+        PhotoImportSource? raw = null;
+        PhotoImportSource? jpeg = null;
+        int raw_count = 0;
+        int jpeg_count = 0;
+        foreach (var photo in same_name) {
+            if (photo.get_file_format() == PhotoFileFormat.RAW) {
+                raw = photo;
+                raw_count++;
+            } else if (photo.get_file_format() == PhotoFileFormat.JFIF) {
+                jpeg = photo;
+                jpeg_count++;
             }
         }
+
+        if (raw_count > 0 && jpeg_count > 0 && (raw_count > 1 || jpeg_count > 1)) {
+            warning("Not pairing the %d RAW and %d JPEG files named %s: not clear which belong together",
+                raw_count, jpeg_count, key);
+
+            return null;
+        }
+
+        if (raw == null || jpeg == null)
+            return null;
+
+        debug("Found RAW+JPEG pair: %s and %s", raw.get_filename(), jpeg.get_filename());
+        raw.set_associated(jpeg);
+
+        return jpeg;
+    }
+
+    // Try to match RAW+JPEG pairs: a RAW file and a JPEG with the same name in the same folder. The
+    // JPEG is taken out of the list, and is the associated file of the RAW file. It does not matter
+    // where the files are in the list.
+    private void auto_match_raw_jpeg(Gee.ArrayList<ImportSource> import_list) {
+        // Group the photos by name.
+        var by_name = new Gee.HashMap<string, Gee.List<PhotoImportSource>>();
+        foreach (var source in import_list) {
+            var photo = source as PhotoImportSource;
+            if (photo == null)
+                continue;
+
+            string? key = get_pair_key(photo);
+            if (key == null)
+                continue;
+
+            var same_name = by_name.get(key);
+            if (same_name == null) {
+                same_name = new Gee.ArrayList<PhotoImportSource>();
+                by_name.set(key, same_name);
+            }
+            same_name.add(photo);
+        }
+
+        // Decide for each name.
+        var paired = new Gee.HashSet<ImportSource>();
+        foreach (var entry in by_name.entries) {
+            var jpeg = pair_up(entry.key, entry.value);
+            if (jpeg != null)
+                paired.add(jpeg);
+        }
+
+        // Take the paired JPEGs out of the list, keeping the order of the others. Removing them one
+        // by one would search and move the rest of the list every time.
+        var kept = new Gee.ArrayList<ImportSource>();
+        foreach (var source in import_list) {
+            if (!paired.contains(source))
+                kept.add(source);
+        }
+
+        import_list.clear();
+        import_list.add_all(kept);
     }
     
     private void load_previews_and_metadata(Gee.List<ImportSource> import_list) {
