@@ -225,6 +225,13 @@ public class DiscoveredCamera : Object {
     // so it is done by these threads and does not hold up the next fetch.
     private static Workers decode_workers = new Workers(Workers.thread_per_cpu_minus_one(), false);
 
+    // The camera worker can fetch faster than the pool can decode. The bytes that it has fetched and
+    // that are still waiting to be parsed or decoded are limited to this, so that a slow decode
+    // (or a card of large previews) does not fill the memory. When the limit is reached, the
+    // camera worker waits after a fetch until the pool has caught up.
+    private const int64 FETCH_BYTE_BUDGET = 64 * 1024 * 1024;
+    private static ByteBudget fetch_budget = new ByteBudget(FETCH_BYTE_BUDGET);
+
     public DiscoveredCamera(string name, string port, GPhoto.PortInfo port_info, GPhoto.CameraAbilities camera_abilities) throws GPhotoError {
         this.port = port;
         this.camera_name = name;
@@ -733,6 +740,7 @@ public class DiscoveredCamera : Object {
     private class LoadMetadata : ThrowingCameraJob {
         public PhotoMetadata metadata;
         public Bytes? camera_raw = null;
+        public int64 reserved = 0;
         public string folder;
         public string file_name;
 
@@ -759,7 +767,10 @@ public class DiscoveredCamera : Object {
                     return;
                 }
 
-                // parsed by ParseMetadata, off the camera thread
+                // parsed by ParseMetadata, off the camera thread. The caller gives the bytes back
+                // to the budget when that is done.
+                DiscoveredCamera.fetch_budget.acquire(camera_raw.length);
+                this.reserved = camera_raw.length;
                 this.camera_raw = camera_raw;
             } catch (Error e) {
                 this.error = e;
@@ -789,13 +800,22 @@ public class DiscoveredCamera : Object {
     
     public async PhotoMetadata load_metadata(string fulldir, string filename) throws Error {
         var lmd = new LoadMetadata(this, context, gcamera, fulldir, filename, this.cancellable);
-        yield lmd.run(workers);
+        try {
+            yield lmd.run(workers);
+        } catch (Error e) {
+            fetch_budget.release(lmd.reserved);
+            throw e;
+        }
 
         if (lmd.camera_raw == null)
             return lmd.metadata;
 
         var parse = new ParseMetadata(this, lmd.camera_raw, this.cancellable);
-        yield parse.run(decode_workers);
+        try {
+            yield parse.run(decode_workers);
+        } finally {
+            fetch_budget.release(lmd.reserved);
+        }
 
         return parse.metadata;
     }
@@ -804,6 +824,7 @@ public class DiscoveredCamera : Object {
         public string folder;
         public string file_name;
         public Bytes? raw = null;
+        public int64 reserved = 0;
 
         public LoadPreview(Object owner, GPhoto.Context context, GPhoto.Camera camera, string folder, string file_name, Cancellable? cancellable) {
             base(owner, context, camera, cancellable);
@@ -831,7 +852,12 @@ public class DiscoveredCamera : Object {
                     raw = preview.flatten();
                 }
 
-                // hashed and decoded by DecodePreview, off the camera thread
+                // hashed and decoded by DecodePreview, off the camera thread. The caller gives
+                // the bytes back to the budget when that is done.
+                if (raw != null) {
+                    DiscoveredCamera.fetch_budget.acquire(raw.length);
+                    this.reserved = raw.length;
+                }
                 this.raw = raw;
             } catch (Error e) {
                 this.error = e;
@@ -865,7 +891,12 @@ public class DiscoveredCamera : Object {
 
     public async Gdk.Pixbuf load_preview(string fulldir, string filename, out string md5) throws Error {
         var lmd = new LoadPreview(this, context, gcamera, fulldir, filename, this.cancellable);
-        yield lmd.run(workers);
+        try {
+            yield lmd.run(workers);
+        } catch (Error e) {
+            fetch_budget.release(lmd.reserved);
+            throw e;
+        }
 
         if (lmd.raw == null) {
             // no preview to be found
@@ -874,7 +905,11 @@ public class DiscoveredCamera : Object {
         }
 
         var decode = new DecodePreview(this, lmd.raw, this.cancellable);
-        yield decode.run(decode_workers);
+        try {
+            yield decode.run(decode_workers);
+        } finally {
+            fetch_budget.release(lmd.reserved);
+        }
         md5 = decode.md5;
 
         return decode.preview;
