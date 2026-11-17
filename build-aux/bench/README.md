@@ -34,7 +34,16 @@ python3 build-aux/bench/summary.py bench-results/*.json
 
 # counters per format: one small set per sample, imported unthrottled
 build-aux/bench/per-format.sh base
+
+# equivalence: keep the library of two runs and compare them
+build-aux/bench/run.sh --keep --mode unthrottled base    # prints "kept /work/run.XXXXXX"
+build-aux/bench/run.sh --keep --mode unthrottled fix
+docker run --rm -v shotwell-bench-work:/work -v "$PWD/build-aux/bench:/bench:ro" \
+    shotwell-bench python3 -I /bench/equiv.py /work/run.AAAAAA /work/run.BBBBBB
 ```
+
+`run.sh --developer SHOTWELL` (or `CAMERA`, `EMBEDDED`) sets the default RAW developer of the
+run; otherwise it is the default, `CAMERA`.
 
 `run.sh` runs the GTK window under `weston --backend=headless`; `DISPLAY_BACKEND=xvfb` in the
 container environment switches to `xvfb-run` and the X11 backend.
@@ -179,6 +188,7 @@ stay comparable.
 | `evict.py` | container | drops files from the page cache |
 | `decode-bound.py` | container | `dcraw_emu` lower bound |
 | `merge-result.py`, `summary.py` | container, host | result JSON and summary |
+| `equiv.py` | container | compares the database, library files and thumbnails of two kept runs |
 | `per-format.sh`, `per-format-table.py` | host | one 9-shot set per sample, unthrottled, table of counters per shot |
 
 The image builds vala 0.56.19 from the release tarball, because the gtk4 bindings of the
