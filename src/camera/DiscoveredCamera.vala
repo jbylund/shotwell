@@ -338,16 +338,34 @@ public class DiscoveredCamera : Object {
     private class CameraOpJob : BackgroundJob {
         private CameraOp op;
         private unowned SourceFunc source_func;
+        private GPhoto.Context? context;
 
-        public CameraOpJob(Object owner, Cancellable? cancellable, SourceFunc source_func,
-            CameraOp op) {
+        public CameraOpJob(Object owner, GPhoto.Context? context, Cancellable? cancellable,
+            SourceFunc source_func, CameraOp op) {
             base(owner, on_finished, cancellable, on_finished, null);
+            this.context = context;
             this.source_func = source_func;
             this.op = op;
         }
 
+        // Runs on the worker thread. The context is shared by all the ops of a camera and the
+        // camera worker runs one at a time, but several can be queued. So the cancel callback is
+        // set here, around the op, and not when the op is queued from the main thread, where it
+        // would change under the op that is running and be cleared by the end of the first one.
         public override void execute() {
+            Cancellable? cancellable = get_cancellable();
+            if (context == null || cancellable == null) {
+                op();
+
+                return;
+            }
+
+            // gphoto2 stores the delegate as an unowned void*, so it must outlive the op
+            GPhoto.ContextCancelFunc cancel_func = (ctx) => cancellable.is_cancelled() ?
+                GPhoto.ContextFeedback.CANCEL : GPhoto.ContextFeedback.OK;
+            context.set_cancel_func(cancel_func);
             op();
+            context.set_cancel_func(null);
         }
 
         private static void on_finished(BackgroundJob job) {
@@ -355,23 +373,11 @@ public class DiscoveredCamera : Object {
         }
     }
 
-    // Strong reference to the installed cancel delegate; gphoto2 stores it as an unowned void*
-    private GPhoto.ContextCancelFunc? cancel_func = null;
-
     // Runs a blocking libgphoto2 call on the camera worker pool, then resumes the caller
     private async void run_op(CameraOp op, bool use_cancellable = true) {
         Cancellable? job_cancellable = use_cancellable ? this.cancellable : null;
-        if (job_cancellable != null) {
-            this.cancel_func = (ctx) => job_cancellable.is_cancelled() ?
-                GPhoto.ContextFeedback.CANCEL : GPhoto.ContextFeedback.OK;
-            context.set_cancel_func(this.cancel_func);
-        }
-
-        workers.enqueue(new CameraOpJob(this, job_cancellable, run_op.callback, op));
+        workers.enqueue(new CameraOpJob(this, context, job_cancellable, run_op.callback, op));
         yield;
-
-        context.set_cancel_func(null);
-        this.cancel_func = null;
     }
 
     private void throw_if_cancelled(Error? error) throws Error {
