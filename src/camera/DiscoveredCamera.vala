@@ -220,6 +220,11 @@ public class DiscoveredCamera : Object {
     private Workers? workers = null;
     private Cancellable? cancellable = null;
 
+    // The camera worker is one thread, because a camera can only be used by one at a time. What is
+    // done with the bytes it fetches (parsing the EXIF data, decoding the preview) needs no camera,
+    // so it is done by these threads and does not hold up the next fetch.
+    private static Workers decode_workers = new Workers(Workers.thread_per_cpu_minus_one(), false);
+
     public DiscoveredCamera(string name, string port, GPhoto.PortInfo port_info, GPhoto.CameraAbilities camera_abilities) throws GPhotoError {
         this.port = port;
         this.camera_name = name;
@@ -704,8 +709,30 @@ public class DiscoveredCamera : Object {
         return result;
     }
 
+    // Work on bytes that the camera worker has already fetched.
+    private abstract class DecodeJob : AsyncableBackgroundJob {
+        public Error? error = null;
+
+        protected DecodeJob(Object? owner, Cancellable? cancellable) {
+            base(owner, cancellable);
+        }
+
+        public async void run(Workers decode_workers) throws Error {
+            this.function_callback = run.callback;
+            decode_workers.enqueue(this);
+            yield;
+
+            if (get_cancellable() != null && get_cancellable().is_cancelled() && this.error == null)
+                throw new IOError.CANCELLED("Camera operation cancelled by user");
+
+            if (this.error != null)
+                throw this.error;
+        }
+    }
+
     private class LoadMetadata : ThrowingCameraJob {
         public PhotoMetadata metadata;
+        public Bytes? camera_raw = null;
         public string folder;
         public string file_name;
 
@@ -732,6 +759,25 @@ public class DiscoveredCamera : Object {
                     return;
                 }
 
+                // parsed by ParseMetadata, off the camera thread
+                this.camera_raw = camera_raw;
+            } catch (Error e) {
+                this.error = e;
+            }
+        }
+    }
+
+    private class ParseMetadata : DecodeJob {
+        public Bytes camera_raw;
+        public PhotoMetadata metadata;
+
+        public ParseMetadata(Object owner, Bytes camera_raw, Cancellable? cancellable) {
+            base(owner, cancellable);
+            this.camera_raw = camera_raw;
+        }
+
+        public override void execute() {
+            try {
                 PhotoMetadata metadata = new PhotoMetadata();
                 metadata.read_from_app1_segment(camera_raw);
                 this.metadata = metadata;
@@ -745,14 +791,19 @@ public class DiscoveredCamera : Object {
         var lmd = new LoadMetadata(this, context, gcamera, fulldir, filename, this.cancellable);
         yield lmd.run(workers);
 
-        return lmd.metadata;
+        if (lmd.camera_raw == null)
+            return lmd.metadata;
+
+        var parse = new ParseMetadata(this, lmd.camera_raw, this.cancellable);
+        yield parse.run(decode_workers);
+
+        return parse.metadata;
     }
 
     private class LoadPreview : ThrowingCameraJob {
         public string folder;
         public string file_name;
-        public Gdk.Pixbuf preview;
-        public string md5;
+        public Bytes? raw = null;
 
         public LoadPreview(Object owner, GPhoto.Context context, GPhoto.Camera camera, string folder, string file_name, Cancellable? cancellable) {
             base(owner, context, camera, cancellable);
@@ -763,7 +814,6 @@ public class DiscoveredCamera : Object {
         protected override void do_execute() {
             try {
                 Bytes? raw = null;
-                this.md5 = null;
 
                 try {
                     raw = GPhoto.load_file_into_buffer(this.context, this.camera, this.folder,
@@ -779,9 +829,28 @@ public class DiscoveredCamera : Object {
                     // Get the smallest preview from meta-data
                     var preview = metadata.get_preview(metadata.get_preview_count() - 1);
                     raw = preview.flatten();
-                    this.md5 = Checksum.compute_for_bytes(ChecksumType.MD5, raw);
                 }
 
+                // hashed and decoded by DecodePreview, off the camera thread
+                this.raw = raw;
+            } catch (Error e) {
+                this.error = e;
+            }
+        }
+    }
+
+    private class DecodePreview : DecodeJob {
+        public Bytes raw;
+        public Gdk.Pixbuf preview;
+        public string md5;
+
+        public DecodePreview(Object owner, Bytes raw, Cancellable? cancellable) {
+            base(owner, cancellable);
+            this.raw = raw;
+        }
+
+        public override void execute() {
+            try {
                 this.md5 = Checksum.compute_for_bytes(ChecksumType.MD5, raw);
 
                 MemoryInputStream mins = new MemoryInputStream.from_bytes(raw);
@@ -797,9 +866,18 @@ public class DiscoveredCamera : Object {
     public async Gdk.Pixbuf load_preview(string fulldir, string filename, out string md5) throws Error {
         var lmd = new LoadPreview(this, context, gcamera, fulldir, filename, this.cancellable);
         yield lmd.run(workers);
-        md5 = lmd.md5;
 
-        return lmd.preview;
+        if (lmd.raw == null) {
+            // no preview to be found
+            md5 = null;
+            return null;
+        }
+
+        var decode = new DecodePreview(this, lmd.raw, this.cancellable);
+        yield decode.run(decode_workers);
+        md5 = decode.md5;
+
+        return decode.preview;
     }
 
     private class ExitCamera : ResultCameraJob {
