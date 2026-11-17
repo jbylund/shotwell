@@ -61,6 +61,9 @@ public int64 now_sec() {
 }
 
 public string md5_file(File file) throws Error {
+#if BENCHMARK
+    var bench_scope = new BenchCounters.Scope.md5(file); bench_scope.start();
+#endif
     Checksum md5 = new Checksum(ChecksumType.MD5);
     uint8[] buffer = new uint8[64 * 1024];
     
