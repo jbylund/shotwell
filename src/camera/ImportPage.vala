@@ -1162,9 +1162,16 @@ public class ImportPage : CheckerboardPage {
     private const int64 ADD_BATCH_INTERVAL_USEC = 100 * 1000;
 
     // The camera worker handles one job at a time, and the main thread needs time to add each
-    // item to the view. To keep the worker busy while the main thread does that, up to this many
-    // items are queued on it ahead of the item that is about to be added.
-    private const int LOOK_AHEAD = 8;
+    // item to the view. To keep the worker busy while the main thread does that, and the threads
+    // that decode the files busy, items are queued ahead of the item that is about to be added:
+    // twice as many as there are decode threads, but never fewer or more than these. How much
+    // memory that holds is limited separately, see FETCH_BYTE_BUDGET in DiscoveredCamera.
+    private const int LOOK_AHEAD_MIN = 8;
+    private const int LOOK_AHEAD_MAX = 32;
+
+    private static int get_look_ahead() {
+        return ((int) Workers.thread_per_cpu_minus_one() * 2).clamp(LOOK_AHEAD_MIN, LOOK_AHEAD_MAX);
+    }
 
     // What the camera worker has read for one item.
     private class PreviewLoad : Object {
@@ -1259,6 +1266,7 @@ public class ImportPage : CheckerboardPage {
         var pending = new Gee.ArrayList<DataObject>();
         int64 last_flush = get_monotonic_time();
         var window = new Gee.ArrayQueue<PreviewLoad>();
+        int look_ahead = get_look_ahead();
         int next = 0;
         
         while (true) {
@@ -1266,7 +1274,7 @@ public class ImportPage : CheckerboardPage {
                 break;
             
             // keep the camera busy while the item at the head of the window is added
-            while (window.size < LOOK_AHEAD && next < import_list.size) {
+            while (window.size < look_ahead && next < import_list.size) {
                 var queued_source = import_list.get(next++);
                 if (queued_source.get_fulldir() == null) {
                     warning("Skipping loading preview of %s: invalid folder name",

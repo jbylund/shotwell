@@ -27,6 +27,7 @@ threads_lib = static_library(
         'threads/Workers.vala',
         'threads/BackgroundJob.vala',
         'threads/Semaphore.vala',
+        'threads/ByteBudget.vala',
   ],
   vala_header: 'shotwell-threads.h',
   vala_vapi: 'shotwell-threads.vapi',

@@ -36,3 +36,9 @@ test('natural-collate', natural_collate_test)
 test('jfif-support', jfif_support_test)
 test('regexp-replace', regexp_replace_test)
 test('asyncable-background-job', asyncable_background_job_test)
+
+byte_budget_test = executable('byte-budget-test',
+  ['testByteBudget.vala'],
+  dependencies: [gee, gio, threads_lib_dep])
+
+test('byte-budget', byte_budget_test)
