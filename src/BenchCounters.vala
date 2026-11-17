@@ -50,6 +50,10 @@ public enum Probe {
     WORKER_PREPARE_FILE,        // one file inside the feeder job
     WORKER_PREPARED_FILE_IMPORT,
     WORKER_THUMBNAIL_WRITER,
+    WORKER_FEEDER_NOTIFY_WAIT,  // PrepareFilesJob waiting in notify() until the main thread took a cluster
+    // thumbnails made outside the import pipeline
+    LIBRARY_PHOTO_GENERATE_THUMBNAILS, // LibraryPhoto.generate_thumbnails(), on the main thread
+    THUMBNAIL_IMPORT_FROM_SOURCE,      // ThumbnailCache.import_from_source(), any thread
 
     COUNT;
 
@@ -113,6 +117,12 @@ private void record(Probe probe, int64 start_us, int64 end_us, int64 bytes) {
     if (elapsed > slots[probe].max_us)
         slots[probe].max_us = elapsed;
     mutex.unlock();
+}
+
+// Records a call that started at start_us (from now_us()) and ends now. For blocks that a Scope
+// cannot wrap.
+public void add_since(Probe probe, int64 start_us) {
+    record(probe, start_us, now_us(), 0);
 }
 
 // Counts one event that has no duration.

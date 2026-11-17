@@ -10,6 +10,9 @@
 #   corpus.py make SEED N [ONLY]     make /corpus/sets/sSEED-nN with N unique shots; with ONLY,
 #                                    use only the samples whose file name contains ONLY, and
 #                                    call the set sSEED-nN-ONLY (for per-format counters)
+#   corpus.py make SEED N --pairs-only
+#                                    use only the samples marked make_jpeg_pair, so that every
+#                                    shot is a RAW+JPEG pair; the set is sSEED-nN-pairs
 #
 # A "shot" is one copy of a sample. Samples marked make_jpeg_pair in the manifest also get a
 # JPEG sibling with the same basename (made from the largest embedded preview), so N shots can
@@ -190,10 +193,12 @@ def uniquify(path, writable, unique_id, when, is_bmff):
     return "trailer"
 
 
-def make(seed, n, only=None):
+def make(seed, n, only=None, pairs_only=False):
     samples = load_manifest(os.path.join(SAMPLES, "manifest.json"))
     if only:
         samples = [s for s in samples if only in s["file"]]
+    if pairs_only:
+        samples = [s for s in samples if s.get("make_jpeg_pair")]
     os.makedirs(DERIVED, exist_ok=True)
     infos = []
     for s in samples:
@@ -205,7 +210,7 @@ def make(seed, n, only=None):
     if not infos:
         raise RuntimeError("no usable samples")
 
-    name = "s%d-n%d" % (seed, n) + ("-%s" % only if only else "")
+    name = "s%d-n%d" % (seed, n) + ("-%s" % only if only else "") + ("-pairs" if pairs_only else "")
     set_dir = os.path.join(SETS, name)
     tmp_dir = set_dir + ".tmp"
     shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -234,6 +239,8 @@ def make(seed, n, only=None):
         method = uniquify(dest, info["exiv2_writable"], unique_id, when, is_bmff)
         files = [(dest, info["file"], method)]
 
+        if pairs_only and not info["previews"]:
+            raise RuntimeError("%s has no embedded preview to make a JPEG from" % info["file"])
         if info["make_jpeg_pair"] and info["previews"]:
             if info["file"] not in pair_templates:
                 pair_templates[info["file"]] = make_pair_template(info)
@@ -287,7 +294,10 @@ def main():
     elif cmd == "inspect":
         inspect(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "make":
-        make(int(sys.argv[2]), int(sys.argv[3]), sys.argv[4] if len(sys.argv) > 4 else None)
+        rest = sys.argv[4:]
+        pairs_only = "--pairs-only" in rest
+        rest = [a for a in rest if a != "--pairs-only"]
+        make(int(sys.argv[2]), int(sys.argv[3]), rest[0] if rest else None, pairs_only)
     else:
         print("unknown command %s" % cmd, file=sys.stderr)
         sys.exit(2)
