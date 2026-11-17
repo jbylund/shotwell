@@ -1149,97 +1149,157 @@ public class ImportPage : CheckerboardPage {
     private const int ADD_BATCH_SIZE = 25;
     private const int64 ADD_BATCH_INTERVAL_USEC = 100 * 1000;
 
+    // The camera worker handles one job at a time, and the main thread needs time to add each
+    // item to the view. To keep the worker busy while the main thread does that, up to this many
+    // items are queued on it ahead of the item that is about to be added.
+    private const int LOOK_AHEAD = 8;
+
+    // What the camera worker has read for one item.
+    private class PreviewLoad : Object {
+        public ImportSource source;
+        public PhotoImportSource? associated = null;
+        public PhotoMetadata? metadata = null;
+        public Gdk.Pixbuf? preview = null;
+        public string? preview_md5 = null;
+        public PhotoMetadata? associated_metadata = null;
+        public bool associated_loaded = false;
+        public bool done = false;
+        public SourceFunc? waiter = null;
+
+        public PreviewLoad(ImportSource source) {
+            this.source = source;
+        }
+    }
+
+    // Reads the metadata and the preview of one item from the camera. Only talks to the camera and
+    // fills in the load; the item itself is updated on the main thread when it is its turn.
+    private async void load_item(PreviewLoad load) {
+        var import_source = load.source;
+        string filename = import_source.get_filename();
+        string? fulldir = import_source.get_fulldir();
+        
+        // Get JPEG pair, if available.
+        if (import_source is PhotoImportSource && 
+            ((PhotoImportSource) import_source).get_associated() != null) {
+            load.associated = ((PhotoImportSource) import_source).get_associated();
+        }
+        
+        // Ask GPhoto to read the current file's metadata, but only if the file is not a
+        // video. Across every memory card and camera type I've tested (lucas, as of 10/27/2010)
+        // GPhoto always loads null metadata for videos. So without the is-not-video guard,
+        // this code segment just needlessly and annoyingly prints a warning message to the
+        // console.
+
+        if (!VideoReader.is_supported_video_filename(filename)) {
+            try {
+                load.metadata = yield dcamera.load_metadata(fulldir, filename);
+            } catch (Error err) {
+                warning("Unable to fetch metadata for %s/%s: %s", fulldir, filename, err.message);
+            }
+        }
+        
+        // XXX: Cannot use the metadata for the thumbnail preview because libgphoto2
+        // 2.4.6 has a bug where the returned EXIF data object is complete garbage.  This
+        // is fixed in 2.4.7, but need to work around this as best we can.  In particular,
+        // this means the preview orientation will be wrong and the MD5 is not generated
+        // if the EXIF did not parse properly (see above)
+        
+        try {
+            string preview_fulldir = fulldir;
+            string preview_filename = filename;
+            if (load.associated != null) {
+                preview_fulldir = load.associated.get_fulldir();
+                preview_filename = load.associated.get_filename();
+            }
+
+            string? md5 = null;
+            load.preview = yield dcamera.load_preview(preview_fulldir, preview_filename, out md5);
+            load.preview_md5 = md5;
+        } catch (Error err) {
+            // only issue the warning message if we're not reading a video. GPhoto is capable
+            // of reading video previews about 50% of the time, so we don't want to put a guard
+            // around this entire code segment like we did with the metadata-read segment above,
+            // however video previews being absent is so common that there's no reason
+            // we should generate a warning for one.
+            if (!VideoReader.is_supported_video_filename(filename)) {
+                warning("Unable to fetch preview for %s/%s: %s", fulldir, filename, err.message);
+            }
+        }
+        
+        if (load.associated != null) {
+            try {
+                load.associated_metadata = yield dcamera.load_metadata(load.associated.get_fulldir(),
+                    load.associated.get_filename());
+                load.associated_loaded = true;
+            } catch (Error err) {
+                warning("Unable to fetch metadata for %s/%s: %s",  load.associated.get_fulldir(),
+                    load.associated.get_filename(), err.message);
+            }
+        }
+        
+        load.done = true;
+        if (load.waiter != null)
+            Idle.add((owned) load.waiter);
+    }
+
     private async void load_previews_and_metadata(Gee.List<ImportSource> import_list) {
         int loaded_photos = 0;
         var pending = new Gee.ArrayList<DataObject>();
         int64 last_flush = get_monotonic_time();
-        foreach (var import_source in import_list) {
+        var window = new Gee.ArrayQueue<PreviewLoad>();
+        int next = 0;
+        
+        while (true) {
             if (refresh_cancellable != null && refresh_cancellable.is_cancelled())
                 break;
-            string filename = import_source.get_filename();
-            string? fulldir = import_source.get_fulldir();
-            if (fulldir == null) {
-                warning("Skipping loading preview of %s: invalid folder name", import_source.to_string());
+            
+            // keep the camera busy while the item at the head of the window is added
+            while (window.size < LOOK_AHEAD && next < import_list.size) {
+                var queued_source = import_list.get(next++);
+                if (queued_source.get_fulldir() == null) {
+                    warning("Skipping loading preview of %s: invalid folder name",
+                        queued_source.to_string());
+                    
+                    continue;
+                }
                 
-                continue;
+                var queued = new PreviewLoad(queued_source);
+                window.offer(queued);
+                load_item.begin(queued);
             }
             
-            // Get JPEG pair, if available.
-            PhotoImportSource? associated = null;
-            if (import_source is PhotoImportSource && 
-                ((PhotoImportSource) import_source).get_associated() != null) {
-                associated = ((PhotoImportSource) import_source).get_associated();
+            if (window.is_empty)
+                break;
+            
+            var head = window.peek();
+            if (!head.done) {
+                head.waiter = load_previews_and_metadata.callback;
+                yield;
             }
+            window.poll();
+            
+            var import_source = head.source;
+            var associated = head.associated;
             
             progress_bar.set_ellipsize(Pango.EllipsizeMode.MIDDLE);
             progress_bar.set_text(_("Fetching preview for %s").printf(import_source.get_name()));
             
-            // Ask GPhoto to read the current file's metadata, but only if the file is not a
-            // video. Across every memory card and camera type I've tested (lucas, as of 10/27/2010)
-            // GPhoto always loads null metadata for videos. So without the is-not-video guard,
-            // this code segment just needlessly and annoyingly prints a warning message to the
-            // console.
-
-            PhotoMetadata? metadata = null;
-            if (!VideoReader.is_supported_video_filename(filename)) {
-                try {
-                    metadata = yield dcamera.load_metadata(fulldir, filename);
-                } catch (Error err) {
-                    warning("Unable to fetch metadata for %s/%s: %s", fulldir, filename, err.message);
-                }
-            }
-            
-            // XXX: Cannot use the metadata for the thumbnail preview because libgphoto2
-            // 2.4.6 has a bug where the returned EXIF data object is complete garbage.  This
-            // is fixed in 2.4.7, but need to work around this as best we can.  In particular,
-            // this means the preview orientation will be wrong and the MD5 is not generated
-            // if the EXIF did not parse properly (see above)
-            
-            Gdk.Pixbuf preview = null;
-            string? preview_md5 = null;
-            try {
-                string preview_fulldir = fulldir;
-                string preview_filename = filename;
-                if (associated != null) {
-                    preview_fulldir = associated.get_fulldir();
-                    preview_filename = associated.get_filename();
-                }
-
-                preview = yield dcamera.load_preview(preview_fulldir, preview_filename, out preview_md5);
-            } catch (Error err) {
-                // only issue the warning message if we're not reading a video. GPhoto is capable
-                // of reading video previews about 50% of the time, so we don't want to put a guard
-                // around this entire code segment like we did with the metadata-read segment above,
-                // however video previews being absent is so common that there's no reason
-                // we should generate a warning for one.
-                if (!VideoReader.is_supported_video_filename(filename)) {
-                    warning("Unable to fetch preview for %s/%s: %s", fulldir, filename, err.message);
-                }
-            }
-            
 #if TRACE_MD5
-            debug("camera MD5 %s: preview=%s", filename, preview_md5);
+            debug("camera MD5 %s: preview=%s", import_source.get_filename(), head.preview_md5);
 #endif
 
             if (import_source is VideoImportSource) {
                 var video_import_source = (VideoImportSource)import_source;
-                video_import_source.update(preview);
+                video_import_source.update(head.preview);
             }
 
             if (import_source is PhotoImportSource) {
                 var photo_import_source = (PhotoImportSource)import_source;
-                photo_import_source.update(preview, preview_md5, metadata);
+                photo_import_source.update(head.preview, head.preview_md5, head.metadata);
             }
 
-            if (associated != null) {
-                try {
-                    var associated_metadata = yield dcamera.load_metadata(associated.get_fulldir(), associated.get_filename());
-                    associated.update(preview, preview_md5, associated_metadata);
-                } catch (Error err) {
-                    warning("Unable to fetch metadata for %s/%s: %s",  associated.get_fulldir(),
-                        associated.get_filename(), err.message);
-                }
-            }
+            if (associated != null && head.associated_loaded)
+                associated.update(head.preview, head.preview_md5, head.associated_metadata);
             
             // *now* add to the SourceCollection, now that it is completed
             pending.add(import_source);
