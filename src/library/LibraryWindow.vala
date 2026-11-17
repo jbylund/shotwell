@@ -1298,7 +1298,9 @@ public class LibraryWindow : AppWindow {
     }
     
     private void on_update_properties() {
-        properties_scheduler.at_idle();
+        // Rebuilding the properties is expensive, and nobody can read a summary that changes more
+        // than a few times a second, so collapse a burst of changes into one update.
+        properties_scheduler.after_timeout(50, false);
     }
     
     private void on_update_properties_now() {
