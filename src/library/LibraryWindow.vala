@@ -1305,7 +1305,7 @@ public class LibraryWindow : AppWindow {
         if (bottom_frame.visible)
             basic_properties.update_properties(get_current_page());
 
-        if (extended_properties.visible)
+        if (extended_properties_revealer.get_reveal_child())
             extended_properties.update_properties(get_current_page());
     }
     
