@@ -1222,6 +1222,16 @@ public class PhotoMetadata : MediaMetadata {
                 if (get_string("Exif.GPSInfo.GPSLatitudeRef") == "S" && gps_coords.latitude > 0)
                     gps_coords.latitude = -gps_coords.latitude;
             }
+
+            // exiv2 can report GPS info with NaN coordinates (empty or malformed GPS tags). That
+            // is not a position, and since NaN != NaN it would also never compare equal to
+            // itself, so it made the reimport think the coordinates changed after every metadata
+            // write (GNOME/shotwell#5048). Treat it as "no GPS".
+            if (gps_coords.has_gps > 0 && (gps_coords.longitude.is_nan() || gps_coords.latitude.is_nan())) {
+                gps_coords.has_gps = 0;
+                gps_coords.longitude = 0;
+                gps_coords.latitude = 0;
+            }
         } catch (Error err) {
             gps_coords.has_gps = 0;
         }
