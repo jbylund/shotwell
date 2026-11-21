@@ -240,15 +240,3 @@ public abstract class BackgroundJob : Object {
     }
 }
 
-public abstract class AsyncableBackgroundJob : BackgroundJob {
-    protected AsyncableBackgroundJob(Object? owner, Cancellable? cancellable = null) {
-        base(owner, AsyncableBackgroundJob.on_job_finished, cancellable, AsyncableBackgroundJob.on_job_finished, null);
-    }
-
-    protected unowned SourceFunc function_callback;
-
-    private static void on_job_finished(BackgroundJob job) {
-        assert(job is AsyncableBackgroundJob);
-        ((AsyncableBackgroundJob)job).function_callback();
-    }
-}
