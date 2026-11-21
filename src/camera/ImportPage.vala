@@ -146,6 +146,7 @@ class PhotoImportSource : ImportSource {
     private string? preview_md5 = null;
     private PhotoMetadata? metadata = null;
     private PhotoImportSource? associated = null; // JPEG source for RAW+JPEG
+    private DateTime? exposure_time_cache = null;
     
     public PhotoImportSource(string camera_name, GPhoto.Camera camera, int fsid, string fulldir, string folder, 
         string filename, ulong file_size, DateTime modification_time, PhotoFileFormat file_format) {
@@ -186,15 +187,26 @@ class PhotoImportSource : ImportSource {
         set_preview(preview);
         this.preview_md5 = preview_md5;
         this.metadata = metadata;
+        this.exposure_time_cache = null;
     }
 
     public override DateTime get_exposure_time() {
+        // Parsing the EXIF date is expensive, and the properties bar asks for the exposure time of
+        // every item each time one is added, so only do it once.
+        if (exposure_time_cache != null)
+            return exposure_time_cache;
+
         if (metadata == null)
             return get_modification_time();
         
         MetadataDateTime? date_time = metadata.get_exposure_date_time();
         
-        return (date_time != null) ? date_time.get_timestamp() : get_modification_time();
+        if (date_time != null)
+            exposure_time_cache = date_time.get_timestamp();
+        else
+            exposure_time_cache = get_modification_time();
+
+        return exposure_time_cache;
     }
     
     public string? get_title() {
