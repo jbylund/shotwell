@@ -923,6 +923,9 @@ public class SearchFilterToolbar : Gtk.Box {
             saved_search = null;
             saved_search_button.set_active(false);
             disable_savedsearch();
+        } else if (saved_search_popover != null &&
+                   saved_search_popover.popover.get_visible()) {
+            saved_search_popover.hide();
         } else {
             if (saved_search_popover != null) {
                 saved_search_popover.edit_clicked.disconnect(edit_dialog);
