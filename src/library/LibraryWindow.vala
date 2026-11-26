@@ -377,12 +377,8 @@ public class LibraryWindow : AppWindow {
     }
     
     protected override void on_quit() {
-        if (!maximized) {
-            dimensions.width = get_width();
-            dimensions.height = get_height();
-        }
-
         Config.Facade.get_instance().set_library_window_state(maximized, dimensions);
+
         Config.Facade.get_instance().set_sidebar_position(client_paned.position);
 
         base.on_quit();

@@ -68,11 +68,6 @@ public class DirectWindow : AppWindow {
     }
     
     protected override void on_quit() {
-        if (!maximized) {
-            dimensions.width = get_width();
-            dimensions.height = get_height();
-        }
-
         Config.Facade.get_instance().set_direct_window_state(maximized, dimensions);
         
         base.on_quit();
@@ -86,12 +81,6 @@ public class DirectWindow : AppWindow {
                 close_check_pending = false;
                 var result = get_direct_page().check_quit.end(res);
                 if (result) {
-                    if (!maximized) {
-                        dimensions.width = get_width();
-                        dimensions.height = get_height();
-                    }
-
-                    Config.Facade.get_instance().set_direct_window_state(maximized, dimensions);
                     destroy();
                 }
             });
