@@ -213,6 +213,20 @@ public class SortedList<G> : Object, Gee.Traversable<G>, Gee.Iterable<G>, Gee.Co
         return list.to_array();
     }
     
+    // Reverses the order of the items. A list sorted by a comparator whose result is negated for
+    // the opposite direction is then sorted by that comparator, without comparing anything.
+    public void reverse() {
+        for (int low = 0, high = list.size - 1; low < high; low++, high--) {
+            G low_item = list.get(low);
+            list.set(low, list.get(high));
+            list.set(high, low_item);
+        }
+        
+#if VERIFY_SORTED_LIST
+        assert(is_sorted());
+#endif
+    }
+    
     public void resort(Comparator new_cmp) {
         cmp = new_cmp;
         
@@ -308,6 +322,11 @@ public class SortedList<G> : Object, Gee.Traversable<G>, Gee.Iterable<G>, Gee.Co
     }
 #endif
     
+    // The items are sorted as plain pointers. An array of G takes and drops a reference each time
+    // an item is copied, several times for every step of a merge, and that was most of the time of
+    // a sort that has to merge. The list (and the items being added, which the caller holds)
+    // keep every item alive while it is sorted, and each reference is changed once, when the sorted
+    // items are put back.
     private bool merge_sort(Gee.List<G>? add = null) {
         assert(cmp != null);
         
@@ -318,43 +337,45 @@ public class SortedList<G> : Object, Gee.Traversable<G>, Gee.Iterable<G>, Gee.Co
         if (count == 0)
             return false;
         
-        // because list access is slow in large-scale sorts, flatten list (with additions) to
-        // an array, merge sort that, and then place them back in the internal ArrayList.
-        G[] array = new G[count];
+        void*[] array = new void*[count];
         int offset = 0;
         
         while (offset < list_count) {
-            array[offset] = list.get(offset);
+            G item = list.get(offset);
+            array[offset] = (void *) item;
             offset++;
         }
         
         if (add != null) {
             int add_ctr = 0;
             while (offset < count) {
-                array[offset] = add.get(add_ctr++);
+                G item = add.get(add_ctr++);
+                array[offset] = (void *) item;
                 offset++;
             }
         }
         
         assert(offset == count);
         
-        _merge_sort(array, new G[count], 0, count - 1);
+        _merge_sort(array, new void*[count], 0, count - 1);
         
         offset = 0;
         while (offset < list_count) {
-            list.set(offset, array[offset]);
+            unowned G item = (G) array[offset];
+            list.set(offset, item);
             offset++;
         }
         
         while (offset < count) {
-            list.insert(offset, array[offset]);
+            unowned G item = (G) array[offset];
+            list.insert(offset, item);
             offset++;
         }
         
         return true;
     }
     
-    private void _merge_sort(G[] array, G[] scratch, int start_index, int end_index) {
+    private void _merge_sort(void*[] array, void*[] scratch, int start_index, int end_index) {
         assert(start_index <= end_index);
         
         int count = end_index - start_index + 1;
@@ -370,7 +391,7 @@ public class SortedList<G> : Object, Gee.Traversable<G>, Gee.Iterable<G>, Gee.Co
             merge(array, scratch, start_index, middle_index, end_index);
     }
     
-    private void merge(G[] array, G[] scratch, int start_index, int middle_index, int end_index) {
+    private void merge(void*[] array, void*[] scratch, int start_index, int middle_index, int end_index) {
         assert(start_index < end_index);
         
         int count = end_index - start_index + 1;
@@ -383,8 +404,8 @@ public class SortedList<G> : Object, Gee.Traversable<G>, Gee.Iterable<G>, Gee.Co
         int scratch_index = 0;
         
         while (left_start <= left_end && right_start <= right_end) {
-            G left = array[left_start];
-            G right = array[right_start];
+            void *left = array[left_start];
+            void *right = array[right_start];
             
             if (cmp(left, right) <= 0) {
                 scratch[scratch_index++] = left;
@@ -408,4 +429,3 @@ public class SortedList<G> : Object, Gee.Traversable<G>, Gee.Iterable<G>, Gee.Co
             array[list_index] = scratch[scratch_index++];
     }
 }
-

@@ -24,6 +24,10 @@ jfif_support_test = executable('jfif-support-test',
                                c_args : ['-DTEST_DATA_DIR="@0@"'.format(meson.current_source_dir())]
                              )
 
+sorted_list_test = executable('sorted-list-test',
+                              ['SortedList-Test.vala', 'SortedList.vala'],
+                              dependencies : [gee, gio])
+
 regexp_replace_test = executable('regexp-replace-test',
                                  ['RegexpReplace.vala', 'DatabaseTable.vala'],
                                  dependencies: [gee, gio, sqlite])
@@ -34,5 +38,6 @@ asyncable_background_job_test = executable('asyncable-background-job-test',
 
 test('natural-collate', natural_collate_test)
 test('jfif-support', jfif_support_test)
+test('sorted-list', sorted_list_test)
 test('regexp-replace', regexp_replace_test)
 test('asyncable-background-job', asyncable_background_job_test)
