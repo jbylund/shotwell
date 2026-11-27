@@ -1213,7 +1213,8 @@ public class ImportPage : CheckerboardPage {
             try {
                 load.metadata = yield dcamera.load_metadata(fulldir, filename);
             } catch (Error err) {
-                warning("Unable to fetch metadata for %s/%s: %s", fulldir, filename, err.message);
+                if (!(err is IOError.CANCELLED))
+                    warning("Unable to fetch metadata for %s/%s: %s", fulldir, filename, err.message);
             }
         }
         
@@ -1240,7 +1241,7 @@ public class ImportPage : CheckerboardPage {
             // around this entire code segment like we did with the metadata-read segment above,
             // however video previews being absent is so common that there's no reason
             // we should generate a warning for one.
-            if (!VideoReader.is_supported_video_filename(filename)) {
+            if (!VideoReader.is_supported_video_filename(filename) && !(err is IOError.CANCELLED)) {
                 warning("Unable to fetch preview for %s/%s: %s", fulldir, filename, err.message);
             }
         }
@@ -1251,8 +1252,9 @@ public class ImportPage : CheckerboardPage {
                     load.associated.get_filename());
                 load.associated_loaded = true;
             } catch (Error err) {
-                warning("Unable to fetch metadata for %s/%s: %s",  load.associated.get_fulldir(),
-                    load.associated.get_filename(), err.message);
+                if (!(err is IOError.CANCELLED))
+                    warning("Unable to fetch metadata for %s/%s: %s",  load.associated.get_fulldir(),
+                        load.associated.get_filename(), err.message);
             }
         }
         
