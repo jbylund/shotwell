@@ -115,17 +115,18 @@ public class LibraryMonitor : DirectoryMonitor {
         }
         
         public override void execute() {
-            // weed out any candidates that already have a backing master
-            Gee.Iterator<Monitorable> iter = candidates.iterator();
-            while (iter.next()) {
-                if (iter.get().get_master_file().query_exists())
-                    iter.remove();
+            // With a single candidate, check the disk first: a stat is much cheaper than reading
+            // the file, and if the candidate's file is still in place this one is just a copy.
+            if (candidates.size == 1) {
+                foreach (Monitorable candidate in candidates) {
+                    if (candidate.get_master_file().query_exists())
+                        return;
+                }
             }
-            
-            // if no more, done
-            if (candidates.size == 0)
-                return;
-            
+
+            // Many candidates can share a size and a modification time, so read the file once and
+            // compare its hash with all of them in memory.  Only the ones that match are then
+            // checked on disk, instead of every candidate.
             string? md5 = null;
             try {
                 md5 = md5_file(file);
@@ -138,7 +139,11 @@ public class LibraryMonitor : DirectoryMonitor {
             foreach (Monitorable candidate in candidates) {
                 if (candidate.get_master_md5() != md5)
                     continue;
-                
+
+                // weed out any candidate that already has a backing master
+                if (candidate.get_master_file().query_exists())
+                    continue;
+
                 if (match != null) {
                     warning("Found more than one media match for %s: %s and %s", file.get_path(),
                         match.to_string(), candidate.to_string());
@@ -332,6 +337,10 @@ public class LibraryMonitor : DirectoryMonitor {
             return;
         }
         
+        // let the monitors look at their media once, instead of once for every unknown file
+        foreach (MediaMonitor monitor in monitors)
+            monitor.notify_unknown_file_matching_started();
+
         Gee.ArrayList<Monitorable> all_candidates = new Gee.ArrayList<Monitorable>();
         Gee.ArrayList<File> adopted = new Gee.ArrayList<File>(file_equal);
         foreach (File file in unknown_files) {
@@ -377,6 +386,9 @@ public class LibraryMonitor : DirectoryMonitor {
             yield;
         }
         
+        foreach (MediaMonitor monitor in monitors)
+            monitor.notify_unknown_file_matching_completed();
+
         // remove all adopted files from the unknown list
         unknown_files.remove_all(adopted);
         

@@ -59,7 +59,10 @@ private class VideoMonitor : MediaMonitor {
     // threads, we need to put a lock around background_jobs wherever it's modified.
     private Workers workers = new Workers(1, false);
     private uint64 background_jobs = 0;
-    
+
+    // Set only while the startup scan matches its unknown files; null at any other time.
+    private FileStampIndex<Video>? videos_by_stamp = null;
+
     public VideoMonitor(Cancellable cancellable) {
         base (Video.global, cancellable);
                 
@@ -112,10 +115,36 @@ private class VideoMonitor : MediaMonitor {
         }
     }
     
+    public override void notify_unknown_file_matching_started() {
+        videos_by_stamp = new FileStampIndex<Video>();
+
+        // the same videos fetch_by_matching_backing() looks at: the ones in the collection, and
+        // the offline ones
+        foreach (DataObject object in Video.global.get_all()) {
+            Video video = (Video) object;
+            videos_by_stamp.add((int64) video.get_filesize(), video.get_timestamp(), video);
+        }
+
+        foreach (MediaSource media in Video.global.get_offline_bin_contents()) {
+            Video video = (Video) media;
+            videos_by_stamp.add((int64) video.get_filesize(), video.get_timestamp(), video);
+        }
+    }
+
+    public override void notify_unknown_file_matching_completed() {
+        videos_by_stamp = null;
+    }
+
     public override Gee.Collection<Monitorable>? candidates_for_unknown_file(File file, FileInfo info,
         out MediaMonitor.DiscoveredFile result) {
         Gee.Collection<Video> matched = new Gee.ArrayList<Video>();
-        Video.global.fetch_by_matching_backing(info, matched);
+        if (videos_by_stamp != null) {
+            Gee.List<Video>? by_stamp = videos_by_stamp.get_matching(info);
+            if (by_stamp != null)
+                matched.add_all(by_stamp);
+        } else {
+            Video.global.fetch_by_matching_backing(info, matched);
+        }
         
         result = MediaMonitor.DiscoveredFile.UNKNOWN;
         

@@ -2,6 +2,56 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
+// Finds the items whose backing file has the same size and modification time as a FileInfo, in
+// one hash lookup.  The modification time is kept as whole seconds, which is what the database
+// stores, so no DateTime is needed to compare it.  Fill it once, then only look things up: it
+// is a snapshot, and does not follow later changes to the items.
+public class FileStampIndex<G> {
+    private class Stamp {
+        public int64 size;
+        public int64 mtime;
+
+        public Stamp(int64 size, int64 mtime) {
+            this.size = size;
+            this.mtime = mtime;
+        }
+
+        public static uint hash(Stamp stamp) {
+            return (uint) (stamp.size ^ (stamp.size >> 32) ^ (stamp.mtime * 0x9E3779B1));
+        }
+
+        public static bool equal(Stamp a, Stamp b) {
+            return a.size == b.size && a.mtime == b.mtime;
+        }
+    }
+
+    private Gee.HashMap<Stamp, Gee.ArrayList<G>> items =
+        new Gee.HashMap<Stamp, Gee.ArrayList<G>>(Stamp.hash, Stamp.equal);
+
+    // An item without a modification time can never match.  Adding the same item twice in a row
+    // for the same stamp (a photo with two backing files that look alike) is recorded once.
+    public void add(int64 size, DateTime? mtime, G item) {
+        if (mtime == null)
+            return;
+
+        Stamp stamp = new Stamp(size, mtime.to_unix());
+        Gee.ArrayList<G>? list = items.get(stamp);
+        if (list == null) {
+            list = new Gee.ArrayList<G>();
+            items.set(stamp, list);
+        } else if (list.get(list.size - 1) == item) {
+            return;
+        }
+
+        list.add(item);
+    }
+
+    // Returns null if nothing matches.
+    public Gee.List<G>? get_matching(FileInfo info) {
+        return items.get(new Stamp(info.get_size(), info.get_modification_date_time().to_unix()));
+    }
+}
+
 public class MonitorableUpdates {
     public Monitorable monitorable;
     
@@ -158,6 +208,15 @@ public abstract class MediaMonitor : Object {
     public abstract DiscoveredFile notify_file_discovered(File file, FileInfo info,
         out Monitorable monitorable);
     
+    // Called around the loop that asks candidates_for_unknown_file() about every unknown file of
+    // the startup scan.  Between the two calls a monitor may answer from a snapshot taken in the
+    // first one, instead of searching its media for every file.
+    public virtual void notify_unknown_file_matching_started() {
+    }
+
+    public virtual void notify_unknown_file_matching_completed() {
+    }
+
     // Returns REPRESENTED if the file has been *definitively* associated with a Monitorable,
     // in which case the file will no longer be considered unknown.  Returns IGNORE if the file
     // is known in some other case and should not be considered unknown.  Returns UNKNOWN otherwise,
