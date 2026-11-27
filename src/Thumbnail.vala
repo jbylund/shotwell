@@ -157,12 +157,13 @@ public class Thumbnail : MediaSourceItem {
     }
     
     public static int64 exposure_time_ascending_comparator(void *a, void *b) {
-        var time_a = (((Thumbnail *) a)->media.get_exposure_time());
-        var time_b = (((Thumbnail *) b)->media.get_exposure_time());
+        int64 time_a = ((Thumbnail *) a)->media.get_exposure_time_unix();
+        int64 time_b = ((Thumbnail *) b)->media.get_exposure_time_unix();
 
-        var result = nullsafe_date_time_comperator(time_a, time_b);
+        if (time_a != time_b)
+            return (time_a < time_b) ? -1 : 1;
         
-        return (result != 0) ? result : filename_ascending_comparator(a, b);
+        return filename_ascending_comparator(a, b);
     }
     
     public static bool exposure_time_comparator_predicate(DataObject object, Alteration alteration) {
