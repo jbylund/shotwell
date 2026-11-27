@@ -399,16 +399,6 @@ public class DiscoveredCamera : Object {
         yield;
     }
 
-    private void throw_if_cancelled(Error? error) throws Error {
-        if (this.cancellable != null && this.cancellable.is_cancelled() && error == null) {
-            throw new IOError.CANCELLED("Camera operation cancelled by user");
-        }
-
-        if (error != null) {
-            throw error;
-        }
-    }
-
     public async GPhoto.Result init() {
         this.context = new GPhoto.Context();
 
@@ -659,112 +649,171 @@ public class DiscoveredCamera : Object {
         return result;
     }
 
-    public async PhotoMetadata load_metadata(string fulldir, string filename) throws Error {
-        PhotoMetadata metadata = null;
-        Bytes? camera_raw = null;
-        int64 reserved = 0;
-        Error? error = null;
-        yield run_op(() => {
-            try {
-                try {
-                    camera_raw = GPhoto.load_file_into_buffer(this.context, gcamera, fulldir,
-                        filename, GPhoto.CameraFileType.EXIF);
-                } catch (Error e) {
-                    camera_raw = null;
-                    metadata = GPhoto.get_fallback_metadata(gcamera, this.context, fulldir,
-                        filename);
-                    return;
-                }
-
-                if (camera_raw != null && camera_raw.length == 0)
-                    camera_raw = null;
-
-                // The bytes are given back to the budget below, when they have been parsed.
-                if (camera_raw != null) {
-                    fetch_budget.acquire(camera_raw.length);
-                    reserved = camera_raw.length;
-                }
-            } catch (Error e) {
-                camera_raw = null;
-                error = e;
-            }
-        });
-
-        if (camera_raw != null) {
-            // parsed off the camera thread
-            Bytes raw = camera_raw;
-            yield run_decode(() => {
-                try {
-                    PhotoMetadata loaded = new PhotoMetadata();
-                    loaded.read_from_app1_segment(raw);
-                    metadata = loaded;
-                } catch (Error e) {
-                    error = e;
-                }
-            });
-        }
-        fetch_budget.release(reserved);
-        throw_if_cancelled(error);
-
-        return metadata;
+    // What the preview pass needs from the camera for one item. Each part has its own error, so
+    // that one part failing does not hide the others (and the caller can warn about each).
+    public class LoadedItem : Object {
+        public PhotoMetadata? metadata = null;
+        public Error? metadata_error = null;
+        public Gdk.Pixbuf? preview = null;
+        public string? preview_md5 = null;
+        public Error? preview_error = null;
+        public PhotoMetadata? associated_metadata = null;
+        public Error? associated_error = null;
     }
 
-    public async Gdk.Pixbuf load_preview(string fulldir, string filename, out string md5) throws Error {
-        Gdk.Pixbuf preview = null;
-        string checksum = null;
-        Bytes? raw = null;
-        int64 reserved = 0;
-        Error? error = null;
-        yield run_op(() => {
+    // Runs on the camera worker. Fetches the EXIF data of a file. Gives the raw bytes (to be parsed
+    // by parse_exif() on another thread), or, when the camera can not give them, the metadata
+    // that was read from the file itself.
+    private void fetch_exif(string fulldir, string filename, out Bytes? raw, out PhotoMetadata? metadata,
+        out Error? error) {
+        raw = null;
+        metadata = null;
+        error = null;
+        try {
             try {
-                try {
-                    raw = GPhoto.load_file_into_buffer(this.context, gcamera, fulldir, filename,
-                        GPhoto.CameraFileType.PREVIEW);
-                } catch (Error e) {
-                    PhotoMetadata metadata = GPhoto.get_fallback_metadata(gcamera, this.context,
-                        fulldir, filename);
-                    if (metadata == null)
-                        return;
-                    if (metadata.get_preview_count() == 0)
-                        return;
-
-                    // Get the smallest preview from meta-data
-                    var fallback = metadata.get_preview(metadata.get_preview_count() - 1);
-                    raw = fallback.flatten();
-                }
-
-                // The bytes are given back to the budget below, when they have been decoded.
-                if (raw != null) {
-                    fetch_budget.acquire(raw.length);
-                    reserved = raw.length;
-                }
+                raw = GPhoto.load_file_into_buffer(this.context, gcamera, fulldir, filename,
+                    GPhoto.CameraFileType.EXIF);
             } catch (Error e) {
                 raw = null;
-                error = e;
+                metadata = GPhoto.get_fallback_metadata(gcamera, this.context, fulldir, filename);
+
+                return;
             }
+
+            if (raw != null && raw.length == 0)
+                raw = null;
+        } catch (Error e) {
+            raw = null;
+            error = e;
+        }
+    }
+
+    // Runs on the camera worker. Fetches the bytes of the preview of a file, or nothing if there is
+    // none.
+    private void fetch_preview(string fulldir, string filename, out Bytes? raw, out Error? error) {
+        raw = null;
+        error = null;
+        try {
+            try {
+                raw = GPhoto.load_file_into_buffer(this.context, gcamera, fulldir, filename,
+                    GPhoto.CameraFileType.PREVIEW);
+            } catch (Error e) {
+                PhotoMetadata metadata = GPhoto.get_fallback_metadata(gcamera, this.context,
+                    fulldir, filename);
+                if (metadata == null)
+                    return;
+                if (metadata.get_preview_count() == 0)
+                    return;
+
+                // Get the smallest preview from meta-data
+                var fallback = metadata.get_preview(metadata.get_preview_count() - 1);
+                raw = fallback.flatten();
+            }
+        } catch (Error e) {
+            raw = null;
+            error = e;
+        }
+    }
+
+    private static PhotoMetadata? parse_exif(Bytes raw, ref Error? error) {
+        try {
+            PhotoMetadata loaded = new PhotoMetadata();
+            loaded.read_from_app1_segment(raw);
+
+            return loaded;
+        } catch (Error e) {
+            error = e;
+
+            return null;
+        }
+    }
+
+    // Hashes and decodes a preview.
+    private static Gdk.Pixbuf? decode_preview(Bytes raw, out string? checksum, ref Error? error) {
+        checksum = null;
+        try {
+            checksum = Checksum.compute_for_bytes(ChecksumType.MD5, raw);
+
+            MemoryInputStream mins = new MemoryInputStream.from_bytes(raw);
+
+            return new Gdk.Pixbuf.from_stream_at_scale(mins, ImportPreview.MAX_SCALE,
+                ImportPreview.MAX_SCALE, true, null);
+        } catch (Error e) {
+            error = e;
+
+            return null;
+        }
+    }
+
+    // Reads the metadata and the preview of one item (and the metadata of the JPEG that goes with
+    // it, if there is one) with one job on the camera worker and one on the decode threads. The
+    // camera worker is the scarce resource, and every job costs a hand-off to the main thread.
+    //
+    // preview_* is the file that has the preview: the associated JPEG of a RAW file, if there is
+    // one. Pass null as the metadata file of a video, which has no EXIF data to read.
+    public async LoadedItem load_item(string? fulldir, string? filename, string preview_fulldir,
+        string preview_filename, string? associated_fulldir, string? associated_filename) {
+        var item = new LoadedItem();
+        Bytes? exif_raw = null;
+        Bytes? preview_raw = null;
+        Bytes? associated_raw = null;
+        int64 reserved = 0;
+
+        yield run_op(() => {
+            if (fulldir != null) {
+                fetch_exif(fulldir, filename, out exif_raw, out item.metadata, out item.metadata_error);
+            }
+
+            fetch_preview(preview_fulldir, preview_filename, out preview_raw, out item.preview_error);
+
+            if (associated_fulldir != null) {
+                fetch_exif(associated_fulldir, associated_filename, out associated_raw,
+                    out item.associated_metadata, out item.associated_error);
+            }
+
+            // The bytes are given back to the budget below, when they have been parsed. It is
+            // asked for once, for all of them: waiting for the budget while holding some of it
+            // would never end if nothing else is in flight.
+            if (exif_raw != null)
+                reserved += exif_raw.length;
+            if (preview_raw != null)
+                reserved += preview_raw.length;
+            if (associated_raw != null)
+                reserved += associated_raw.length;
+            if (reserved > 0)
+                fetch_budget.acquire(reserved);
         });
 
-        if (raw != null) {
-            // hashed and decoded off the camera thread
-            Bytes fetched = raw;
+        if (exif_raw != null || preview_raw != null || associated_raw != null) {
+            // parsed and decoded off the camera thread
+            Bytes? exif = exif_raw;
+            Bytes? preview = preview_raw;
+            Bytes? associated = associated_raw;
             yield run_decode(() => {
-                try {
-                    checksum = Checksum.compute_for_bytes(ChecksumType.MD5, fetched);
-
-                    MemoryInputStream mins = new MemoryInputStream.from_bytes(fetched);
-
-                    preview = new Gdk.Pixbuf.from_stream_at_scale(mins, ImportPreview.MAX_SCALE,
-                        ImportPreview.MAX_SCALE, true, null);
-                } catch (Error e) {
-                    error = e;
+                if (exif != null)
+                    item.metadata = parse_exif(exif, ref item.metadata_error);
+                if (preview != null) {
+                    string? checksum;
+                    item.preview = decode_preview(preview, out checksum, ref item.preview_error);
+                    item.preview_md5 = checksum;
                 }
+                if (associated != null)
+                    item.associated_metadata = parse_exif(associated, ref item.associated_error);
             });
         }
         fetch_budget.release(reserved);
-        throw_if_cancelled(error);
-        md5 = checksum;
 
-        return preview;
+        // As for any other job: when the refresh was cancelled the result can not be trusted.
+        if (is_cancelled()) {
+            if (fulldir != null && item.metadata_error == null)
+                item.metadata_error = new IOError.CANCELLED("Camera operation cancelled by user");
+            if (item.preview_error == null)
+                item.preview_error = new IOError.CANCELLED("Camera operation cancelled by user");
+            if (associated_fulldir != null && item.associated_error == null)
+                item.associated_error = new IOError.CANCELLED("Camera operation cancelled by user");
+        }
+
+        return item;
     }
 
     public async GPhoto.Result shutdown() {

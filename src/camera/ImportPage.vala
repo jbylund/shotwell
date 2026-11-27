@@ -1208,53 +1208,47 @@ public class ImportPage : CheckerboardPage {
         // GPhoto always loads null metadata for videos. So without the is-not-video guard,
         // this code segment just needlessly and annoyingly prints a warning message to the
         // console.
-
-        if (!VideoReader.is_supported_video_filename(filename)) {
-            try {
-                load.metadata = yield dcamera.load_metadata(fulldir, filename);
-            } catch (Error err) {
-                if (!(err is IOError.CANCELLED))
-                    warning("Unable to fetch metadata for %s/%s: %s", fulldir, filename, err.message);
-            }
-        }
+        bool is_video = VideoReader.is_supported_video_filename(filename);
         
         // XXX: Cannot use the metadata for the thumbnail preview because libgphoto2
         // 2.4.6 has a bug where the returned EXIF data object is complete garbage.  This
         // is fixed in 2.4.7, but need to work around this as best we can.  In particular,
         // this means the preview orientation will be wrong and the MD5 is not generated
         // if the EXIF did not parse properly (see above)
-        
-        try {
-            string preview_fulldir = fulldir;
-            string preview_filename = filename;
-            if (load.associated != null) {
-                preview_fulldir = load.associated.get_fulldir();
-                preview_filename = load.associated.get_filename();
-            }
+        string preview_fulldir = fulldir;
+        string preview_filename = filename;
+        if (load.associated != null) {
+            preview_fulldir = load.associated.get_fulldir();
+            preview_filename = load.associated.get_filename();
+        }
 
-            string? md5 = null;
-            load.preview = yield dcamera.load_preview(preview_fulldir, preview_filename, out md5);
-            load.preview_md5 = md5;
-        } catch (Error err) {
+        var item = yield dcamera.load_item(is_video ? null : fulldir, filename, preview_fulldir,
+            preview_filename, (load.associated != null) ? load.associated.get_fulldir() : null,
+            (load.associated != null) ? load.associated.get_filename() : null);
+
+        load.metadata = item.metadata;
+        if (item.metadata_error != null && !(item.metadata_error is IOError.CANCELLED))
+            warning("Unable to fetch metadata for %s/%s: %s", fulldir, filename, item.metadata_error.message);
+
+        load.preview = item.preview;
+        load.preview_md5 = item.preview_md5;
+        if (item.preview_error != null) {
             // only issue the warning message if we're not reading a video. GPhoto is capable
             // of reading video previews about 50% of the time, so we don't want to put a guard
             // around this entire code segment like we did with the metadata-read segment above,
             // however video previews being absent is so common that there's no reason
             // we should generate a warning for one.
-            if (!VideoReader.is_supported_video_filename(filename) && !(err is IOError.CANCELLED)) {
-                warning("Unable to fetch preview for %s/%s: %s", fulldir, filename, err.message);
-            }
+            if (!is_video && !(item.preview_error is IOError.CANCELLED))
+                warning("Unable to fetch preview for %s/%s: %s", fulldir, filename, item.preview_error.message);
         }
         
         if (load.associated != null) {
-            try {
-                load.associated_metadata = yield dcamera.load_metadata(load.associated.get_fulldir(),
-                    load.associated.get_filename());
+            if (item.associated_error == null) {
+                load.associated_metadata = item.associated_metadata;
                 load.associated_loaded = true;
-            } catch (Error err) {
-                if (!(err is IOError.CANCELLED))
-                    warning("Unable to fetch metadata for %s/%s: %s",  load.associated.get_fulldir(),
-                        load.associated.get_filename(), err.message);
+            } else if (!(item.associated_error is IOError.CANCELLED)) {
+                warning("Unable to fetch metadata for %s/%s: %s",  load.associated.get_fulldir(),
+                    load.associated.get_filename(), item.associated_error.message);
             }
         }
         
