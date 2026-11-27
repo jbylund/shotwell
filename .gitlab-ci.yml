@@ -20,6 +20,28 @@ variables:
     RUNTIME_REPO: "https://flathub.org/repo/flathub.flatpakrepo"
     APP_ID: "org.gnome.Shotwell"
     TARBALL_ARTIFACT_PATH: ""
+    # The cache is restored in before_script instead of by the template's
+    # pull-cache.sh, which extracts the archive relative to the working
+    # directory. The archive holds absolute paths
+    # (builds/GNOME/shotwell/.flatpak-builder/...), so the template would
+    # unpack it under $CI_PROJECT_DIR/builds/ instead of into the state
+    # directory. Drop this once the template extracts into the right place.
+    PULL_CACHE: "0"
+  before_script:
+    - |
+      cache_image="quay.io/gnome_infrastructure/gnome-nightly-cache:${ARCH}-org.gnome.shotwell-main"
+      state_dir="${FB_STATE_DIR:-${CI_PROJECT_DIR}/.flatpak-builder}"
+      rm -rf "${state_dir}"
+      # A missing or broken cache only makes the build slower, so do not fail.
+      # Strip the leading builds/<namespace>/shotwell/ from the archive paths.
+      if oras pull "${cache_image}" &&
+         tar --extract --xattrs --zstd --strip-components=3 --directory "${CI_PROJECT_DIR}" --file builder.tar.zstd; then
+        du -sh "${state_dir}"/*
+      else
+        echo "Could not restore the flatpak-builder cache, building without it"
+        rm -rf "${state_dir}"
+      fi
+      rm -f builder.tar.zstd
 
 flatpak@x86_64:
     extends: ['.flatpak@x86_64', '.vars-devel']
