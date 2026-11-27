@@ -738,8 +738,8 @@ public class BatchImport : Object {
         
         while(ready_files.size > 0 && import_workers.get_pending_job_count() < max_outstanding_import_jobs) {
             import_workers.enqueue(new PreparedFileImportJob(this, ready_files.remove_at(0),
-                import_roll.import_id, on_import_files_completed, cancellable,
-                on_import_files_cancelled));
+                import_roll.import_id, Config.Facade.get_instance().get_default_raw_developer(),
+                on_import_files_completed, cancellable, on_import_files_cancelled));
         }
     }
     
@@ -1073,8 +1073,13 @@ public class BatchImport : Object {
                         d = RawDeveloper.EMBEDDED;
                     
                     photo.set_default_raw_developer(d);
-                    photo.set_raw_developer(d, false, false);
+                    photo.set_raw_developer(d, false, false,
+                        job.ready.photo_import_params.raw_development);
                 }
+                
+                // set_raw_developer() made a different development than the import worker
+                if (job.ready.photo_import_params.raw_development != null)
+                    job.ready.photo_import_params.raw_development.delete_if_unused();
             }
             
             if (job.ready.batch_result.result != ImportResult.SUCCESS) {
@@ -1083,8 +1088,11 @@ public class BatchImport : Object {
                 report_failure(job.ready.batch_result);
                 file_import_complete();
             } else {
-                ready_thumbnails.add(new CompletedImportObject(source, job.ready.get_thumbnails(),
-                    job.ready.prepared_file.job, job.ready.batch_result));
+                CompletedImportObject completed = new CompletedImportObject(source,
+                    job.ready.get_thumbnails(), job.ready.prepared_file.job, job.ready.batch_result);
+                completed.regenerate_thumbnails = job.ready.photo_import_params != null
+                    && job.ready.photo_import_params.final_associated_file != null;
+                ready_thumbnails.add(completed);
             }
         }
         
@@ -1147,6 +1155,16 @@ public class BatchImport : Object {
         } else {
             manifest.imported.add(completed.source);
             manifest.add_result(completed.batch_result);
+            
+            // Attaching the camera JPEG to a RAW file made LibraryPhoto regenerate the thumbnails
+            // from it, but that can run before ThumbnailWriterJob writes the ones made from the
+            // RAW file, which then win. Ask again now that they are written, so that the thumbnails
+            // of a pair are always made from its development.
+            // TODO: remove when the import worker makes the thumbnails of a pair from the image
+            // that the photo shows, and nothing needs to be regenerated.
+            if (completed.regenerate_thumbnails) {
+                ((LibraryPhoto) completed.source).notify_altered(new Alteration("image", "developer"));
+            }
             
             display_imported_queue.add(completed);
         }
@@ -1936,6 +1954,10 @@ private class ReadyForImport {
             }
         }
         
+        // if the RAW file was developed by the import worker, delete the development
+        if (photo_import_params != null && photo_import_params.raw_development != null)
+            photo_import_params.raw_development.delete_if_unused();
+        
         batch_result = new BatchImportResult(prepared_file.job, prepared_file.file,         
             prepared_file.job.get_source_identifier(), prepared_file.job.get_dest_identifier(), 
             null, ImportResult.USER_ABORT);
@@ -1955,12 +1977,15 @@ private class PreparedFileImportJob : BackgroundJob {
     public BatchImportResult? failed = null;
     
     private ImportID import_id;
+    private RawDeveloper default_raw_developer;
     
     public PreparedFileImportJob(BatchImport owner, PreparedFile prepared_file, ImportID import_id,
-        CompletionCallback callback, Cancellable cancellable, CancellationCallback cancellation) {
+        RawDeveloper default_raw_developer, CompletionCallback callback, Cancellable cancellable,
+        CancellationCallback cancellation) {
         base (owner, callback, cancellable, cancellation);
         
         this.import_id = import_id;
+        this.default_raw_developer = default_raw_developer;
         not_ready = prepared_file;
         
         set_completion_priority(Priority.LOW);
@@ -2021,6 +2046,13 @@ private class PreparedFileImportJob : BackgroundJob {
                 prepared_file.thumbnail_md5, prepared_file.full_md5, new Thumbnails());
             
             result = Photo.prepare_for_import(photo_import_params);
+            
+            // Develop RAW files here, not on the main thread in on_import_files_completed()
+            if (result == ImportResult.SUCCESS
+                && photo_import_params.row.master.file_format == PhotoFileFormat.RAW) {
+                photo_import_params.raw_development = Photo.prepare_raw_development_for_import(
+                    final_file, final_associated_file != null, default_raw_developer);
+            }
         }
         
         if (result != ImportResult.SUCCESS && final_file != prepared_file.file) {
@@ -2050,6 +2082,9 @@ private class CompletedImportObject {
     public MediaSource source;
     public BatchImportJob original_job;
     public Gdk.Pixbuf user_preview;
+    
+    // The photo is a RAW+JPEG pair; see BatchImport.on_thumbnail_writer_completed()
+    public bool regenerate_thumbnails = false;
     
     public CompletedImportObject(MediaSource source, Thumbnails thumbnails,
         BatchImportJob original_job, BatchImportResult import_result) {
