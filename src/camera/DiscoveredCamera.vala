@@ -220,6 +220,11 @@ public class DiscoveredCamera : Object {
     private Workers? workers = null;
     private Cancellable? cancellable = null;
 
+    // The camera worker is one thread, because a camera can only be used by one at a time. What is
+    // done with the bytes it fetches (parsing the EXIF data, decoding the preview) needs no camera,
+    // so it is done by these threads and does not hold up the next fetch.
+    private static Workers decode_workers = new Workers(Workers.thread_per_cpu_minus_one(), false);
+
     public DiscoveredCamera(string name, string port, GPhoto.PortInfo port_info, GPhoto.CameraAbilities camera_abilities) throws GPhotoError {
         this.port = port;
         this.camera_name = name;
@@ -377,6 +382,13 @@ public class DiscoveredCamera : Object {
     private async void run_op(CameraOp op, bool use_cancellable = true) {
         Cancellable? job_cancellable = use_cancellable ? this.cancellable : null;
         workers.enqueue(new CameraOpJob(this, context, job_cancellable, run_op.callback, op));
+        yield;
+    }
+
+    // Runs work on bytes that the camera worker has already fetched on the decode pool, then
+    // resumes the caller. It does not use the camera.
+    private async void run_decode(CameraOp op) {
+        decode_workers.enqueue(new CameraOpJob(this, null, this.cancellable, run_decode.callback, op));
         yield;
     }
 
@@ -642,31 +654,41 @@ public class DiscoveredCamera : Object {
 
     public async PhotoMetadata load_metadata(string fulldir, string filename) throws Error {
         PhotoMetadata metadata = null;
+        Bytes? camera_raw = null;
         Error? error = null;
         yield run_op(() => {
             try {
-                Bytes? camera_raw = null;
                 try {
                     camera_raw = GPhoto.load_file_into_buffer(this.context, gcamera, fulldir,
                         filename, GPhoto.CameraFileType.EXIF);
                 } catch (Error e) {
+                    camera_raw = null;
                     metadata = GPhoto.get_fallback_metadata(gcamera, this.context, fulldir,
                         filename);
                     return;
                 }
 
-                if (camera_raw == null || camera_raw.length == 0) {
-                    metadata = null;
-                    return;
-                }
-
-                PhotoMetadata loaded = new PhotoMetadata();
-                loaded.read_from_app1_segment(camera_raw);
-                metadata = loaded;
+                if (camera_raw != null && camera_raw.length == 0)
+                    camera_raw = null;
             } catch (Error e) {
+                camera_raw = null;
                 error = e;
             }
         });
+
+        if (camera_raw != null) {
+            // parsed off the camera thread
+            Bytes raw = camera_raw;
+            yield run_decode(() => {
+                try {
+                    PhotoMetadata loaded = new PhotoMetadata();
+                    loaded.read_from_app1_segment(raw);
+                    metadata = loaded;
+                } catch (Error e) {
+                    error = e;
+                }
+            });
+        }
         throw_if_cancelled(error);
 
         return metadata;
@@ -675,11 +697,10 @@ public class DiscoveredCamera : Object {
     public async Gdk.Pixbuf load_preview(string fulldir, string filename, out string md5) throws Error {
         Gdk.Pixbuf preview = null;
         string checksum = null;
+        Bytes? raw = null;
         Error? error = null;
         yield run_op(() => {
             try {
-                Bytes? raw = null;
-
                 try {
                     raw = GPhoto.load_file_into_buffer(this.context, gcamera, fulldir, filename,
                         GPhoto.CameraFileType.PREVIEW);
@@ -695,17 +716,28 @@ public class DiscoveredCamera : Object {
                     var fallback = metadata.get_preview(metadata.get_preview_count() - 1);
                     raw = fallback.flatten();
                 }
-
-                checksum = Checksum.compute_for_bytes(ChecksumType.MD5, raw);
-
-                MemoryInputStream mins = new MemoryInputStream.from_bytes(raw);
-
-                preview = new Gdk.Pixbuf.from_stream_at_scale(mins, ImportPreview.MAX_SCALE,
-                    ImportPreview.MAX_SCALE, true, null);
             } catch (Error e) {
+                raw = null;
                 error = e;
             }
         });
+
+        if (raw != null) {
+            // hashed and decoded off the camera thread
+            Bytes fetched = raw;
+            yield run_decode(() => {
+                try {
+                    checksum = Checksum.compute_for_bytes(ChecksumType.MD5, fetched);
+
+                    MemoryInputStream mins = new MemoryInputStream.from_bytes(fetched);
+
+                    preview = new Gdk.Pixbuf.from_stream_at_scale(mins, ImportPreview.MAX_SCALE,
+                        ImportPreview.MAX_SCALE, true, null);
+                } catch (Error e) {
+                    error = e;
+                }
+            });
+        }
         throw_if_cancelled(error);
         md5 = checksum;
 
