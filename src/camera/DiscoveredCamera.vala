@@ -225,6 +225,13 @@ public class DiscoveredCamera : Object {
     // so it is done by these threads and does not hold up the next fetch.
     private static Workers decode_workers = new Workers(Workers.thread_per_cpu_minus_one(), false);
 
+    // The camera worker can fetch faster than the pool can decode. The bytes that it has fetched and
+    // that are still waiting to be parsed or decoded are limited to this, so that a slow decode
+    // (or a card of large previews) does not fill the memory. When the limit is reached, the
+    // camera worker waits after a fetch until the pool has caught up.
+    private const int64 FETCH_BYTE_BUDGET = 64 * 1024 * 1024;
+    private static ByteBudget fetch_budget = new ByteBudget(FETCH_BYTE_BUDGET);
+
     public DiscoveredCamera(string name, string port, GPhoto.PortInfo port_info, GPhoto.CameraAbilities camera_abilities) throws GPhotoError {
         this.port = port;
         this.camera_name = name;
@@ -655,6 +662,7 @@ public class DiscoveredCamera : Object {
     public async PhotoMetadata load_metadata(string fulldir, string filename) throws Error {
         PhotoMetadata metadata = null;
         Bytes? camera_raw = null;
+        int64 reserved = 0;
         Error? error = null;
         yield run_op(() => {
             try {
@@ -670,6 +678,12 @@ public class DiscoveredCamera : Object {
 
                 if (camera_raw != null && camera_raw.length == 0)
                     camera_raw = null;
+
+                // The bytes are given back to the budget below, when they have been parsed.
+                if (camera_raw != null) {
+                    fetch_budget.acquire(camera_raw.length);
+                    reserved = camera_raw.length;
+                }
             } catch (Error e) {
                 camera_raw = null;
                 error = e;
@@ -689,6 +703,7 @@ public class DiscoveredCamera : Object {
                 }
             });
         }
+        fetch_budget.release(reserved);
         throw_if_cancelled(error);
 
         return metadata;
@@ -698,6 +713,7 @@ public class DiscoveredCamera : Object {
         Gdk.Pixbuf preview = null;
         string checksum = null;
         Bytes? raw = null;
+        int64 reserved = 0;
         Error? error = null;
         yield run_op(() => {
             try {
@@ -715,6 +731,12 @@ public class DiscoveredCamera : Object {
                     // Get the smallest preview from meta-data
                     var fallback = metadata.get_preview(metadata.get_preview_count() - 1);
                     raw = fallback.flatten();
+                }
+
+                // The bytes are given back to the budget below, when they have been decoded.
+                if (raw != null) {
+                    fetch_budget.acquire(raw.length);
+                    reserved = raw.length;
                 }
             } catch (Error e) {
                 raw = null;
@@ -738,6 +760,7 @@ public class DiscoveredCamera : Object {
                 }
             });
         }
+        fetch_budget.release(reserved);
         throw_if_cancelled(error);
         md5 = checksum;
 
