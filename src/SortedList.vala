@@ -213,6 +213,20 @@ public class SortedList<G> : Object, Gee.Traversable<G>, Gee.Iterable<G>, Gee.Co
         return list.to_array();
     }
     
+    // Reverses the order of the items. A list sorted by a comparator whose result is negated for
+    // the opposite direction is then sorted by that comparator, without comparing anything.
+    public void reverse() {
+        for (int low = 0, high = list.size - 1; low < high; low++, high--) {
+            G low_item = list.get(low);
+            list.set(low, list.get(high));
+            list.set(high, low_item);
+        }
+        
+#if VERIFY_SORTED_LIST
+        assert(is_sorted());
+#endif
+    }
+    
     public void resort(Comparator new_cmp) {
         cmp = new_cmp;
         
