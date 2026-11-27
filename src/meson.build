@@ -60,6 +60,14 @@ subdir('publishing')
 subdir('video-support')
 subdir('widgets')
 
+# Developer-only import benchmark (see build-aux/bench/README.md)
+benchmark_sources = []
+benchmark_vala_args = []
+if get_option('benchmark')
+    benchmark_sources = ['BenchCounters.vala', 'BenchmarkImport.vala']
+    benchmark_vala_args = ['--define=BENCHMARK']
+endif
+
 executable(
     'shotwell',
     [
@@ -270,7 +278,7 @@ executable(
         'video-support/Video.vala',
         'video-support/VideoSourceCollection.vala',
         'video-support/VideoMetadata.vala'
-    ] + shotwell_resources + face_sources,
+    ] + shotwell_resources + face_sources + benchmark_sources,
     include_directories : vapi_incdir,
     dependencies : [
         shotwell_deps,
@@ -286,7 +294,7 @@ executable(
         '--gresources',
         join_paths(meson.project_source_root(), 'data',
         'org.gnome.Shotwell.gresource.xml')
-    ],
+    ] + benchmark_vala_args,
     link_with: [
         sw_graphics_processor,
         threads_lib,

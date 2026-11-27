@@ -777,6 +777,9 @@ public class BatchImport : Object {
         foreach (PreparedFile prepared_file in list) {
             Idle.add(process_prepared_files.callback);
             yield;
+#if BENCHMARK
+            var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.MAIN_PROCESS_PREPARED_FILE); bench_scope.start();
+#endif
             
             BatchImportResult import_result = null;
             
@@ -1015,6 +1018,9 @@ public class BatchImport : Object {
     //
     
     private void on_import_files_completed(BackgroundJob j) {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.MAIN_IMPORT_FILES_COMPLETED); bench_scope.start();
+#endif
         assert(!completed);
         
         PreparedFileImportJob job = (PreparedFileImportJob) j;
@@ -1126,6 +1132,9 @@ public class BatchImport : Object {
     //
     
     private void on_thumbnail_writer_completed(BackgroundJob j) {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.MAIN_THUMBNAIL_WRITER_COMPLETED); bench_scope.start();
+#endif
         assert(!completed);
         
         ThumbnailWriterJob job = (ThumbnailWriterJob) j;
@@ -1178,6 +1187,9 @@ public class BatchImport : Object {
     //
     
     private void flush_ready_sources() {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.MAIN_FLUSH_READY_SOURCES); bench_scope.start();
+#endif
         if (ready_sources.size == 0)
             return;
         
@@ -1232,6 +1244,9 @@ public class BatchImport : Object {
     // This is called throughout the import process to notify watchers of imported photos in such
     // a way that the GTK event queue gets a chance to operate.
     private bool display_imported_timer() {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.MAIN_DISPLAY_IMPORTED_TIMER); bench_scope.start();
+#endif
         if (display_imported_queue.size == 0)
             return !completed;
         
@@ -1729,6 +1744,9 @@ private class PrepareFilesJob : BackgroundImportJob {
     }
     
     public override void execute() {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.WORKER_PREPARE_FILES_JOB); bench_scope.start();
+#endif
         Timer timer = new Timer();
         
         Gee.ArrayList<PreparedFile> list = new Gee.ArrayList<PreparedFile>();
@@ -1816,6 +1834,9 @@ private class PrepareFilesJob : BackgroundImportJob {
     
     private ImportResult prepare_file(BatchImportJob job, File file, File? associated_file, 
         bool copy_to_library, out PreparedFile prepared_file) {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.WORKER_PREPARE_FILE); bench_scope.start();
+#endif
         prepared_file = null;
 
         bool is_video = VideoReader.is_supported_video_file(file);
@@ -1967,6 +1988,9 @@ private class PreparedFileImportJob : BackgroundJob {
     }
     
     public override void execute() {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.WORKER_PREPARED_FILE_IMPORT); bench_scope.start();
+#endif
         PreparedFile prepared_file = not_ready;
         not_ready = null;
         
@@ -2075,6 +2099,9 @@ private class ThumbnailWriterJob : BackgroundImportJob {
     }
     
     public override void execute() {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.WORKER_THUMBNAIL_WRITER); bench_scope.start();
+#endif
         try {
             ThumbnailCache.import_thumbnails(completed_import_source.source,
                 completed_import_source.thumbnails, true);

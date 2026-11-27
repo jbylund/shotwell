@@ -191,14 +191,23 @@ public class Processor {
     }
     
     public void open_buffer(uint8[] buffer) throws Exception {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.LIBRAW_OPEN); bench_scope.start();
+#endif
         throw_exception("open_buffer", proc.open_buffer(buffer));
     }
     
     public void open_file(string filename) throws Exception {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.LIBRAW_OPEN); bench_scope.start();
+#endif
         throw_exception("open_file", proc.open_file(filename));
     }
     
     public void process() throws Exception {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.LIBRAW_PROCESS); bench_scope.start();
+#endif
         throw_exception("process", proc.process());
     }
     
@@ -215,10 +224,16 @@ public class Processor {
     }
     
     public void unpack() throws Exception {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.LIBRAW_UNPACK); bench_scope.start();
+#endif
         throw_exception("unpack", proc.unpack());
     }
     
     public void unpack_thumb() throws Exception {
+#if BENCHMARK
+        var bench_scope = new BenchCounters.Scope(BenchCounters.Probe.LIBRAW_UNPACK_THUMB); bench_scope.start();
+#endif
         throw_exception("unpack_thumb", proc.unpack_thumb());
     }
     
