@@ -213,6 +213,7 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
     // need to know it. This is initially set in the constructor, and updated whenever
     // the exposure time is set (please see set_exposure_time() for details).
     private DateTime? cached_exposure_time;
+    private int64 cached_exposure_unix = int64.MIN;
     
     public enum Exception {
         NONE            = 0,
@@ -466,6 +467,7 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
         }
 
         cached_exposure_time = this.row.exposure_time;
+        cached_exposure_unix = (cached_exposure_time != null) ? cached_exposure_time.to_unix() : int64.MIN;
     }
     
     protected static void init_photo() {
@@ -2364,6 +2366,10 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
     public override DateTime? get_exposure_time() {
         return cached_exposure_time;
     }
+
+    public override int64 get_exposure_time_unix() {
+        return cached_exposure_unix;
+    }
    
     public override string get_basename() {
         lock (row) {
@@ -2522,6 +2528,7 @@ public abstract class Photo : PhotoSource, Dateable, Positionable {
             if (committed) {
                 row.exposure_time = time;
                 cached_exposure_time = time;
+                cached_exposure_unix = time.to_unix();
             }
         }
         
