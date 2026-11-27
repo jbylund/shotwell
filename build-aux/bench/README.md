@@ -48,6 +48,15 @@ run; otherwise it is the default, `CAMERA`.
 `run.sh` runs the GTK window under `weston --backend=headless`; `DISPLAY_BACKEND=xvfb` in the
 container environment switches to `xvfb-run` and the X11 backend.
 
+A change that is based on master does not contain the `-Dbenchmark` code. `build.sh --overlay
+REF NAME SOURCE` builds SOURCE merged with REF, the branch that has the benchmark code, without
+making a branch or a commit (`git merge-tree`); a merge conflict stops the build. The build
+records both commits in `.bench-ref`.
+
+```sh
+build-aux/bench/build.sh --overlay bench-branch fix my-change
+```
+
 `build.sh --test` also runs `meson test`; `build.sh --no-benchmark` configures with
 `-Dbenchmark=false`. Builds are kept in the docker volume `shotwell-bench-builds` and are
 incremental. The image is built on first use; `build.sh --rebuild-image` rebuilds it.
@@ -180,7 +189,7 @@ stay comparable.
 | File | Runs on | Purpose |
 |---|---|---|
 | `Dockerfile` | | Ubuntu 26.04 with the build dependencies, vala 0.56.19, gexiv2 0.16.2 and glycin 2.2.6 |
-| `build.sh` | host | builds a ref or a worktree with `-Dbenchmark=true` |
+| `build.sh` | host | builds a ref or a worktree with `-Dbenchmark=true`, optionally merged with the benchmark branch |
 | `build-in-container.sh` | container | meson setup, ninja, optionally meson test |
 | `make-corpus.sh`, `corpus.py` | host, container | downloads the samples and makes a corpus set |
 | `run.sh` | host | one run in a mode, with throttle and sandbox options |
