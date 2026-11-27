@@ -18,7 +18,7 @@ public class MediaSourceItem : CheckerboardItem {
         this.natural_collation_key = null;
     }
     
-    public string get_natural_collation_key() {
+    public unowned string get_natural_collation_key() {
         if (this.natural_collation_key == null) {
             this.natural_collation_key = NaturalCollate.collate_key(this.get_title());
         }
