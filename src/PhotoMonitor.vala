@@ -227,7 +227,7 @@ private class PhotoMonitor : MediaMonitor {
     private Gee.ArrayList<LibraryPhoto> matched_developments = new Gee.ArrayList<LibraryPhoto>();
 
     // Set only while the startup scan matches its unknown files; null at any other time.
-    private FileStampIndex<LibraryPhoto>? masters_by_stamp = null;
+    private MoveIndex? masters_for_moves = null;
     private FileStampIndex<LibraryPhoto>? editables_by_stamp = null;
     private FileStampIndex<LibraryPhoto>? developments_by_stamp = null;
     private Gee.HashMap<LibraryPhoto, ReimportMasterJob> master_reimport_pending = new Gee.HashMap<
@@ -311,55 +311,66 @@ private class PhotoMonitor : MediaMonitor {
     }
     
     public override void notify_unknown_file_matching_started() {
-        masters_by_stamp = new FileStampIndex<LibraryPhoto>();
+        masters_for_moves = new MoveIndex();
         editables_by_stamp = new FileStampIndex<LibraryPhoto>();
         developments_by_stamp = new FileStampIndex<LibraryPhoto>();
-
+        
         // the same photos fetch_by_matching_backing() looks at: the ones in the collection, and
         // the offline ones
         foreach (DataObject object in LibraryPhoto.global.get_all())
-            add_to_stamp_indexes((LibraryPhoto) object);
-
+            add_to_snapshot((LibraryPhoto) object);
+        
         foreach (MediaSource media in LibraryPhoto.global.get_offline_bin_contents())
-            add_to_stamp_indexes((LibraryPhoto) media);
+            add_to_snapshot((LibraryPhoto) media);
     }
-
+    
     public override void notify_unknown_file_matching_completed() {
-        masters_by_stamp = null;
+        masters_for_moves = null;
         editables_by_stamp = null;
         developments_by_stamp = null;
     }
-
-    private void add_to_stamp_indexes(LibraryPhoto photo) {
+    
+    private void add_to_snapshot(LibraryPhoto photo) {
         BackingPhotoRow master = photo.get_master_photo_row();
-        masters_by_stamp.add(master.filesize, master.timestamp, photo);
-
+        masters_for_moves.add(master.filesize, master.timestamp, photo.get_master_md5(), photo);
+        
         BackingPhotoRow? editable = photo.get_editable_photo_row();
         if (editable != null)
             editables_by_stamp.add(editable.filesize, editable.timestamp, photo);
-
+        
         Gee.Collection<BackingPhotoRow>? developments = photo.get_raw_development_photo_rows();
         if (developments != null) {
             foreach (BackingPhotoRow row in developments)
                 developments_by_stamp.add(row.filesize, row.timestamp, photo);
         }
     }
-
-    // Same result as LibraryPhoto.global.fetch_by_matching_backing(), from the snapshot.
-    private void fetch_by_stamp(FileInfo info, Gee.Collection<LibraryPhoto> matches_master) {
-        Gee.List<LibraryPhoto>? masters = masters_by_stamp.get_matching(info);
-        if (masters != null)
-            matches_master.add_all(masters);
-
+    
+    // Same result as candidates_for_unknown_file(), from the snapshot: the masters that might be
+    // the file are only counted, and the hash of the file decides between them.
+    public override MediaMonitor.DiscoveredFile move_candidates_for_unknown_file(File file,
+        FileInfo info, out MoveCandidates? candidates) {
+        if (masters_for_moves == null)
+            return base.move_candidates_for_unknown_file(file, info, out candidates);
+        
+        candidates = masters_for_moves.get_candidates(info);
+        if (candidates != null)
+            return MediaMonitor.DiscoveredFile.UNKNOWN;
+        
+        // reset with each call
+        matched_editables.clear();
+        matched_developments.clear();
+        
         Gee.List<LibraryPhoto>? editables = editables_by_stamp.get_matching(info);
         if (editables != null)
             matched_editables.add_all(editables);
-
+        
         Gee.List<LibraryPhoto>? developments = developments_by_stamp.get_matching(info);
         if (developments != null)
             matched_developments.add_all(developments);
+        
+        return relink_editables_and_developments(file);
     }
-
+    
     public override Gee.Collection<Monitorable>? candidates_for_unknown_file(File file, FileInfo info,
         out MediaMonitor.DiscoveredFile result) {
         // reset with each call
@@ -367,23 +378,24 @@ private class PhotoMonitor : MediaMonitor {
         matched_developments.clear();
         
         Gee.Collection<LibraryPhoto> matched_masters = new Gee.ArrayList<LibraryPhoto>();
-        if (masters_by_stamp != null) {
-            fetch_by_stamp(info, matched_masters);
-        } else {
-            LibraryPhoto.global.fetch_by_matching_backing(info, matched_masters, matched_editables,
-                matched_developments);
-        }
+        LibraryPhoto.global.fetch_by_matching_backing(info, matched_masters, matched_editables, 
+            matched_developments);
         if (matched_masters.size > 0) {
             result = MediaMonitor.DiscoveredFile.UNKNOWN;
             
             return matched_masters;
         }
         
-        if (matched_editables.size == 0 && matched_developments.size == 0) {
-            result = MediaMonitor.DiscoveredFile.UNKNOWN;
-            
-            return null;
-        }
+        result = relink_editables_and_developments(file);
+        
+        return null;
+    }
+    
+    // For when no master matched the unknown file: gives it to the editable or raw development
+    // that matches it, if any.
+    private MediaMonitor.DiscoveredFile relink_editables_and_developments(File file) {
+        if (matched_editables.size == 0 && matched_developments.size == 0)
+            return MediaMonitor.DiscoveredFile.UNKNOWN;
         
         // for editable files and raw developments, trust file characteristics alone
         if (matched_editables.size > 0) {
@@ -410,9 +422,7 @@ private class PhotoMonitor : MediaMonitor {
             update_raw_development_file(match_raw, file);
         }
         
-        result = MediaMonitor.DiscoveredFile.IGNORE;
-        
-        return null;
+        return MediaMonitor.DiscoveredFile.IGNORE;
     }
     
     public override File[]? get_auxilliary_backing_files(Monitorable monitorable) {

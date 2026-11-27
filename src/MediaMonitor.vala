@@ -2,39 +2,44 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
-// Finds the items whose backing file has the same size and modification time as a FileInfo, in
-// one hash lookup.  The modification time is kept as whole seconds, which is what the database
-// stores, so no DateTime is needed to compare it.  Fill it once, then only look things up: it
-// is a snapshot, and does not follow later changes to the items.
-public class FileStampIndex<G> {
-    private class Stamp {
-        public int64 size;
-        public int64 mtime;
-
-        public Stamp(int64 size, int64 mtime) {
-            this.size = size;
-            this.mtime = mtime;
-        }
-
-        public static uint hash(Stamp stamp) {
-            return (uint) (stamp.size ^ (stamp.size >> 32) ^ (stamp.mtime * 0x9E3779B1));
-        }
-
-        public static bool equal(Stamp a, Stamp b) {
-            return a.size == b.size && a.mtime == b.mtime;
-        }
+// A file's size and modification time.  The time is kept as whole seconds, which is what the
+// database stores, so no DateTime is needed to compare it.
+public class FileStamp {
+    public int64 size;
+    public int64 mtime;
+    
+    public FileStamp(int64 size, int64 mtime) {
+        this.size = size;
+        this.mtime = mtime;
     }
+    
+    public FileStamp.from_info(FileInfo info) {
+        this(info.get_size(), info.get_modification_date_time().to_unix());
+    }
+    
+    public static uint hash(FileStamp stamp) {
+        return (uint) (stamp.size ^ (stamp.size >> 32) ^ (stamp.mtime * 0x9E3779B1));
+    }
+    
+    public static bool equal(FileStamp a, FileStamp b) {
+        return a.size == b.size && a.mtime == b.mtime;
+    }
+}
 
-    private Gee.HashMap<Stamp, Gee.ArrayList<G>> items =
-        new Gee.HashMap<Stamp, Gee.ArrayList<G>>(Stamp.hash, Stamp.equal);
-
+// Finds the items whose backing file has the same size and modification time as a FileInfo, in
+// one hash lookup.  Fill it once, then only look things up: it is a snapshot, and does not follow
+// later changes to the items.
+public class FileStampIndex<G> {
+    private Gee.HashMap<FileStamp, Gee.ArrayList<G>> items =
+        new Gee.HashMap<FileStamp, Gee.ArrayList<G>>(FileStamp.hash, FileStamp.equal);
+    
     // An item without a modification time can never match.  Adding the same item twice in a row
     // for the same stamp (a photo with two backing files that look alike) is recorded once.
     public void add(int64 size, DateTime? mtime, G item) {
         if (mtime == null)
             return;
-
-        Stamp stamp = new Stamp(size, mtime.to_unix());
+        
+        FileStamp stamp = new FileStamp(size, mtime.to_unix());
         Gee.ArrayList<G>? list = items.get(stamp);
         if (list == null) {
             list = new Gee.ArrayList<G>();
@@ -42,13 +47,159 @@ public class FileStampIndex<G> {
         } else if (list.get(list.size - 1) == item) {
             return;
         }
-
+        
         list.add(item);
     }
-
+    
     // Returns null if nothing matches.
     public Gee.List<G>? get_matching(FileInfo info) {
-        return items.get(new Stamp(info.get_size(), info.get_modification_date_time().to_unix()));
+        return items.get(new FileStamp.from_info(info));
+    }
+}
+
+// The media that an unknown file found by the startup scan might be a moved copy of.  The scan
+// only knows the file's size and modification time; the hash is read later, in a background job,
+// and then narrows the candidates down.  Implementations must be safe to use from that job.
+public abstract class MoveCandidates : Object {
+    // How many media match the file's size and modification time.
+    public abstract int get_count();
+    
+    // The only candidate, if get_count() is 1.
+    public abstract Monitorable? get_single();
+    
+    // The candidates whose hash is md5.  Null if there are none.
+    public abstract Gee.Collection<Monitorable>? with_md5(string md5);
+}
+
+// Candidates that are already known, narrowed by comparing each one's hash.
+public class ListMoveCandidates : MoveCandidates {
+    private Gee.Collection<Monitorable> candidates;
+    
+    public ListMoveCandidates(Gee.Collection<Monitorable> candidates) {
+        this.candidates = candidates;
+    }
+    
+    public override int get_count() {
+        return candidates.size;
+    }
+    
+    public override Monitorable? get_single() {
+        foreach (Monitorable candidate in candidates)
+            return candidate;
+        
+        return null;
+    }
+    
+    public override Gee.Collection<Monitorable>? with_md5(string md5) {
+        Gee.ArrayList<Monitorable> matching = new Gee.ArrayList<Monitorable>();
+        foreach (Monitorable candidate in candidates) {
+            if (candidate.get_master_md5() == md5)
+                matching.add(candidate);
+        }
+        
+        return matching;
+    }
+}
+
+// Finds the media whose master has a given size, modification time and hash.  The size and time
+// are known when the startup scan finds a file, the hash only after it was read, so both are
+// looked up separately: a file whose size and time match nothing is never read, and one that
+// does is matched by its hash in one more lookup, however many media share its size and time.
+// Fill it once, then only look things up: it is a snapshot, and does not follow later changes to
+// the media.
+public class MoveIndex : Object {
+    private class StampEntry {
+        public Monitorable first;
+        public int count = 0;
+        
+        public StampEntry(Monitorable first) {
+            this.first = first;
+        }
+    }
+    
+    private class Key {
+        public int64 size;
+        public int64 mtime;
+        public string md5;
+        
+        public Key(int64 size, int64 mtime, string md5) {
+            this.size = size;
+            this.mtime = mtime;
+            this.md5 = md5;
+        }
+        
+        public static uint hash(Key key) {
+            return (uint) (key.size ^ (key.size >> 32) ^ (key.mtime * 0x9E3779B1)) ^ str_hash(key.md5);
+        }
+        
+        public static bool equal(Key a, Key b) {
+            return a.size == b.size && a.mtime == b.mtime && a.md5 == b.md5;
+        }
+    }
+    
+    private class Candidates : MoveCandidates {
+        private MoveIndex index;
+        private StampEntry entry;
+        private FileStamp stamp;
+        
+        public Candidates(MoveIndex index, StampEntry entry, FileStamp stamp) {
+            this.index = index;
+            this.entry = entry;
+            this.stamp = stamp;
+        }
+        
+        public override int get_count() {
+            return entry.count;
+        }
+        
+        public override Monitorable? get_single() {
+            return entry.first;
+        }
+        
+        public override Gee.Collection<Monitorable>? with_md5(string md5) {
+            return index.items.get(new Key(stamp.size, stamp.mtime, md5));
+        }
+    }
+    
+    private Gee.HashMap<FileStamp, StampEntry> stamps =
+        new Gee.HashMap<FileStamp, StampEntry>(FileStamp.hash, FileStamp.equal);
+    private Gee.HashMap<Key, Gee.ArrayList<Monitorable>> items =
+        new Gee.HashMap<Key, Gee.ArrayList<Monitorable>>(Key.hash, Key.equal);
+    
+    // An item without a modification time can never match.  One without a hash counts as a
+    // candidate for its size and time, but cannot be found by hash.
+    public void add(int64 size, DateTime? mtime, string? md5, Monitorable item) {
+        if (mtime == null)
+            return;
+        
+        int64 seconds = mtime.to_unix();
+        FileStamp stamp = new FileStamp(size, seconds);
+        StampEntry? entry = stamps.get(stamp);
+        if (entry == null) {
+            entry = new StampEntry(item);
+            stamps.set(stamp, entry);
+        }
+        entry.count++;
+        
+        if (md5 == null)
+            return;
+        
+        Key key = new Key(size, seconds, md5);
+        Gee.ArrayList<Monitorable>? list = items.get(key);
+        if (list == null) {
+            list = new Gee.ArrayList<Monitorable>();
+            items.set(key, list);
+        }
+        
+        list.add(item);
+    }
+    
+    // Returns null if no item has this file's size and modification time.
+    public MoveCandidates? get_candidates(FileInfo info) {
+        FileStamp stamp = new FileStamp.from_info(info);
+        StampEntry? entry = stamps.get(stamp);
+        
+        return (entry != null) ? new Candidates(this, entry, stamp) : null;
     }
 }
 
@@ -208,9 +359,9 @@ public abstract class MediaMonitor : Object {
     public abstract DiscoveredFile notify_file_discovered(File file, FileInfo info,
         out Monitorable monitorable);
     
-    // Called around the loop that asks candidates_for_unknown_file() about every unknown file of
-    // the startup scan.  Between the two calls a monitor may answer from a snapshot taken in the
-    // first one, instead of searching its media for every file.
+    // Called around the loop that asks move_candidates_for_unknown_file() about every unknown file
+    // of the startup scan.  Between the two calls a monitor may answer from a snapshot taken in
+    // the first one, instead of searching its media for every file.
     public virtual void notify_unknown_file_matching_started() {
     }
 
@@ -225,6 +376,17 @@ public abstract class MediaMonitor : Object {
     // NOTE: This method may be called after the startup scan as well.
     public abstract Gee.Collection<Monitorable>? candidates_for_unknown_file(File file, FileInfo info,
         out DiscoveredFile result);
+    
+    // Like candidates_for_unknown_file(), for the startup scan: the candidates are returned
+    // without their hash being compared, so that the file is only read if there are any.
+    public virtual DiscoveredFile move_candidates_for_unknown_file(File file, FileInfo info,
+        out MoveCandidates? candidates) {
+        DiscoveredFile result;
+        Gee.Collection<Monitorable>? matched = candidates_for_unknown_file(file, info, out result);
+        candidates = (matched != null && matched.size > 0) ? new ListMoveCandidates(matched) : null;
+        
+        return result;
+    }
     
     public virtual File[]? get_auxilliary_backing_files(Monitorable monitorable) {
         return null;

@@ -100,12 +100,12 @@ public class LibraryMonitor : DirectoryMonitor {
     
     private class FindMoveJob : BackgroundJob {
         public File file;
-        public Gee.Collection<Monitorable> candidates;
+        public Gee.Collection<MoveCandidates> candidates;
         public Monitorable? match = null;
         public Gee.ArrayList<Monitorable>? losers = null;
         public Error? err = null;
         
-        public FindMoveJob(LibraryMonitor owner, File file, Gee.Collection<Monitorable> candidates) {
+        public FindMoveJob(LibraryMonitor owner, File file, Gee.Collection<MoveCandidates> candidates) {
             base (owner, owner.on_find_move_completed, owner.cancellable, owner.on_find_move_cancelled);
             
             this.file = file;
@@ -117,16 +117,19 @@ public class LibraryMonitor : DirectoryMonitor {
         public override void execute() {
             // With a single candidate, check the disk first: a stat is much cheaper than reading
             // the file, and if the candidate's file is still in place this one is just a copy.
-            if (candidates.size == 1) {
-                foreach (Monitorable candidate in candidates) {
-                    if (candidate.get_master_file().query_exists())
-                        return;
-                }
+            int count = 0;
+            Monitorable? single = null;
+            foreach (MoveCandidates group in candidates) {
+                count += group.get_count();
+                if (group.get_count() == 1)
+                    single = group.get_single();
             }
-
-            // Many candidates can share a size and a modification time, so read the file once and
-            // compare its hash with all of them in memory.  Only the ones that match are then
-            // checked on disk, instead of every candidate.
+            
+            if (count == 1 && single != null && single.get_master_file().query_exists())
+                return;
+            
+            // The hash picks the candidates out of however many share the file's size and
+            // modification time, so the file is read once.
             string? md5 = null;
             try {
                 md5 = md5_file(file);
@@ -136,27 +139,34 @@ public class LibraryMonitor : DirectoryMonitor {
                 return;
             }
             
-            foreach (Monitorable candidate in candidates) {
-                if (candidate.get_master_md5() != md5)
+            foreach (MoveCandidates group in candidates) {
+                Gee.Collection<Monitorable>? with_md5 = group.with_md5(md5);
+                if (with_md5 == null)
                     continue;
-
-                // weed out any candidate that already has a backing master
-                if (candidate.get_master_file().query_exists())
-                    continue;
-
-                if (match != null) {
-                    warning("Found more than one media match for %s: %s and %s", file.get_path(),
-                        match.to_string(), candidate.to_string());
-                    
-                    if (losers == null)
-                        losers = new Gee.ArrayList<Monitorable>();
-                    
-                    losers.add(candidate);
-                    
-                    continue;
-                }
                 
-                match = candidate;
+                foreach (Monitorable candidate in with_md5) {
+                    // the hash may have changed since the candidates were collected
+                    if (candidate.get_master_md5() != md5)
+                        continue;
+                    
+                    // weed out any candidate that already has a backing master
+                    if (candidate.get_master_file().query_exists())
+                        continue;
+                    
+                    if (match != null) {
+                        warning("Found more than one media match for %s: %s and %s", file.get_path(),
+                            match.to_string(), candidate.to_string());
+                        
+                        if (losers == null)
+                            losers = new Gee.ArrayList<Monitorable>();
+                        
+                        losers.add(candidate);
+                        
+                        continue;
+                    }
+                    
+                    match = candidate;
+                }
             }
         }
     }
@@ -341,7 +351,7 @@ public class LibraryMonitor : DirectoryMonitor {
         foreach (MediaMonitor monitor in monitors)
             monitor.notify_unknown_file_matching_started();
 
-        Gee.ArrayList<Monitorable> all_candidates = new Gee.ArrayList<Monitorable>();
+        Gee.ArrayList<MoveCandidates> all_candidates = new Gee.ArrayList<MoveCandidates>();
         Gee.ArrayList<File> adopted = new Gee.ArrayList<File>(file_equal);
         foreach (File file in unknown_files) {
             FileInfo? info = get_file_info(file);
@@ -351,18 +361,18 @@ public class LibraryMonitor : DirectoryMonitor {
             // clear before using (reused as accumulator)
             all_candidates.clear();
             
-            Gee.Collection<Monitorable>? candidates = null;
+            MoveCandidates? candidates = null;
             bool associated = false;
             foreach (MediaMonitor monitor in monitors) {
-                MediaMonitor.DiscoveredFile result;
-                candidates = monitor.candidates_for_unknown_file(file, info, out result);
+                MediaMonitor.DiscoveredFile result = monitor.move_candidates_for_unknown_file(file, info,
+                    out candidates);
                 if (result == MediaMonitor.DiscoveredFile.REPRESENTED
                     || result == MediaMonitor.DiscoveredFile.IGNORE) {
                     associated = true;
                     
                     break;
                 } else if (candidates != null) {
-                    all_candidates.add_all(candidates);
+                    all_candidates.add(candidates);
                 }
             }
             
@@ -375,8 +385,8 @@ public class LibraryMonitor : DirectoryMonitor {
             // verify the matches with an MD5 comparison
             if (all_candidates.size > 0) {
                 // copy for background thread
-                Gee.ArrayList<Monitorable> job_candidates = all_candidates;
-                all_candidates = new Gee.ArrayList<Monitorable>();
+                Gee.ArrayList<MoveCandidates> job_candidates = all_candidates;
+                all_candidates = new Gee.ArrayList<MoveCandidates>();
                 
                 checksums_total++;
                 workers.enqueue(new FindMoveJob(this, file, job_candidates));
