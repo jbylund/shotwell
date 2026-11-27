@@ -109,6 +109,48 @@ void add_resort_tests() {
     });
 }
 
+// Sorting moves items around as plain pointers; the sort must leave the references to every
+// item exactly as they were.
+void add_reference_tests() {
+    Test.add_func("/sorted_list/reference_counts", () => {
+        Gee.ArrayList<Item> items = make_items(3000, 11);
+        shuffle(items, 9);
+        uint[] before = new uint[items.size];
+        for (int ctr = 0; ctr < items.size; ctr++)
+            before[ctr] = items[ctr].ref_count;
+
+        SortedList<Item> list = new SortedList<Item>();
+        list.add_all(items);
+        uint[] with_list = new uint[items.size];
+        for (int ctr = 0; ctr < items.size; ctr++) {
+            with_list[ctr] = items[ctr].ref_count;
+            assert(with_list[ctr] == before[ctr] + 1);
+        }
+
+        // sort, sort again, sort the other way, add a batch to a sorted list, reverse
+        list.resort(item_comparator);
+        list.resort(item_comparator);
+        list.resort(item_comparator_descending);
+        list.resort(item_comparator);
+        list.reverse();
+        list.reverse();
+        for (int ctr = 0; ctr < items.size; ctr++)
+            assert(items[ctr].ref_count == with_list[ctr]);
+
+        SortedList<Item> batches = new SortedList<Item>(item_comparator);
+        batches.add_all(items.slice(0, 2000));
+        batches.add_all(items.slice(2000, 3000));
+        for (int ctr = 0; ctr < items.size; ctr++)
+            assert(items[ctr].ref_count == with_list[ctr] + 1);
+
+        // dropping the lists gives the references back
+        list = null;
+        batches = null;
+        for (int ctr = 0; ctr < items.size; ctr++)
+            assert(items[ctr].ref_count == before[ctr]);
+    });
+}
+
 void add_reverse_tests() {
     Test.add_func("/sorted_list/reverse", () => {
         foreach (int count in new int[] { 0, 1, 2, 3, 4, 257, 1000 }) {
@@ -132,5 +174,6 @@ void main(string[] args) {
     Test.init(ref args);
     add_resort_tests();
     add_reverse_tests();
+    add_reference_tests();
     Test.run();
 }
