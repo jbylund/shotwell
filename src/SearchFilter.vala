@@ -133,6 +133,33 @@ public abstract class SearchViewFilter : ViewFilter {
         }
     }
     
+    // Sets everything the predicate depends on. Returns true if any of it differs from before, that
+    // is, if the items that were filtered with this filter have to be filtered again. A saved search
+    // can be edited without this filter noticing, so while one is set this always returns true.
+    public bool set_state(string? text, bool new_flagged, bool new_show_video, bool new_show_photos,
+        bool new_show_raw, RatingFilter new_rating_filter, SavedSearch? new_saved_search) {
+        string? old_search_filter = search_filter;
+        
+        set_search_filter(text);
+        
+        bool changed = (old_search_filter != search_filter)
+            || (new_flagged != flagged)
+            || (new_show_video != show_media_video)
+            || (new_show_photos != show_media_photos)
+            || (new_show_raw != show_media_raw)
+            || (new_rating_filter != rating_filter)
+            || (new_saved_search != null || saved_search != null);
+        
+        flagged = new_flagged;
+        show_media_video = new_show_video;
+        show_media_photos = new_show_photos;
+        show_media_raw = new_show_raw;
+        set_rating_filter(new_rating_filter);
+        saved_search = new_saved_search;
+        
+        return changed;
+    }
+    
     public bool has_search_filter() {
         return !is_string_empty(search_filter);
     }
@@ -833,7 +860,8 @@ public class SearchFilterToolbar : Gtk.Box {
         rating_button.set_tooltip_text(Resources.get_rating_filter_tooltip(filter));
     }
     
-    // Forces an update of the search filter.
+    // Applies the state of the toolbar to the search filter, and has the view filter its items again
+    // if that changed what the filter lets through.
     public void update() {
         if (null == search_filter) {
             // Search bar isn't being shown, need to toggle it.
@@ -842,20 +870,15 @@ public class SearchFilterToolbar : Gtk.Box {
         
         assert(null != search_filter);
         
-        search_filter.set_search_filter(actions.text.value);
-        search_filter.flagged = actions.flagged.get_state ().get_boolean ();
-        search_filter.show_media_video = actions.videos.get_state
-            ().get_boolean ();
-        search_filter.show_media_photos = actions.photos.get_state
-            ().get_boolean ();
-        search_filter.show_media_raw = actions.raw.get_state ().get_boolean ();
-
         var filter = (RatingFilter) int.parse (actions.rating.get_state ().get_string ());
-        search_filter.set_rating_filter(filter);
+        bool changed = search_filter.set_state(actions.text.value,
+            actions.flagged.get_state ().get_boolean (),
+            actions.videos.get_state ().get_boolean (),
+            actions.photos.get_state ().get_boolean (),
+            actions.raw.get_state ().get_boolean (),
+            filter, saved_search);
         update_rating_button(filter);
         //rating_button.set_icon_name(filter);
-
-        search_filter.saved_search = saved_search;
         
         // Ticket #3290, part III - check the current criteria
         // and show or hide widgets as needed.
@@ -876,7 +899,8 @@ public class SearchFilterToolbar : Gtk.Box {
 
 
         // Send update to view collection.
-        search_filter.refresh();
+        if (changed)
+            search_filter.refresh();
     }
     
     private void on_savedsearch_selected(SavedSearch saved_search) {
