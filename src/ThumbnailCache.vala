@@ -331,6 +331,24 @@ public class ThumbnailCache : Object {
         }
     }
     
+    // Makes the thumbnails of a photo that has no transformations (as at import) from its whole
+    // image, the way _import_from_source() makes them through Photo.get_pixbuf(): the image is
+    // decoded at full size, rotated to the photo's orientation and scaled to each size with
+    // BILINEAR. dim are the dimensions of the unrotated image, as in its BackingPhotoRow. This
+    // gives the same pixels as LibraryPhoto.generate_thumbnails() would, but without a Photo,
+    // so it can run in a worker thread. generate_for_photo() is cheaper and gives other pixels.
+    public static void generate_for_untransformed_photo(Thumbnails thumbnails, PhotoFileReader reader,
+        Orientation orientation, Dimensions dim) throws Error {
+        Gdk.Pixbuf pixbuf = orientation.rotate_pixbuf(reader.unscaled_read());
+        Dimensions rotated_dim = orientation.rotate_dimensions(dim);
+        
+        foreach (Size size in ALL_SIZES) {
+            Dimensions scaled = size.get_scaling().get_scaled_dimensions(rotated_dim);
+            thumbnails.set(size, rotated_dim.equals(scaled) ? pixbuf
+                : pixbuf.scale_simple(scaled.width, scaled.height, Gdk.InterpType.BILINEAR));
+        }
+    }
+    
     public static void generate_for_video_frame(Thumbnails thumbnails, Gdk.Pixbuf preview_frame) {
         foreach (Size size in ALL_SIZES) {
             Scaling current_scaling = size.get_scaling();
