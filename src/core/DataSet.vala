@@ -93,12 +93,40 @@ public class DataSet {
         return comparator_predicate;
     }
     
-    public void set_comparator(Comparator user_comparator, ComparatorPredicate? comparator_predicate,
-        bool descending = false) {
+    // Returns false if the objects were already in the order asked for and nothing was done. The
+    // objects are kept sorted by the comparator while they are in the set, so the same comparator
+    // and direction need no sorting, and the same comparator in the opposite direction needs only
+    // a reversal: comparator_wrapper() reverses its whole result, ties included, when descending.
+    // A comparator is identified by its function pointer. Vala makes the pointer of a delegate to a
+    // static method in each source file that uses it, so one comparator passed from two files is taken
+    // for two comparators and sorted as before, but two comparators are never taken for one.
+    //
+    // A SortKey, if there is one, is the number the comparator orders by first (see SortKey). Then
+    // the objects are sorted by it, which costs less than the comparisons of a merge sort.
+    public bool set_comparator(Comparator user_comparator, ComparatorPredicate? comparator_predicate,
+        bool descending = false, SortKey? sort_key = null) {
+        bool same_comparator = (this.user_comparator == user_comparator);
+        bool same_direction = (this.descending == descending);
+        
         this.user_comparator = user_comparator;
         this.comparator_predicate = comparator_predicate;
         this.descending = descending;
-        list.resort(comparator_wrapper);
+        
+        if (same_comparator) {
+            if (same_direction)
+                return false;
+            
+            list.reverse();
+            
+            return true;
+        }
+        
+        if (sort_key != null)
+            list.resort_by_key(comparator_wrapper, sort_key, descending);
+        else
+            list.resort(comparator_wrapper);
+        
+        return true;
     }
     
     public bool is_descending() {

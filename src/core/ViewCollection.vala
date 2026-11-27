@@ -679,12 +679,12 @@ public class ViewCollection : DataCollection {
     }
     
     public override void set_comparator(Comparator comparator, ComparatorPredicate? predicate,
-        bool descending = false) {
-        selected.set_comparator(comparator, predicate, descending);
+        bool descending = false, SortKey? sort_key = null) {
+        selected.set_comparator(comparator, predicate, descending, sort_key);
         if (visible != null)
-            visible.set_comparator(comparator, predicate, descending);
+            visible.set_comparator(comparator, predicate, descending, sort_key);
         
-        base.set_comparator(comparator, predicate, descending);
+        base.set_comparator(comparator, predicate, descending, sort_key);
     }
     
     public override void reset_comparator() {

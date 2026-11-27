@@ -262,6 +262,14 @@ public abstract class MediaSource : ThumbnailSource, Indexable {
     
     public abstract DateTime? get_exposure_time();
 
+    // The exposure time as seconds since the epoch, or int64.MIN if there is none. The exposure
+    // time sort compares this. Sources that keep the time as a number override it, so that a
+    // comparison does not need a DateTime.
+    public virtual int64 get_exposure_time_unix() {
+        DateTime? time = get_exposure_time();
+        return (time != null) ? time.to_unix() : int64.MIN;
+    }
+
     public abstract ImportID get_import_id();
 }
 

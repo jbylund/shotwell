@@ -230,9 +230,9 @@ public class DataCollection {
     }
     
     public virtual void set_comparator(Comparator comparator, ComparatorPredicate? predicate,
-        bool descending = false) {
-        dataset.set_comparator(comparator, predicate, descending);
-        notify_ordering_changed();
+        bool descending = false, SortKey? sort_key = null) {
+        if (dataset.set_comparator(comparator, predicate, descending, sort_key))
+            notify_ordering_changed();
     }
     
     // Return to natural ordering of DataObjects, which is order-added
