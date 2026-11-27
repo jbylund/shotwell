@@ -875,6 +875,7 @@ public abstract class MediaPage : CheckerboardPage {
     void set_view_comparator(int sort_by, bool ascending) {
         Comparator comparator;
         ComparatorPredicate predicate;
+        SortKey? sort_key = null;
         
         switch (sort_by) {
             case SortBy.TITLE:
@@ -885,11 +886,13 @@ public abstract class MediaPage : CheckerboardPage {
             case SortBy.EXPOSURE_DATE:
                 comparator = Thumbnail.exposure_time_ascending_comparator;
                 predicate = Thumbnail.exposure_time_comparator_predicate;
+                sort_key = Thumbnail.exposure_time_sort_key;
                 break;
             
             case SortBy.RATING:
                 comparator = Thumbnail.rating_ascending_comparator;
                 predicate = Thumbnail.rating_comparator_predicate;
+                sort_key = Thumbnail.rating_sort_key;
                 break;
             
             case SortBy.FILENAME:
@@ -904,7 +907,7 @@ public abstract class MediaPage : CheckerboardPage {
                 break;
         }
         
-        get_view().set_comparator(comparator, predicate, !ascending);
+        get_view().set_comparator(comparator, predicate, !ascending, sort_key);
     }
 
     protected void sync_sort() {

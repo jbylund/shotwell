@@ -166,6 +166,10 @@ public class Thumbnail : MediaSourceItem {
         return filename_ascending_comparator(a, b);
     }
     
+    public static int64 exposure_time_sort_key(void *a) {
+        return ((Thumbnail *) a)->media.get_exposure_time_unix();
+    }
+    
     public static bool exposure_time_comparator_predicate(DataObject object, Alteration alteration) {
         return alteration.has_detail("metadata", "exposure-time");
     }
@@ -193,6 +197,17 @@ public class Thumbnail : MediaSourceItem {
         int64 result = ((Thumbnail *) a)->media.get_rating() - ((Thumbnail *) b)->media.get_rating();
         
         return (result != 0) ? result : photo_id_ascending_comparator(a, b);
+    }
+
+    // The rating, then the id of the photo, which is how rating_ascending_comparator() orders
+    // thumbnails. Rating.REJECTED is -1. An id too large for 48 bits is cut off, which only makes
+    // equal keys that the comparator orders.
+    public static int64 rating_sort_key(void *a) {
+        MediaSource media = ((Thumbnail *) a)->media;
+        int64 rating = int64.max((int64) media.get_rating() + 1, 0);
+        int64 id = int64.min(media.get_instance_id(), ((int64) 1 << 48) - 1);
+        
+        return (rating << 48) | id;
     }
 
     public static bool rating_comparator_predicate(DataObject object, Alteration alteration) {

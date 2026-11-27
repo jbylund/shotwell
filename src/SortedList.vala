@@ -4,6 +4,10 @@
 
 public delegate int64 Comparator(void *a, void *b);
 
+// The number a Comparator orders by first: for items a and b, if the key of a is less than the key
+// of b, the Comparator must say that a comes first (in the ascending direction).
+public delegate int64 SortKey(void *item);
+
 public class SortedList<G> : Object, Gee.Traversable<G>, Gee.Iterable<G>, Gee.Collection<G> {
     private Gee.ArrayList<G> list;
     private unowned Comparator? cmp;
@@ -231,6 +235,88 @@ public class SortedList<G> : Object, Gee.Traversable<G>, Gee.Iterable<G>, Gee.Co
         cmp = new_cmp;
         
         merge_sort();
+        
+#if VERIFY_SORTED_LIST
+        assert(is_sorted());
+#endif
+    }
+    
+    // Sorts the items by their keys, a pass of a radix sort for every 16 bits of the range of the
+    // keys, and then by the Comparator the items that have the same key. The result is the one
+    // resort() gives, for the cost of reading each key once instead of the comparisons of a merge
+    // sort. descending is for a Comparator that reverses its whole result, ties included.
+    public void resort_by_key(Comparator new_cmp, SortKey key, bool descending) {
+        cmp = new_cmp;
+        
+        int count = list.size;
+        if (count > 0) {
+            void*[] items = new void*[count];
+            int64[] keys = new int64[count];
+            int64 min = int64.MAX;
+            int64 max = int64.MIN;
+            for (int ctr = 0; ctr < count; ctr++) {
+                G item = list.get(ctr);
+                items[ctr] = (void *) item;
+                keys[ctr] = key(items[ctr]);
+                min = int64.min(min, keys[ctr]);
+                max = int64.max(max, keys[ctr]);
+            }
+            
+            // each pass is stable, so the items that have the same key stay in the order they have
+            uint64 range = (uint64) max - (uint64) min;
+            void*[] moved_items = new void*[count];
+            int64[] moved_keys = new int64[count];
+            for (int shift = 0; shift < 64 && (range >> shift) != 0; shift += 16) {
+                int[] offsets = new int[65537];
+                for (int ctr = 0; ctr < count; ctr++)
+                    offsets[(int) ((((uint64) keys[ctr] - (uint64) min) >> shift) & 0xffff) + 1]++;
+                for (int digit = 0; digit < 65536; digit++)
+                    offsets[digit + 1] += offsets[digit];
+                
+                for (int ctr = 0; ctr < count; ctr++) {
+                    int digit = (int) ((((uint64) keys[ctr] - (uint64) min) >> shift) & 0xffff);
+                    int position = offsets[digit]++;
+                    moved_items[position] = items[ctr];
+                    moved_keys[position] = keys[ctr];
+                }
+                
+                void*[] swap_items = items;
+                items = moved_items;
+                moved_items = swap_items;
+                int64[] swap_keys = keys;
+                keys = moved_keys;
+                moved_keys = swap_keys;
+            }
+            
+            if (descending) {
+                for (int low = 0, high = count - 1; low < high; low++, high--) {
+                    void *item = items[low];
+                    items[low] = items[high];
+                    items[high] = item;
+                    int64 item_key = keys[low];
+                    keys[low] = keys[high];
+                    keys[high] = item_key;
+                }
+            }
+            
+            // the items that have the same key are ordered by the Comparator
+            int start = 0;
+            while (start < count) {
+                int end = start + 1;
+                while (end < count && keys[end] == keys[start])
+                    end++;
+                
+                if (end - start > 1)
+                    _merge_sort(items, moved_items, start, end - 1);
+                
+                start = end;
+            }
+            
+            for (int ctr = 0; ctr < count; ctr++) {
+                unowned G item = (G) items[ctr];
+                list.set(ctr, item);
+            }
+        }
         
 #if VERIFY_SORTED_LIST
         assert(is_sorted());

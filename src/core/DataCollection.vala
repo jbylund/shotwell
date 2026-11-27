@@ -230,8 +230,8 @@ public class DataCollection {
     }
     
     public virtual void set_comparator(Comparator comparator, ComparatorPredicate? predicate,
-        bool descending = false) {
-        if (dataset.set_comparator(comparator, predicate, descending))
+        bool descending = false, SortKey? sort_key = null) {
+        if (dataset.set_comparator(comparator, predicate, descending, sort_key))
             notify_ordering_changed();
     }
     

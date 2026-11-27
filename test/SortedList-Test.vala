@@ -3,10 +3,10 @@
 
 // Items are ordered by key, then by tie, so every item has a place and the sorted order is unique.
 class Item : Object {
-    public int key;
+    public int64 key;
     public int tie;
 
-    public Item(int key, int tie) {
+    public Item(int64 key, int tie) {
         this.key = key;
         this.tie = tie;
     }
@@ -25,6 +25,10 @@ int64 item_comparator(void *a, void *b) {
 // A comparator that sorts the other way, ties included
 int64 item_comparator_descending(void *a, void *b) {
     return -item_comparator(a, b);
+}
+
+int64 item_key(void *item) {
+    return ((Item *) item)->key;
 }
 
 Gee.ArrayList<Item> make_items(int count, int distinct_keys) {
@@ -151,6 +155,91 @@ void add_reference_tests() {
     });
 }
 
+// Items with keys that are hard for a radix sort: negative, at both ends of the range of int64, and
+// the same for all items, or for a few of them.
+Gee.ArrayList<Item> make_extreme_items(int count, int style) {
+    Rand rand = new Rand.with_seed(count * 31 + style);
+    int64[] special = { int64.MIN, int64.MIN + 1, -65537, -65536, -1, 0, 1, 65535, 65536, int64.MAX - 1, int64.MAX };
+    Gee.ArrayList<Item> items = new Gee.ArrayList<Item>();
+    for (int ctr = 0; ctr < count; ctr++) {
+        int64 key;
+        switch (style) {
+            case 0:
+                key = special[rand.int_range(0, special.length)];
+                break;
+            case 1:
+                key = 42;
+                break;
+            case 2:
+                key = ((int64) rand.next_int() << 32) ^ (int64) rand.next_int();
+                break;
+            case 3:
+                key = ctr;
+                break;
+            case 4:
+                key = count - ctr;
+                break;
+            default:
+                key = rand.int_range(-100, 100) * 1000003;
+                break;
+        }
+        items.add(new Item(key, ctr));
+    }
+
+    return items;
+}
+
+void add_key_tests() {
+    Test.add_func("/sorted_list/resort_by_key", () => {
+        foreach (int style in new int[] { 0, 1, 2, 3, 4, 5 }) {
+            foreach (int count in new int[] { 0, 1, 2, 5, 100, 3000 }) {
+                Gee.ArrayList<Item> items = make_extreme_items(count, style);
+                shuffle(items, (uint32) (style * 1000 + count));
+                Gee.ArrayList<Item> ascending = reference_order(items, item_comparator);
+                Gee.ArrayList<Item> descending = reference_order(items, item_comparator_descending);
+
+                SortedList<Item> list = new SortedList<Item>();
+                list.add_all(items);
+                list.resort_by_key(item_comparator, item_key, false);
+                assert_same_order(list, ascending);
+
+                // sorted by key already, and then the other way
+                list.resort_by_key(item_comparator, item_key, false);
+                assert_same_order(list, ascending);
+                list.resort_by_key(item_comparator_descending, item_key, true);
+                assert_same_order(list, descending);
+                list.resort_by_key(item_comparator, item_key, false);
+                assert_same_order(list, ascending);
+
+                // the same through the other sort
+                SortedList<Item> merged = new SortedList<Item>();
+                merged.add_all(items);
+                merged.resort(item_comparator_descending);
+                assert_same_order(merged, descending);
+            }
+        }
+    });
+
+    Test.add_func("/sorted_list/resort_by_key_reference_counts", () => {
+        Gee.ArrayList<Item> items = make_extreme_items(2000, 2);
+        uint[] before = new uint[items.size];
+        for (int ctr = 0; ctr < items.size; ctr++)
+            before[ctr] = items[ctr].ref_count;
+
+        SortedList<Item> list = new SortedList<Item>();
+        list.add_all(items);
+        list.resort_by_key(item_comparator, item_key, false);
+        list.resort_by_key(item_comparator_descending, item_key, true);
+        list.resort_by_key(item_comparator, item_key, false);
+        for (int ctr = 0; ctr < items.size; ctr++)
+            assert(items[ctr].ref_count == before[ctr] + 1);
+
+        list = null;
+        for (int ctr = 0; ctr < items.size; ctr++)
+            assert(items[ctr].ref_count == before[ctr]);
+    });
+}
+
 void add_reverse_tests() {
     Test.add_func("/sorted_list/reverse", () => {
         foreach (int count in new int[] { 0, 1, 2, 3, 4, 257, 1000 }) {
@@ -175,5 +264,6 @@ void main(string[] args) {
     add_resort_tests();
     add_reverse_tests();
     add_reference_tests();
+    add_key_tests();
     Test.run();
 }
