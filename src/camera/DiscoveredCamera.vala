@@ -464,6 +464,39 @@ public class DiscoveredCamera : Object {
         return append_path(basedir, folder);
     }
 
+    // How many requests for file information are queued on the camera worker ahead of the one that
+    // is being handled.
+    private const int INFO_LOOK_AHEAD = 32;
+
+    private class FileInfoLoad : Object {
+        public string filename;
+        public GPhoto.Result result = GPhoto.Result.OK;
+        public ulong size = 0;
+        public long mtime = 0;
+        public uint fields = 0;
+        public string? type = null;
+        public bool done = false;
+        public SourceFunc? waiter = null;
+
+        public FileInfoLoad(string filename) {
+            this.filename = filename;
+        }
+    }
+
+    private async void fetch_file_info(FileInfoLoad load, string fulldir) {
+        yield run_op(() => {
+            GPhoto.CameraFileInfo tmp;
+            load.result = gcamera.get_file_info(fulldir, load.filename, out tmp, this.context);
+            load.size = tmp.file.size;
+            load.mtime = tmp.file.mtime;
+            load.fields = tmp.file.fields;
+            load.type = (string) tmp.file.type;
+        });
+        load.done = true;
+        if (load.waiter != null)
+            Idle.add((owned) load.waiter);
+    }
+
     public async GPhoto.Result enumerate_files(int fsid, string dir, Gee.ArrayList<ImportSource> import_list) {
         string? fulldir = yield get_fulldir(fsid, dir);
         if (fulldir == null) {
@@ -494,30 +527,53 @@ public class DiscoveredCamera : Object {
         }
         files.sort();
 
-        for (int ctr = 0; ctr < files.count(); ctr++) {
+        // The camera worker handles one request at a time, and each one is handed back to the main
+        // thread before the next is asked for. So the requests for the next files are queued ahead.
+        int file_count = files.count();
+        var infos = new Gee.ArrayQueue<FileInfoLoad>();
+        int next_info = 0;
+        GPhoto.Result name_result = GPhoto.Result.OK;
+        while (true) {
             if (is_cancelled())
                 return GPhoto.Result.OK;
-            string filename;
-            result = files.get_name(ctr, out filename);
-            if (result != GPhoto.Result.OK) {
-                warning("Unable to get the name of file %d in %s: %s", ctr, fulldir,
-                    result.to_full_string());
-                
-                return result;
+
+            while (name_result == GPhoto.Result.OK && infos.size < INFO_LOOK_AHEAD && next_info < file_count) {
+                string queued_name;
+                name_result = files.get_name(next_info, out queued_name);
+                if (name_result != GPhoto.Result.OK) {
+                    warning("Unable to get the name of file %d in %s: %s", next_info, fulldir,
+                        name_result.to_full_string());
+
+                    break;
+                }
+                next_info++;
+
+                var queued = new FileInfoLoad(queued_name);
+                infos.offer(queued);
+                fetch_file_info.begin(queued, fulldir);
             }
 
-            ulong size = 0;
-            long mtime = 0;
-            uint fields = 0;
-            string type = null;
-            yield run_op(() => {
-                GPhoto.CameraFileInfo tmp;
-                result = gcamera.get_file_info(fulldir, filename, out tmp, this.context);
-                size = tmp.file.size;
-                mtime = tmp.file.mtime;
-                fields = tmp.file.fields;
-                type = (string) tmp.file.type;
-            });
+            if (infos.is_empty) {
+                // out of files, or the name of the next one could not be read
+                if (name_result != GPhoto.Result.OK)
+                    return name_result;
+
+                break;
+            }
+
+            var head = infos.peek();
+            if (!head.done) {
+                head.waiter = enumerate_files.callback;
+                yield;
+            }
+            infos.poll();
+
+            string filename = head.filename;
+            ulong size = head.size;
+            long mtime = head.mtime;
+            uint fields = head.fields;
+            string type = head.type;
+            result = head.result;
             if (result != GPhoto.Result.OK) {
                 warning("Skipping import of %s/%s: name too long", fulldir, filename);
                 continue;
