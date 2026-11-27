@@ -33,6 +33,7 @@ public class Thumbnail : MediaSourceItem {
     private const int HQ_IMPROVEMENT_MSEC = 100;
     
     private MediaSource media;
+    private string? filename_collation_key = null;
     private int scale;
     private Dimensions original_dim;
     private Dimensions dim;
@@ -127,6 +128,8 @@ public class Thumbnail : MediaSourceItem {
     }
 
     protected override void notify_altered(Alteration alteration) {
+        if (alteration.has_detail("backing", "master"))
+            filename_collation_key = null;
         if (exposure && alteration.has_detail("metadata", "name"))
             update_title();
         if (exposure && alteration.has_detail("metadata", "comment"))
@@ -173,18 +176,23 @@ public class Thumbnail : MediaSourceItem {
         return alteration.has_detail("metadata", "filename");
     }
 
+    // The collation key of the lower case file name, which the file name sort compares. It is made
+    // when first needed and kept until the file of the photo is replaced (backing:master).
+    private unowned string get_filename_collation_key() {
+        if (filename_collation_key == null) {
+            string name = media.get_file().get_basename().down();
+            if (!name.validate())
+                name = Uri.escape_string(name, Uri.RESERVED_CHARS_ALLOWED_IN_PATH, true);
+            
+            filename_collation_key = name.collate_key_for_filename();
+        }
+        
+        return filename_collation_key;
+    }
+
     public static int64 filename_ascending_comparator(void *a, void *b) {
-        string path_a = ((Thumbnail *) a)->media.get_file().get_basename().down();
-        string path_b = ((Thumbnail *) b)->media.get_file().get_basename().down();
-        if (!path_a.validate()) {
-            path_a = Uri.escape_string(path_a, Uri.RESERVED_CHARS_ALLOWED_IN_PATH, true);
-        }
-
-        if (!path_b.validate()) {
-            path_b = Uri.escape_string(path_b, Uri.RESERVED_CHARS_ALLOWED_IN_PATH, true);
-        }
-
-        int64 result = strcmp(path_a.collate_key_for_filename(), path_b.collate_key_for_filename());
+        int64 result = strcmp(((Thumbnail *) a)->get_filename_collation_key(),
+            ((Thumbnail *) b)->get_filename_collation_key());
         return (result != 0) ? result : photo_id_ascending_comparator(a, b);
     }
 
