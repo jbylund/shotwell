@@ -60,6 +60,9 @@ private class VideoMonitor : MediaMonitor {
     private Workers workers = new Workers(1, false);
     private uint64 background_jobs = 0;
     
+    // Set only while the startup scan matches its unknown files; null at any other time.
+    private MoveIndex? videos_for_moves = null;
+
     public VideoMonitor(Cancellable cancellable) {
         base (Video.global, cancellable);
                 
@@ -110,6 +113,38 @@ private class VideoMonitor : MediaMonitor {
                 
                 return MediaMonitor.DiscoveredFile.IGNORE;
         }
+    }
+    
+    public override void notify_unknown_file_matching_started() {
+        videos_for_moves = new MoveIndex();
+        
+        // the same videos fetch_by_matching_backing() looks at: the ones in the collection, and
+        // the offline ones
+        foreach (DataObject object in Video.global.get_all())
+            add_to_snapshot((Video) object);
+        
+        foreach (MediaSource media in Video.global.get_offline_bin_contents())
+            add_to_snapshot((Video) media);
+    }
+    
+    public override void notify_unknown_file_matching_completed() {
+        videos_for_moves = null;
+    }
+    
+    private void add_to_snapshot(Video video) {
+        videos_for_moves.add((int64) video.get_filesize(), video.get_timestamp(),
+            video.get_master_md5(), video);
+    }
+    
+    // Same result as candidates_for_unknown_file(), from the snapshot.
+    public override MediaMonitor.DiscoveredFile move_candidates_for_unknown_file(File file,
+        FileInfo info, out MoveCandidates? candidates) {
+        if (videos_for_moves == null)
+            return base.move_candidates_for_unknown_file(file, info, out candidates);
+        
+        candidates = videos_for_moves.get_candidates(info);
+        
+        return MediaMonitor.DiscoveredFile.UNKNOWN;
     }
     
     public override Gee.Collection<Monitorable>? candidates_for_unknown_file(File file, FileInfo info,
